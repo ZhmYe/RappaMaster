@@ -1,19 +1,19 @@
 package HTTP
 
 import (
-	"BHLayer2node/Config"
-	"BHLayer2node/LogWriter"
-	"BHLayer2node/paradigm"
+	"BHCoordinator/Config"
+	"BHCoordinator/LogWriter"
+	"BHCoordinator/paradigm"
 	"fmt"
 	"time"
 )
 
-type HttpTaskRequest = paradigm.HttpTaskRequest
+type HttpTaskRequest = paradigm.UnprocessedTask
 
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
 	PendingRequestPool chan HttpTaskRequest // 给 Scheduler 的请求池，接收来自前端的数据
-	config             Config.BHLayer2NodeConfig
+	config             Config.BHCoordinatorConfig
 	ip                 string // IP 地址
 	port               int    // 端口
 }
@@ -59,12 +59,12 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 }
 
 // Setup 配置 HTTP 引擎
-func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
+func (e *FakeHttpEngine) Setup(config Config.BHCoordinatorConfig) {
 	e.config = config
 	e.port = config.HttpPort
 	e.ip = "127.0.0.1" // 默认绑定到本地地址
 	// 初始化请求池
-	//e.PendingRequestPool = make(chan HttpTaskRequest, config.MaxHttpRequestPoolSize)
+	//e.PendingRequestPool = make(chan UnprocessedTask, config.MaxHttpRequestPoolSize)
 }
 
 // NewFakeHttpEngine 创建并返回一个新的 FakeHttpEngine 实例

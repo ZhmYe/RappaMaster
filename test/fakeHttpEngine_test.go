@@ -1,15 +1,15 @@
 package test
 
 import (
-	"BHLayer2node/Config"
-	"BHLayer2node/Network/HTTP"
+	"BHCoordinator/Config"
+	"BHCoordinator/Network/HTTP"
 	"testing"
 	"time"
 )
 
 func TestFakeHttpEngine(t *testing.T) {
 	// 初始化配置
-	config := Config.LoadBHLayer2NodeConfig("")
+	config := Config.LoadBHCoordinatorConfig("")
 	pool := make(chan HTTP.HttpTaskRequest, config.MaxHttpRequestPoolSize)
 	// 创建并设置 FakeHttpEngine
 	httpEngine := HTTP.NewFakeHttpEngine(pool)

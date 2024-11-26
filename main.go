@@ -1,44 +1,53 @@
 package main
 
 import (
-	"BHLayer2node/Config"
-	"BHLayer2node/LogWriter"
-	"BHLayer2node/Network/Grpc"
-	"BHLayer2node/Network/HTTP"
-	"BHLayer2node/Schedule"
-	"BHLayer2node/Tracker"
-	"BHLayer2node/paradigm"
+	"BHCoordinator/Config"
+	"BHCoordinator/Coordinator"
+	"BHCoordinator/Event"
+	"BHCoordinator/LogWriter"
+	"BHCoordinator/Network/HTTP"
+	"BHCoordinator/Schedule"
+	"BHCoordinator/Task"
+	"BHCoordinator/paradigm"
 	"fmt"
 	"time"
 )
 
 func main() {
-	config := Config.LoadBHLayer2NodeConfig("")
+	config := Config.LoadBHCoordinatorConfig("")
 
 	// 初始化 channels
-	pendingRequestPool := make(chan paradigm.HttpTaskRequest, config.MaxHttpRequestPoolSize)
-	pendingSlotPool := make(chan paradigm.PendingSlotItem, config.MaxGrpcRequestPoolSize)
-	pendingSlotRecord := make(chan paradigm.SlotRecord, config.MaxGrpcRequestPoolSize)
-
+	unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
+	//pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
+	pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
+	scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
+	commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
+	epochEvent := make(chan bool, 1)
 	// 初始化各个组件
-	grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
-	grpcEngine.Setup(*config)
-	httpEngine := HTTP.NewFakeHttpEngine(pendingRequestPool)
+	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
+	//grpcEngine.Setup(*config)
+	httpEngine := HTTP.NewFakeHttpEngine(unprocessedTasks)
 	httpEngine.Setup(*config)
-	tracker := Tracker.NewTracker(*config)
+
+	event := Event.NewEvent(epochEvent)
+	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks)
+
+	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent)
 
 	// 初始化 Scheduler
-	scheduler := Schedule.NewScheduler(pendingSlotPool, pendingRequestPool, pendingSlotRecord)
-
+	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
+	scheduler.SetTaskManager(taskManager)
 	// 配置 Scheduler
 	scheduler.Setup(config)
-	scheduler.SetGrpc(grpcEngine)
-	scheduler.SetTracker(tracker)
+	//scheduler.SetGrpc(grpcEngine)
+	scheduler.SetTaskManager(taskManager)
 
 	// 启动各个组件
-	go grpcEngine.Start()
+	//go grpcEngine.Start()
 	go httpEngine.Start()
-
+	go taskManager.Start()
+	go coordinator.Start()
+	go event.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))
@@ -48,14 +57,14 @@ func main() {
 	//// 模拟前端 HTTP 请求
 	//go func() {
 	//	for i := 0; i < 5; i++ {
-	//		request := paradigm.HttpTaskRequest{
+	//		request := paradigm.UnprocessedTask{
 	//			Sign:   fmt.Sprintf("Task-%d", i+1),
 	//			Size:   1000,
 	//			Model:  "TestModel",
 	//			Params: map[string]interface{}{"param1": "value1"},
 	//		}
 	//		pendingRequestPool <- request
-	//		LogWriter.Log("DEBUG", fmt.Sprintf("Submitted HttpTaskRequest: %+v", request))
+	//		LogWriter.Log("DEBUG", fmt.Sprintf("Submitted UnprocessedTask: %+v", request))
 	//		time.Sleep(2 * time.Second)
 	//	}
 	//}()

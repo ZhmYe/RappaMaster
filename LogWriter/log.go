@@ -1,7 +1,7 @@
 package LogWriter
 
 import (
-	"BHLayer2node/utils"
+	"BHCoordinator/utils"
 	"fmt"
 	"io"
 	"log"
@@ -68,6 +68,8 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["NETWORK"] = func(msg string) { lw.log("NETWORK", msg) }
 	lw.LogLevels["SCHEDULE"] = func(msg string) { lw.log("SCHEDULE", msg) }
 	lw.LogLevels["CHAINUP"] = func(msg string) { lw.log("CHAINUP", msg) }
+	lw.LogLevels["COORDINATOR"] = func(msg string) { lw.log("COORDINATOR", msg) }
+	lw.LogLevels["TRACKER"] = func(msg string) { lw.log("TRACKER", msg) }
 }
 
 // log logs a message with a specific level
