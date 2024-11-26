@@ -1,7 +1,7 @@
 package LogWriter
 
 import (
-	"BHCoordinator/utils"
+	"BHLayer2Node/utils"
 	"fmt"
 	"io"
 	"log"

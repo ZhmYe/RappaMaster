@@ -1,16 +1,17 @@
 package Coordinator
 
 import (
-	"BHCoordinator/LogWriter"
-	"BHCoordinator/paradigm"
-	pb "BHCoordinator/pb/service"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/paradigm"
+	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/structpb"
 	"strconv"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Coordinator，用于协调各部分的运行，作为代码的核心进程运行

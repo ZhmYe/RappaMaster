@@ -1,9 +1,9 @@
 package HTTP
 
-import "BHCoordinator/Config"
+import "BHLayer2Node/Config"
 
 type HttpInterface interface {
 	HandleRequest()
 	Start()
-	Setup(config Config.BHCoordinatorConfig)
+	Setup(config Config.BHLayer2NodeConfig)
 }

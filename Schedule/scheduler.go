@@ -1,11 +1,11 @@
 package Schedule
 
 import (
-	"BHCoordinator/Config"
-	"BHCoordinator/LogWriter"
-	"BHCoordinator/Monitor"
-	"BHCoordinator/Task"
-	"BHCoordinator/paradigm"
+	"BHLayer2Node/Config"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Monitor"
+	"BHLayer2Node/Task"
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
 )
@@ -16,7 +16,7 @@ type Scheduler struct {
 	unprocessedTasks chan paradigm.UnprocessedTask
 	pendingSchedules chan paradigm.TaskSchedule // 等待coordinator发送的调度方案
 
-	config  *Config.BHCoordinatorConfig
+	config  *Config.BHLayer2NodeConfig
 	manager *Task.TaskManager // 监控任务运行状态
 	monitor *Monitor.Monitor  // 监控节点状态
 	// 任务状态管理
@@ -94,7 +94,7 @@ func (s *Scheduler) process(slot paradigm.UnprocessedTask) {
 	s.pendingSchedules <- taskSchedule
 }
 
-func (s *Scheduler) Setup(config *Config.BHCoordinatorConfig) {
+func (s *Scheduler) Setup(config *Config.BHLayer2NodeConfig) {
 	s.config = config
 	//s.pendingRequestPool = make(chan HTTP.UnprocessedTask, config.MaxHttpRequestPoolSize)
 	//s.pendingSlotPool = make(chan PendingSlotItem, config.MaxGrpcRequestPoolSize)

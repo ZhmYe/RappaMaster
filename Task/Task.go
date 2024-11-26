@@ -1,7 +1,7 @@
 package Task
 
 import (
-	"BHCoordinator/paradigm"
+	"BHLayer2Node/paradigm"
 	"fmt"
 )
 

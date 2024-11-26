@@ -1,4 +1,4 @@
-module BHCoordinator
+module BHLayer2Node
 
 go 1.22.7
 

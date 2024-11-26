@@ -1,20 +1,20 @@
 package main
 
 import (
-	"BHCoordinator/Config"
-	"BHCoordinator/Coordinator"
-	"BHCoordinator/Event"
-	"BHCoordinator/LogWriter"
-	"BHCoordinator/Network/HTTP"
-	"BHCoordinator/Schedule"
-	"BHCoordinator/Task"
-	"BHCoordinator/paradigm"
+	"BHLayer2Node/Config"
+	"BHLayer2Node/Coordinator"
+	"BHLayer2Node/Event"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Network/HTTP"
+	"BHLayer2Node/Schedule"
+	"BHLayer2Node/Task"
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
 )
 
 func main() {
-	config := Config.LoadBHCoordinatorConfig("")
+	config := Config.LoadBHLayer2NodeConfig("")
 
 	// 初始化 channels
 	unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)

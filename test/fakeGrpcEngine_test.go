@@ -1,9 +1,9 @@
 package test
 
 import (
-	"BHCoordinator/Config"
-	"BHCoordinator/Network/Grpc"
-	"BHCoordinator/paradigm"
+	"BHLayer2Node/Config"
+	"BHLayer2Node/Network/Grpc"
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"testing"
 	"time"
@@ -11,7 +11,7 @@ import (
 
 func TestFakeGrpcEngine(t *testing.T) {
 	// 创建 channels 模拟任务的调度和记录
-	config := Config.LoadBHCoordinatorConfig("")
+	config := Config.LoadBHLayer2NodeConfig("")
 
 	pendingSlotPool := make(chan paradigm.PendingSlotItem, 5)
 	pendingSlotRecord := make(chan paradigm.SlotRecord, 5)
@@ -28,7 +28,7 @@ func TestFakeGrpcEngine(t *testing.T) {
 	// 模拟向 PendingSlotPool 添加任务
 	go func() {
 		for i := 0; i < 3; i++ {
-			schedule := []paradigm.BHCoordinatorSchedule{
+			schedule := []paradigm.BHLayer2NodeSchedule{
 				{NID: 0, Size: 100},
 				{NID: 1, Size: 100},
 				{NID: 2, Size: 100},

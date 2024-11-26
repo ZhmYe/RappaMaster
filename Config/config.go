@@ -1,9 +1,9 @@
 package Config
 
-import "BHCoordinator/LogWriter"
+import "BHLayer2Node/LogWriter"
 
-// BHCoordinatorConfig 定义 Layer2 节点的配置
-type BHCoordinatorConfig struct {
+// BHLayer2NodeConfig 定义 Layer2 节点的配置
+type BHLayer2NodeConfig struct {
 	GrpcPort                   int // gRPC 服务端口
 	HttpPort                   int // HTTP 服务端口
 	MaxUnprocessedTaskPoolSize int // HTTP 请求池的最大大小
@@ -16,8 +16,8 @@ type BHCoordinatorConfig struct {
 	DEBUG                      bool
 }
 
-// DefaultBHCoordinatorConfig 定义默认的配置值
-var DefaultBHCoordinatorConfig = BHCoordinatorConfig{
+// DefaultBHLayer2NodeConfig 定义默认的配置值
+var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	GrpcPort:                   50051, // 默认 gRPC 端口
 	HttpPort:                   8080,  // 默认 HTTP 端口
 	MaxUnprocessedTaskPoolSize: 100,
@@ -32,15 +32,15 @@ var DefaultBHCoordinatorConfig = BHCoordinatorConfig{
 
 //var (
 //	// GlobalConfig 全局配置实例
-//	GlobalConfig *BHCoordinatorConfig
+//	GlobalConfig *BHLayer2NodeConfig
 //	once         sync.Once
 //)
 
-// LoadBHCoordinatorConfig 从指定路径加载配置文件，覆盖默认值
+// LoadBHLayer2NodeConfig 从指定路径加载配置文件，覆盖默认值
 // 如果文件不存在或加载失败，则使用默认配置
-func LoadBHCoordinatorConfig(path string) *BHCoordinatorConfig {
+func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 	//once.Do(func() {
-	config := DefaultBHCoordinatorConfig
+	config := DefaultBHLayer2NodeConfig
 	LogWriter.InitGlobalLogWriter(config.LogPath, config.DEBUG)
 	//// 尝试从配置文件加载
 	//if path != "" {

@@ -1,8 +1,8 @@
 package test
 
 import (
-	"BHCoordinator/LogWriter"
-	"BHCoordinator/utils"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/utils"
 	"os"
 	"path/filepath"
 	"testing"

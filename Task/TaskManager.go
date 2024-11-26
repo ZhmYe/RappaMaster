@@ -1,9 +1,9 @@
 package Task
 
 import (
-	"BHCoordinator/Config"
-	"BHCoordinator/LogWriter"
-	"BHCoordinator/paradigm"
+	"BHLayer2Node/Config"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
 )
@@ -103,7 +103,7 @@ func (t *TaskManager) UpdateEpoch() {
 	}
 }
 
-func NewTaskManager(config Config.BHCoordinatorConfig, scheduledTasks chan paradigm.TaskSchedule,
+func NewTaskManager(config Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
 	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool) *TaskManager {
 	return &TaskManager{
 		tasks:            make(map[string]*Task),

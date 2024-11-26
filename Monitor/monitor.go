@@ -1,10 +1,10 @@
 package Monitor
 
-import "BHCoordinator/Config"
+import "BHLayer2Node/Config"
 
 // Monitor 监视节点状态
 type Monitor struct {
-	config Config.BHCoordinatorConfig
+	config Config.BHLayer2NodeConfig
 }
 
 // Advice todo 这里传入nIDs以及数据量，考虑如何分配一个slot里的数据

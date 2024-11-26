@@ -2,15 +2,15 @@ package Grpc
 
 //
 //import (
-//	"BHCoordinator/Config"
-//	"BHCoordinator/LogWriter"
-//	"BHCoordinator/paradigm"
+//	"BHLayer2Node/Config"
+//	"BHLayer2Node/LogWriter"
+//	"BHLayer2Node/paradigm"
 //	"fmt"
 //	"time"
 //)
 //
 //type FakeGrpcEngine struct {
-//	config Config.BHCoordinatorConfig
+//	config Config.BHLayer2NodeConfig
 //	port   int
 //	ip     string
 //	//connectedNodes    map[int]bool                  // 模拟连接的节点，key 为节点 ID
@@ -56,7 +56,7 @@ package Grpc
 //}
 //
 //// Setup 初始化 FakeGrpcEngine
-//func (e *FakeGrpcEngine) Setup(config Config.BHCoordinatorConfig) {
+//func (e *FakeGrpcEngine) Setup(config Config.BHLayer2NodeConfig) {
 //	e.config = config
 //	e.port = config.GrpcPort
 //	e.ip = "127.0.0.1" // 默认绑定到本地地址
