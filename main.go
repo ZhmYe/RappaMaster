@@ -17,6 +17,7 @@ func main() {
 	config := Config.LoadBHLayer2NodeConfig("")
 
 	// 初始化 channels
+	initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
 	unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
 	//pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
 	pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
@@ -26,13 +27,13 @@ func main() {
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
-	httpEngine := HTTP.NewFakeHttpEngine(unprocessedTasks)
+	httpEngine := HTTP.NewFakeHttpEngine(unprocessedTasks, initTasks)
 	httpEngine.Setup(*config)
 
 	event := Event.NewEvent(epochEvent)
-	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks)
+	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots)
 
-	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent)
+	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks)
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
@@ -71,5 +72,11 @@ func main() {
 
 	// 主程序保持运行，等待任务完成
 	LogWriter.Log("INFO", "Main program is running...")
-	time.Sleep(200 * time.Second)
+	//time.Sleep(200 * time.Second)
+	timeStart := time.Now()
+	for {
+		if time.Since(timeStart) >= 200*time.Second {
+			break
+		}
+	}
 }

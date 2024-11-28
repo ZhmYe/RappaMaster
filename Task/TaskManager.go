@@ -9,13 +9,14 @@ import (
 )
 
 type TaskManager struct {
-	tasks            map[string]*Task
-	mu               sync.Mutex
-	tracker          *Tracker
+	tasks   map[string]*Task
+	mu      sync.Mutex
+	tracker *Tracker
+
 	scheduledTasks   chan paradigm.TaskSchedule
 	commitSlot       chan paradigm.CommitSlotItem
 	unprocessedTasks chan paradigm.UnprocessedTask
-
+	initTasks        chan paradigm.UnprocessedTask
 	epochChangeEvent chan bool // 外部触发的 epoch 更新信号
 	currentEpoch     int
 }
@@ -26,6 +27,8 @@ func (t *TaskManager) Start() {
 			select {
 			case <-t.epochChangeEvent:
 				t.UpdateEpoch() // 如果epoch更新，那么先更新epoch，此时有新的任务也会进入下一个epoch
+			case initTask := <-t.initTasks:
+				t.UpdateTask(initTask.Sign, initTask.Model, initTask.Size, initTask.Params)
 			case commitSlotItem := <-t.commitSlot: // 如果不需要更新epoch，那么优先提交
 				err := t.Commit(commitSlotItem)
 				if err != nil {
@@ -64,12 +67,20 @@ func (t *TaskManager) CheckSlotIsValid(sign string, slot int) (bool, error) {
 	}
 	return true, nil
 }
-func (t *TaskManager) UpdateTaskSchedule(schedule paradigm.TaskSchedule) (bool, error) {
-	sign, slot := schedule.Sign, schedule.Slot
+func (t *TaskManager) UpdateTask(sign string, model string, size int, params map[string]interface{}) {
 	if _, exist := t.tasks[sign]; !exist {
-		t.tasks[sign] = NewTask(sign, schedule.Model, schedule.Params, schedule.Size)
+		t.tasks[sign] = NewTask(sign, model, params, size)
 		LogWriter.Log("TRACKER", fmt.Sprintf("Update New Task, sign: %s, slot: 0", sign))
 	}
+}
+
+func (t *TaskManager) UpdateTaskSchedule(schedule paradigm.TaskSchedule) (bool, error) {
+	sign, slot := schedule.Sign, schedule.Slot
+	//if _, exist := t.tasks[sign]; !exist {
+	//	//t.tasks[sign] = NewTask(sign, schedule.Model, schedule.Params, schedule.Size)
+	//	LogWriter.Log("ERROR", fmt.Sprintf("Task %s does not exist", sign))
+	//}
+	t.UpdateTask(sign, schedule.Model, schedule.Size, schedule.Params)
 	task := t.tasks[sign]
 	_, err := t.CheckSlotIsValid(sign, slot)
 	if err != nil {
@@ -90,12 +101,14 @@ func (t *TaskManager) Commit(slot paradigm.CommitSlotItem) error {
 }
 func (t *TaskManager) UpdateEpoch() {
 	t.currentEpoch++
+	LogWriter.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
 	outOfDateTasks := t.tracker.OutOfDate()
 	for _, sign := range outOfDateTasks {
+		task := t.tasks[sign]
 		if t.CheckTaskIsFinish(sign) {
+			LogWriter.Log("TRACKER", fmt.Sprintf("Task %s finished at slot %d, expected: %d, processed: %d", sign, task.Slot, task.size, task.process))
 			continue
 		}
-		task := t.tasks[sign]
 		nextSlot, _ := task.Next()
 		go func(slot paradigm.UnprocessedTask) {
 			t.unprocessedTasks <- slot
@@ -104,7 +117,7 @@ func (t *TaskManager) UpdateEpoch() {
 }
 
 func NewTaskManager(config Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
-	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool) *TaskManager {
+	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool, initTasks chan paradigm.UnprocessedTask) *TaskManager {
 	return &TaskManager{
 		tasks:            make(map[string]*Task),
 		mu:               sync.Mutex{},
@@ -113,6 +126,7 @@ func NewTaskManager(config Config.BHLayer2NodeConfig, scheduledTasks chan paradi
 		commitSlot:       commitSlot,
 		unprocessedTasks: unprocessedTasks,
 		epochChangeEvent: epochChangeEvent,
+		initTasks:        initTasks,
 		currentEpoch:     -1,
 	}
 }

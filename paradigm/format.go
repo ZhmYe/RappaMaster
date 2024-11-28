@@ -49,6 +49,6 @@ func NewSlotRecord(slot int) SlotRecord {
 	return SlotRecord{
 		Slot:     slot,
 		Schedule: TaskSchedule{},
-		Process:  nil,
+		Process:  make([]ScheduleItem, 0),
 	}
 }

@@ -9,9 +9,12 @@ type Event struct {
 
 func (e *Event) Start() {
 	epochForward := func() {
+		timeStart := time.Now()
 		for {
-			time.Sleep(10 * time.Second)
-			e.EpochEvent <- true
+			if time.Since(timeStart) >= 10*time.Second {
+				e.EpochEvent <- true
+				timeStart = time.Now()
+			}
 		}
 	}
 	go epochForward()
