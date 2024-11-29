@@ -1,6 +1,7 @@
 package main
 
 import (
+	"BHLayer2Node/ChainUpper"
 	"BHLayer2Node/Config"
 	"BHLayer2Node/Coordinator"
 	"BHLayer2Node/Event"
@@ -23,6 +24,9 @@ func main() {
 	pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
 	scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
 	commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
+
+	//slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
+	pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
 	epochEvent := make(chan bool, 1)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
@@ -33,7 +37,9 @@ func main() {
 	event := Event.NewEvent(epochEvent)
 	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots)
 
-	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks)
+	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions)
+
+	chainUpper := ChainUpper.NewChainUpper(pendingTransactions)
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
@@ -49,6 +55,7 @@ func main() {
 	go taskManager.Start()
 	go coordinator.Start()
 	go event.Start()
+	go chainUpper.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))

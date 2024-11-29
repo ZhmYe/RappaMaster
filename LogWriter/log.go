@@ -70,6 +70,7 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["CHAINUP"] = func(msg string) { lw.log("CHAINUP", msg) }
 	lw.LogLevels["COORDINATOR"] = func(msg string) { lw.log("COORDINATOR", msg) }
 	lw.LogLevels["TRACKER"] = func(msg string) { lw.log("TRACKER", msg) }
+	lw.LogLevels["VOTE"] = func(msg string) { lw.log("VOTE", msg) }
 }
 
 // log logs a message with a specific level

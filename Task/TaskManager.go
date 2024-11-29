@@ -13,10 +13,12 @@ type TaskManager struct {
 	mu      sync.Mutex
 	tracker *Tracker
 
-	scheduledTasks   chan paradigm.TaskSchedule
-	commitSlot       chan paradigm.CommitSlotItem
-	unprocessedTasks chan paradigm.UnprocessedTask
-	initTasks        chan paradigm.UnprocessedTask
+	scheduledTasks      chan paradigm.TaskSchedule
+	commitSlot          chan paradigm.CommitSlotItem
+	unprocessedTasks    chan paradigm.UnprocessedTask
+	initTasks           chan paradigm.UnprocessedTask
+	pendingTransactions chan paradigm.Transaction
+	//slotToVotes      chan paradigm.CommitSlotItem
 	epochChangeEvent chan bool // 外部触发的 epoch 更新信号
 	currentEpoch     int
 }
@@ -35,6 +37,11 @@ func (t *TaskManager) Start() {
 					LogWriter.Log("ERROR", err.Error())
 					continue
 				}
+				t.pendingTransactions <- &paradigm.CommitSlotTransaction{
+					CommitSlotItem: commitSlotItem,
+					Epoch:          t.currentEpoch,
+				}
+
 			case schedule := <-t.scheduledTasks:
 				_, err := t.UpdateTaskSchedule(schedule)
 				// 不合法
@@ -44,6 +51,8 @@ func (t *TaskManager) Start() {
 				}
 				// 将任务添加到对应剩余时间的桶,这里只记录sign即可
 				t.tracker.Update(schedule.Sign)
+			default:
+				continue
 			}
 		}
 	}
@@ -117,16 +126,19 @@ func (t *TaskManager) UpdateEpoch() {
 }
 
 func NewTaskManager(config Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
-	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool, initTasks chan paradigm.UnprocessedTask) *TaskManager {
+	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool,
+	initTasks chan paradigm.UnprocessedTask, pendingTransactions chan paradigm.Transaction) *TaskManager {
 	return &TaskManager{
-		tasks:            make(map[string]*Task),
-		mu:               sync.Mutex{},
-		tracker:          NewTracker(config),
-		scheduledTasks:   scheduledTasks,
-		commitSlot:       commitSlot,
-		unprocessedTasks: unprocessedTasks,
-		epochChangeEvent: epochChangeEvent,
-		initTasks:        initTasks,
-		currentEpoch:     -1,
+		tasks:               make(map[string]*Task),
+		mu:                  sync.Mutex{},
+		tracker:             NewTracker(config),
+		scheduledTasks:      scheduledTasks,
+		commitSlot:          commitSlot,
+		unprocessedTasks:    unprocessedTasks,
+		epochChangeEvent:    epochChangeEvent,
+		initTasks:           initTasks,
+		pendingTransactions: pendingTransactions,
+		//slotToVotes:      slotToVotes,
+		currentEpoch: -1,
 	}
 }
