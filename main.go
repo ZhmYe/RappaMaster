@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	config := Config.LoadBHLayer2NodeConfig("")
+	config := Config.LoadBHLayer2NodeConfig("config.json")
 
 	// 初始化 channels
 	initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
