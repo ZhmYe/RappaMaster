@@ -20,6 +20,7 @@ package handler
 //		transaction := paradigm.CommitSlotTransaction{
 //			CommitSlotItem: slot,
 //			//Votes:          make([]int, 0),
+//			Epoch: epoch,
 //		}
 //		transactions = append(transactions, &transaction)
 //	}
