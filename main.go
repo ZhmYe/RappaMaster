@@ -47,7 +47,10 @@ func main() {
 
 	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions)
 
-	chainUpper := ChainUpper.NewChainUpper(pendingTransactions)
+	chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
+	if err != nil {
+		LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	}
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
