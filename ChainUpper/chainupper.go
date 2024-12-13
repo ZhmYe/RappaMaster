@@ -1,17 +1,17 @@
 package ChainUpper
 
 import (
+	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
-	"BHLayer2Node/Config"
 	"fmt"
 	"sync"
 	"time"
 
 	SlotCommit "BHLayer2Node/ChainUpper/contract/slotCommit"
 	"BHLayer2Node/ChainUpper/service"
-	"encoding/hex"
 	"context"
+	"encoding/hex"
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"log"
 )
@@ -21,9 +21,9 @@ type ChainUpper struct {
 	transactionPool     []paradigm.Transaction    // 所有的交易
 	unprocessedIndex    int                       // 未处理的交易index，包括这一index
 	mu                  sync.Mutex
-	queue               chan map[string]interface{}  // 用于异步上链的队列
-	client              *client.Client            // FISCO-BCOS 客户端
-	instance            *SlotCommit.SlotCommit    // 合约实例
+	queue               chan map[string]interface{} // 用于异步上链的队列
+	client              *client.Client              // FISCO-BCOS 客户端
+	instance            *SlotCommit.SlotCommit      // 合约实例
 }
 
 func (c *ChainUpper) Start() {
@@ -86,12 +86,12 @@ func NewChainUpper(pendingTransactions chan paradigm.Transaction, config *Config
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{
-		IsSMCrypto: false,
-		GroupID:    config.GroupID,
-		PrivateKey: privateKey,
-		Host:       config.FiscoBcosHost,
-		Port:       config.FiscoBcosPort,
-		TLSCaFile:  config.TLSCaFile,
+		IsSMCrypto:  false,
+		GroupID:     config.GroupID,
+		PrivateKey:  privateKey,
+		Host:        config.FiscoBcosHost,
+		Port:        config.FiscoBcosPort,
+		TLSCaFile:   config.TLSCaFile,
 		TLSCertFile: config.TLSCertFile,
 		TLSKeyFile:  config.TLSKeyFile,
 	})
