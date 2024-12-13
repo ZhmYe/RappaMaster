@@ -175,19 +175,16 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 
 }
 
-func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule,
-	unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule,
-	commitSlot chan paradigm.CommitSlotItem) *Coordinator {
+func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, addressMap map[int]string) *Coordinator {
+	// 加载配置中的节点IP
+
 	c := Coordinator{
 		pendingSchedules: pendingSchedules,
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
-		ips: map[int]string{
-			1: "localhost:50052",
-			2: "localhost:50053",
-		},
-		mockerNodes: make([]*Mocker.MockerExecutionNode, 0),
-		mu:          sync.Mutex{},
+		ips:              addressMap,
+		mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
+		mu:               sync.Mutex{},
 	}
 	for i, ip := range c.ips {
 		c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, ip, commitSlot))

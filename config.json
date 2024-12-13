@@ -1,0 +1,64 @@
+{
+  "GrpcPort": 50051,
+  "HttpPort": 8080,
+  "MaxUnprocessedTaskPoolSize": 100,
+  "MaxPendingSchedulePoolSize": 100,
+  "MaxScheduledTasksPoolSize": 100,
+  "MaxCommitSlotItemPoolSize": 100,
+  "MaxGrpcRequestPoolSize": 200,
+  "DefaultSlotSize": 100,
+  "LogPath": "logs/",
+  "DEBUG": false,
+  "BHNodeAddresses": [
+    {
+      "NodeId": 0,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1234
+    },
+    {
+      "NodeId": 1,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1243
+    },
+    {
+      "NodeId": 2,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1252
+    },
+    {
+      "NodeId": 3,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1261
+    },
+    {
+      "NodeId": 4,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1270
+    },
+    {
+      "NodeId": 5,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1279
+    },
+    {
+      "NodeId": 6,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1288
+    },
+    {
+      "NodeId": 7,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1297
+    },
+    {
+      "NodeId": 8,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1306
+    },
+    {
+      "NodeId": 9,
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1315
+    }
+  ]
+}
