@@ -1,8 +1,8 @@
 package Coordinator
 
 import (
+	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
-	"BHLayer2Node/Mocker"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
@@ -30,9 +30,9 @@ type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
-	ips              map[int]string                // 节点地址映射，节点ID -> 地址
-	mockerNodes      []*Mocker.MockerExecutionNode
-	mu               sync.Mutex // 保护共享数据
+	nodeAddresses    map[int]Config.BHNodeAddress  // 节点地址映射，节点ID -> 地址
+	//mockerNodes      []*Mocker.MockerExecutionNode
+	mu sync.Mutex // 保护共享数据
 }
 
 func (c *Coordinator) Start() {
@@ -51,9 +51,9 @@ func (c *Coordinator) Start() {
 	//处理投票
 
 	// 处理心跳
-	for _, node := range c.mockerNodes {
-		go node.Start()
-	}
+	//for _, node := range c.mockerNodes {
+	//	go node.Start()
+	//}
 	// 启动协程处理调度任务
 	go processSchedule()
 }
@@ -77,10 +77,10 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 	}
 
 	var wg sync.WaitGroup
-	successChannel := make(chan paradigm.ScheduleItem, len(c.ips)) // 用于统计成功的任务大小
+	successChannel := make(chan paradigm.ScheduleItem, len(c.nodeAddresses)) // 用于统计成功的任务大小
 
 	// 遍历所有节点
-	for nodeID, address := range c.ips {
+	for nodeID, address := range c.nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
@@ -124,7 +124,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 				LogWriter.Log("ERROR", fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage))
 				//rejectedChannel <- assignedSize
 			}
-		}(nodeID, address, &request)
+		}(nodeID, address.GetAddrStr(), &request)
 	}
 
 	// 等待所有节点处理完成
@@ -175,19 +175,18 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 
 }
 
-func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, addressMap map[int]string) *Coordinator {
+func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem) *Coordinator {
 	// 加载配置中的节点IP
-
 	c := Coordinator{
 		pendingSchedules: pendingSchedules,
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
-		ips:              addressMap,
-		mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
-		mu:               sync.Mutex{},
+		nodeAddresses:    config.BHNodeAddressMap,
+		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
+		mu: sync.Mutex{},
 	}
-	for i, ip := range c.ips {
-		c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, ip, commitSlot))
-	}
+	//for i, ip := range c.nodeAddresses {
+	//	c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, ip, commitSlot))
+	//}
 	return &c
 }
