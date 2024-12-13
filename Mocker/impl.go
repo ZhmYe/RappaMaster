@@ -47,7 +47,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 			go func() {
 				//time.Sleep(2 * time.Second)
 				process := size - 1
-				if process == 0 {
+				if process <= 0 {
 					process = 1
 				}
 				LogWriter.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Task %s Slot %d", id, size-1, req.Sign, slot))
