@@ -40,7 +40,7 @@ cat <<EOL >$config_path
   "DefaultSlotSize": 100,
   "LogPath": "logs/",
   "DEBUG": false ,
-  "BHNodeAddresses": [
+  "BHNodeAddressMap": {
 EOL
 
 # 写入节点配置
@@ -53,12 +53,11 @@ for node_file in $(ls $NODE_ROOT); do
         echo "Get config from NODE($node_file) successfully."
         # 这里使用sed格式化输出
         # 使用awk命令获取需要的节点地址信息
-        NODE_ID_LINE=$(awk "/NODE_ID/{print}" $node_config_path | sed "s/NODE_ID/NodeId/")
+        NODE_ID_LINE=$(awk -F'[:, ]+' "/NODE_ID/{print \$3}" $node_config_path)
         NODE_IP_LINE=$(awk "/NODE_IP/{print}" $node_config_path | sed "s/NODE_IP/NodeIPAddress/")
         GRPC_PORT_LINE=$(awk "/GRPC_PORT/{print}" $node_config_path | sed "s/GRPC_PORT/NodeGrpcPort/;s/,\$//" )
         cat <<EOL >>$config_path
-    {
-    $NODE_ID_LINE
+    "$NODE_ID_LINE": {
     $NODE_IP_LINE
     $GRPC_PORT_LINE
     },
@@ -71,6 +70,6 @@ done
 # 处理末尾格式
 sed -i '$s/,//' $config_path
 cat<<EOL >>$config_path
-  ]
+  }
 }
 EOL

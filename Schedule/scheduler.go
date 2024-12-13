@@ -63,7 +63,11 @@ func (s *Scheduler) process(slot paradigm.UnprocessedTask) {
 	defer s.mu.Unlock()
 
 	// 获取节点列表
-	nIDs := []int{1, 2}
+	// 这里测试分配到所有节点
+	nIDs := make([]int, 0, len(s.config.BHNodeAddressMap))
+	for key := range s.config.BHNodeAddressMap {
+		nIDs = append(nIDs, key)
+	}
 	if len(nIDs) == 0 {
 		LogWriter.Log("ERROR", "No connected nodes available for scheduling")
 		return
