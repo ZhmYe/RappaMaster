@@ -50,10 +50,10 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	request := HttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
 		Size:  100, // 模拟固定大小
-		Model: "FakeModel",
+		Model: "ctgan",
 		Params: map[string]interface{}{
-			"param1": "value1",
-			"param2": "value2",
+			"condition_column": "native-country",
+			"condition_value":  "United-States",
 		},
 	}
 	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", request))

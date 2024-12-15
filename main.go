@@ -12,7 +12,6 @@ import (
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -31,12 +30,6 @@ func main() {
 	pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
 	epochEvent := make(chan bool, 1)
 
-	// 初始化节点地址map
-	addressMap := make(map[int]string, len(config.BHNodeAddresses))
-	for _, nodeAddress := range config.BHNodeAddresses {
-		addressMap[nodeAddress.NodeId] = nodeAddress.NodeIPAddress + ":" + strconv.Itoa(nodeAddress.NodeGrpcPort)
-	}
-
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
@@ -44,7 +37,11 @@ func main() {
 	httpEngine.Setup(*config)
 
 	event := Event.NewEvent(epochEvent)
-	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, addressMap, epochHeartbeat)
+
+	coordinator := Coordinator.NewCoordinator(config, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, epochHeartbeat)
+
+
+// 	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, addressMap, epochHeartbeat)
 
 	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
 	mockerChainUpper := ChainUpper.NewMockerChainUpper(pendingTransactions)
@@ -55,7 +52,6 @@ func main() {
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
-	scheduler.SetTaskManager(taskManager)
 	// 配置 Scheduler
 	scheduler.Setup(config)
 	//scheduler.SetGrpc(grpcEngine)
@@ -66,7 +62,9 @@ func main() {
 	go httpEngine.Start()
 	go taskManager.Start()
 	go coordinator.Start()
+	//定时，如果大于10s,EpochEvent队列里放置一个true
 	go event.Start()
+
 	//go chainUpper.Start()
 	go mockerChainUpper.Start()
 	// 启动 Scheduler

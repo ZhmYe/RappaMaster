@@ -4,13 +4,22 @@ import (
 	"BHLayer2Node/LogWriter"
 	"encoding/json"
 	"os"
+	"strconv"
 )
 
 // 定义通信节点的地址配置
 type BHNodeAddress struct {
-	NodeId        int
 	NodeIPAddress string //节点IP
 	NodeGrpcPort  int    //节点grpc端口
+	nodeUrl       string //节点访问url
+}
+
+// 返回地址字符串
+func (b *BHNodeAddress) GetAddrStr() string {
+	if b.nodeUrl == "" {
+		b.nodeUrl = b.NodeIPAddress + ":" + strconv.Itoa(b.NodeGrpcPort)
+	}
+	return b.nodeUrl
 }
 
 // BHLayer2NodeConfig 定义 Layer2 节点的配置
@@ -21,10 +30,10 @@ type BHLayer2NodeConfig struct {
 	MaxPendingSchedulePoolSize int
 	MaxScheduledTasksPoolSize  int
 	MaxCommitSlotItemPoolSize  int
-	MaxGrpcRequestPoolSize     int             // gRPC 请求池的最大大小
-	DefaultSlotSize            int             // 默认的slot大小
-	LogPath                    string          // 日志路径
-	BHNodeAddresses            []BHNodeAddress //节点的grpc端口配置，nodeIdaddress
+	MaxGrpcRequestPoolSize     int                   // gRPC 请求池的最大大小
+	DefaultSlotSize            int                   // 默认的slot大小
+	LogPath                    string                // 日志路径
+	BHNodeAddressMap           map[int]BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress
 	DEBUG                      bool
 
 	// ChainUpper 配置
@@ -51,7 +60,7 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	MaxGrpcRequestPoolSize:     200, // 默认 gRPC 请求池大小
 	DefaultSlotSize:            100,
 	LogPath:                    "logs/",
-	BHNodeAddresses:            make([]BHNodeAddress, 0),
+	BHNodeAddressMap:           make(map[int]BHNodeAddress, 0),
 	DEBUG:                      false,
 
 	// 默认 ChainUpper 配置
