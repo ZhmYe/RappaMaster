@@ -12,11 +12,11 @@ type HttpTaskRequest = paradigm.UnprocessedTask
 
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
-	PendingRequestPool chan HttpTaskRequest          // 给 Scheduler 的请求池，接收来自前端的数据
-	initTasks          chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
-	config             Config.BHLayer2NodeConfig
-	ip                 string // IP 地址
-	port               int    // 端口
+	//PendingRequestPool chan HttpTaskRequest          // 给 Scheduler 的请求池，接收来自前端的数据
+	initTasks chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
+	config    Config.BHLayer2NodeConfig
+	ip        string // IP 地址
+	port      int    // 端口
 }
 
 // HandleRequest 处理请求
@@ -27,7 +27,7 @@ func (e *FakeHttpEngine) HandleRequest() {
 	request := e.generateFakeRequest()
 
 	// 将请求推送到请求池中
-	e.PendingRequestPool <- request
+	//e.PendingRequestPool <- request
 	e.initTasks <- request
 
 	// 模拟请求间隔
@@ -70,9 +70,9 @@ func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
 }
 
 // NewFakeHttpEngine 创建并返回一个新的 FakeHttpEngine 实例
-func NewFakeHttpEngine(PendingRequestPool chan HttpTaskRequest, initTasks chan paradigm.UnprocessedTask) *FakeHttpEngine {
+func NewFakeHttpEngine(initTasks chan paradigm.UnprocessedTask) *FakeHttpEngine {
 	return &FakeHttpEngine{
-		initTasks:          initTasks,
-		PendingRequestPool: PendingRequestPool,
+		initTasks: initTasks,
+		//PendingRequestPool: PendingRequestPool,
 	}
 }

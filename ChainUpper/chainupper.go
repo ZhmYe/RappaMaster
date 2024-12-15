@@ -37,7 +37,6 @@ func (c *ChainUpper) Start() {
 		}
 	}()
 	for {
-		//LogWriter.Log("DEBUG", "111")
 		select {
 		case transaction := <-c.pendingTransactions:
 			// 先简单写一下

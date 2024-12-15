@@ -8,11 +8,11 @@ type Monitor struct {
 }
 
 // Advice todo 这里传入nIDs以及数据量，考虑如何分配一个slot里的数据
-func (m *Monitor) Advice(nIDs []int, size int) []int {
-	result := make([]int, 0)
+func (m *Monitor) Advice(nIDs []int, size int32) []int32 {
+	result := make([]int32, 0)
 	for len(result) < len(nIDs) {
-		result = append(result, size/len(nIDs))
+		result = append(result, size/int32(len(nIDs)))
 	}
-	result[0] += size % len(nIDs)
+	result[0] += size % int32(len(nIDs))
 	return result
 }

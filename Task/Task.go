@@ -12,8 +12,8 @@ type Task struct {
 	Slot    int
 	Model   string
 	Params  map[string]interface{}
-	size    int // 总的数据量
-	process int // 已经完成的数据量
+	size    int32 // 总的数据量
+	process int32 // 已经完成的数据量
 
 	records []paradigm.SlotRecord // 记录每个slot的调度和完成情况
 }
@@ -36,10 +36,10 @@ func (t *Task) UpdateSchedule(schedule paradigm.TaskSchedule) error {
 	return nil
 }
 func (t *Task) Commit(slot paradigm.CommitSlotItem) error {
-	if slot.Slot != t.Slot {
-		return fmt.Errorf(fmt.Sprintf("invalid commit Slot, expected: %d, given: %d", t.Slot, slot.Slot))
+	if slot.State() != paradigm.FINALIZE {
+		return fmt.Errorf("the commit Slot is not finalized") // 只能提交finalized的，因为已经通过投票了所以不需要check
 	}
-	for len(t.records) <= slot.Slot {
+	for len(t.records) <= int(slot.Slot) {
 		t.records = append(t.records, paradigm.NewSlotRecord(len(t.records)))
 	}
 	slotRecord := t.records[slot.Slot]
@@ -64,7 +64,7 @@ func (t *Task) Next() (paradigm.UnprocessedTask, error) {
 	return slot, nil
 }
 
-func (t *Task) Remain() int {
+func (t *Task) Remain() int32 {
 	if t.IsFinish() {
 		return 0
 	}
@@ -74,10 +74,10 @@ func (t *Task) IsFinish() bool {
 	return t.process >= t.size
 }
 
-func NewTask(sign string, model string, params map[string]interface{}, total int) *Task {
+func NewTask(sign string, model string, params map[string]interface{}, total int32) *Task {
 	return &Task{
 		Sign:    sign,
-		Slot:    0,
+		Slot:    -1,
 		Model:   model,
 		Params:  params,
 		size:    total,

@@ -68,6 +68,7 @@ func (s *Scheduler) process(slot paradigm.UnprocessedTask) {
 	for key := range s.config.BHNodeAddressMap {
 		nIDs = append(nIDs, key)
 	}
+
 	if len(nIDs) == 0 {
 		LogWriter.Log("ERROR", "No connected nodes available for scheduling")
 		return

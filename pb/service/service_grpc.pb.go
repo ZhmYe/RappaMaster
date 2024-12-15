@@ -21,7 +21,6 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Coordinator_Heartbeat_FullMethodName  = "/coordinator.Coordinator/Heartbeat"
 	Coordinator_Schedule_FullMethodName   = "/coordinator.Coordinator/Schedule"
-	Coordinator_EpochVote_FullMethodName  = "/coordinator.Coordinator/EpochVote"
 	Coordinator_CommitSlot_FullMethodName = "/coordinator.Coordinator/CommitSlot"
 )
 
@@ -33,8 +32,6 @@ type CoordinatorClient interface {
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
 	Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error)
-	// EpochVote 投票epoch，用于上链
-	EpochVote(ctx context.Context, in *EpochVoteRequest, opts ...grpc.CallOption) (*EpochVoteResponse, error)
 	// Commit 节点向Coordinator返回自己已经完成的Task Slot
 	CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error)
 }
@@ -67,16 +64,6 @@ func (c *coordinatorClient) Schedule(ctx context.Context, in *ScheduleRequest, o
 	return out, nil
 }
 
-func (c *coordinatorClient) EpochVote(ctx context.Context, in *EpochVoteRequest, opts ...grpc.CallOption) (*EpochVoteResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EpochVoteResponse)
-	err := c.cc.Invoke(ctx, Coordinator_EpochVote_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *coordinatorClient) CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SlotCommitResponse)
@@ -95,8 +82,6 @@ type CoordinatorServer interface {
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
 	Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error)
-	// EpochVote 投票epoch，用于上链
-	EpochVote(context.Context, *EpochVoteRequest) (*EpochVoteResponse, error)
 	// Commit 节点向Coordinator返回自己已经完成的Task Slot
 	CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error)
 	mustEmbedUnimplementedCoordinatorServer()
@@ -114,9 +99,6 @@ func (UnimplementedCoordinatorServer) Heartbeat(context.Context, *HeartbeatReque
 }
 func (UnimplementedCoordinatorServer) Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Schedule not implemented")
-}
-func (UnimplementedCoordinatorServer) EpochVote(context.Context, *EpochVoteRequest) (*EpochVoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EpochVote not implemented")
 }
 func (UnimplementedCoordinatorServer) CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitSlot not implemented")
@@ -178,24 +160,6 @@ func _Coordinator_Schedule_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Coordinator_EpochVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EpochVoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CoordinatorServer).EpochVote(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Coordinator_EpochVote_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CoordinatorServer).EpochVote(ctx, req.(*EpochVoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Coordinator_CommitSlot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SlotCommitRequest)
 	if err := dec(in); err != nil {
@@ -228,10 +192,6 @@ var Coordinator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Schedule",
 			Handler:    _Coordinator_Schedule_Handler,
-		},
-		{
-			MethodName: "EpochVote",
-			Handler:    _Coordinator_EpochVote_Handler,
 		},
 		{
 			MethodName: "CommitSlot",
