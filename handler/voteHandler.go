@@ -1,64 +1,79 @@
 package handler
 
-//
-//// VoteHandler 每当一个epoch结束就将在这个epoch内提交的所有内容全部上链
-//// 目前先考虑上链的是节点的commitSlot
-//type VoteHandler struct {
-//	commitSlots         []paradigm.CommitSlotItem
-//	slotToVotes         chan paradigm.CommitSlotItem
-//	pendingTransactions chan []paradigm.Transaction
-//	epochChangeEvent    chan bool // 外部触发的 epoch 更新信号
-//	unprocessedIndex    int       // 还未处理的index开头，包括这一index
-//	currentEpoch        int
-//}
-//
-//func (h *VoteHandler) ProcessEpochVote(epoch int, commitSlots []paradigm.CommitSlotItem) []paradigm.Transaction {
-//	// 这里先不写投票过程，就直接给出结果
-//	// todo 完成投票的grpc，然后将投票结果不够的剔除
-//	transactions := make([]paradigm.Transaction, 0)
-//	for _, slot := range commitSlots {
-//		transaction := paradigm.CommitSlotTransaction{
-//			CommitSlotItem: slot,
-//			//Votes:          make([]int, 0),
-//			Epoch: epoch,
-//		}
-//		transactions = append(transactions, &transaction)
-//	}
-//	return transactions
-//}
-//func (h *VoteHandler) UpdateEpoch() {
-//	// 更新epoch，并打包一部分commitSlot出来作为上一个epoch的上链内容
-//	// todo 这里先简单写成有多少给多少
-//	LogWriter.Log("VOTE", fmt.Sprintf("Start Epoch %d Commit Slot Vote...", h.currentEpoch))
-//	//for index := h.unprocessedIndex; index < len(h.slotToVotes); index++ {
-//	//	transaction := paradigm.CommitSlotTransaction{
-//	//		CommitSlotItem: h.commitSlots[index],
-//	//		Votes:          nil,
-//	//	}
-//	//	h.pendingTransactions <- &transaction
-//	//}
-//	transactions := h.ProcessEpochVote(h.currentEpoch, h.commitSlots[h.unprocessedIndex:])
-//	h.unprocessedIndex = len(h.commitSlots)
-//	go func() { h.pendingTransactions <- transactions }()
-//	h.currentEpoch++
-//}
-//func (h *VoteHandler) Collect(commitSlot paradigm.CommitSlotItem) {
-//	// 这里就是把slot放进去
-//	h.commitSlots = append(h.commitSlots, commitSlot)
-//	// todo
-//	//transaction := paradigm.CommitSlotTransaction{CommitSlotItem: commitSlot, Votes: make([]int, 0)}
-//	//h.pendingTransactions <- &transaction
-//
-//}
-//func (h *VoteHandler) Start() {
-//	for {
-//		select {
-//		case <-h.epochChangeEvent:
-//			h.UpdateEpoch()
-//		case commitSlot := <-h.slotToVotes:
-//			h.Collect(commitSlot)
-//
-//		}
-//	}
-//
-//}
+import (
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/paradigm"
+	pb "BHLayer2Node/pb/service"
+	"fmt"
+)
+
+type VoteHandler struct {
+	voteInstance map[string]*paradigm.SlotVote // 要处理的所有投票
+	responses    chan *pb.HeartbeatResponse    // 节点对心跳的回复
+	epoch        int                           // 第几个epoch的投票处理
+	accepts      chan paradigm.CommitSlotItem  // 通过投票，用于更新task,taskManager更新完后将其传递到chainUpper
+}
+
+func (handler *VoteHandler) Process() {
+	for response := range handler.responses {
+		votes := response.Votes
+		// 遍历回复中的所有投票
+		for _, vote := range votes {
+			slot := vote.Slot
+			// 找到对应的slot
+			instance, exist := handler.voteInstance[fmt.Sprintf("%s_%d_%d", slot.Sign, slot.Slot, slot.Nid)]
+			if exist {
+				if vote.State {
+					// 如果同意
+					instance.Accept(int(slot.Nid))
+				} else {
+					// 如果拒绝
+					instance.Reject(int(slot.Nid), vote.Desp)
+				}
+			} else {
+				// 这里暂时先不报错
+				LogWriter.Log("ERROR", "Vote Instance does not exist")
+				continue
+			}
+
+		}
+	}
+	// 当所有的response处理完毕,channel被关闭后
+	// 开始判断所有的instance是否通过投票，如果通过，则将对应的slot作为finalize
+	for _, instance := range handler.voteInstance {
+		if instance.Check() {
+			// 如果通过投票了，那么就finalize
+			slot := instance.Slot
+			slot.SetFinalize()
+			LogWriter.Log("VOTE", fmt.Sprintf("%d CommitSlot in Task %s Slot %d pass the Vote...", instance.Slot.Nid, instance.Slot.Sign, instance.Slot.Slot))
+			handler.accepts <- slot
+		} else {
+			LogWriter.Log("VOTE", fmt.Sprintf("%d CommitSlot in Task %s Slot %d does not pass the Vote!!!", instance.Slot.Nid, instance.Slot.Sign, instance.Slot.Slot))
+		}
+	}
+}
+
+func NewVoteHandler(heartbeat *pb.HeartbeatRequest, accepts chan paradigm.CommitSlotItem, responses chan *pb.HeartbeatResponse) *VoteHandler {
+	instances := make(map[string]*paradigm.SlotVote)
+	for _, slot := range heartbeat.Commits {
+		instances[fmt.Sprintf("%s_%d_%d", slot.Sign, slot.Slot, slot.Nid)] = &paradigm.SlotVote{
+			Slot: paradigm.NewCommitSlotItem(slot),
+			//Slot: paradigm.CommitSlotItem{
+			//	Nid:     int(slot.Nid),
+			//	Process: int(slot.Process),
+			//	Sign:    slot.Sign,
+			//	Slot:    int(slot.Slot),
+			//
+			//},
+			Total:   0,
+			Vote:    0,
+			Message: make(map[int]string),
+		}
+	}
+	return &VoteHandler{
+		voteInstance: instances,
+		responses:    responses,
+		epoch:        int(heartbeat.Epoch),
+		accepts:      accepts,
+	}
+}

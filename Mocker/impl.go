@@ -24,7 +24,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 	LogWriter.Log("DEBUG", fmt.Sprintf("Node %d received ScheduleRequest: %+v", m.nodeID, req))
 
 	// 模拟随机接受或拒绝任务
-	accept := rand.Intn(4) == 0
+	accept := m.nodeID != 0 || rand.Intn(4) == 0
 
 	if !accept {
 		return &service.ScheduleResponse{
@@ -41,7 +41,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 	LogWriter.Log("DEBUG", fmt.Sprintf("Node %d accepted task %s for slot %s", m.nodeID, req.Sign, req.Slot))
 	for idStr, sizeStr := range req.Schedule {
 		id, _ := strconv.Atoi(idStr)
-		size, _ := strconv.Atoi(sizeStr)
+		size := sizeStr
 		slot, _ := strconv.Atoi(req.Slot)
 		if id == m.nodeID {
 			go func() {
@@ -51,12 +51,14 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 					process = 1
 				}
 				LogWriter.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Task %s Slot %d", id, size-1, req.Sign, slot))
-				m.commitSlot <- paradigm.CommitSlotItem{
-					Nid:     id,
-					Process: process,
+				// todo 这里现在是直接提交的，没有走grpc
+				m.commitSlot <- paradigm.NewCommitSlotItem(&service.JustifiedSlot{
+					Nid:     int32(id),
+					Process: int32(process),
 					Sign:    req.Sign,
-					Slot:    slot,
-				}
+					Slot:    int32(slot),
+					Epoch:   -1,
+				})
 			}()
 		}
 	}
@@ -68,18 +70,30 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 }
 
 func (m *MockerExecutionNode) Heartbeat(ctx context.Context, req *service.HeartbeatRequest) (*service.HeartbeatResponse, error) {
+	// todo
+	votes := make([]*service.Vote, 0)
+	for _, slot := range req.Commits {
+		votes = append(votes, &service.Vote{
+			Slot:   slot,
+			NodeId: int32(m.nodeID),
+			State:  true,
+			Desp:   "",
+		})
+	}
 	return &service.HeartbeatResponse{
-		NodeId:     "",
-		NodeStatus: nil,
-		NewSlots:   nil,
+		NodeId:     int32(m.nodeID),
+		NodeStatus: make(map[string]string),
+		Votes:      votes,
 	}, nil
 }
-func (m *MockerExecutionNode) EpochVote(ctx context.Context, req *service.EpochVoteRequest) (*service.EpochVoteResponse, error) {
-	return &service.EpochVoteResponse{
-		NodeId:     "",
-		VoteBitmap: nil,
-	}, nil
-}
+
+//func (m *MockerExecutionNode) EpochVote(ctx context.Context, req *service.EpochVoteRequest) (*service.EpochVoteResponse, error) {
+//	return &service.EpochVoteResponse{
+//		NodeId:     "",
+//		VoteBitmap: nil,
+//	}, nil
+//}
+
 func (m *MockerExecutionNode) CommitSlot(ctx context.Context, req *service.SlotCommitRequest) (*service.SlotCommitResponse, error) {
 	return &service.SlotCommitResponse{
 		Valid: "",

@@ -3,6 +3,7 @@ package Coordinator
 import (
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Mocker"
+	"BHLayer2Node/handler"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
@@ -31,17 +32,20 @@ type Coordinator struct {
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
 	ips              map[int]string                // 节点地址映射，节点ID -> 地址
-	mockerNodes      []*Mocker.MockerExecutionNode
-	mu               sync.Mutex // 保护共享数据
+	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
+
+	mockerNodes []*Mocker.MockerExecutionNode
+	mu          sync.Mutex // 保护共享数据
 }
 
 func (c *Coordinator) Start() {
 	// 处理调度,向节点发送调度信息
 	processSchedule := func() {
 		for schedule := range c.pendingSchedules {
-			mapSchedule := make(map[string]string)
+			mapSchedule := make(map[string]int32)
 			for _, item := range schedule.Schedules {
-				mapSchedule[strconv.Itoa(item.NID)] = strconv.Itoa(item.Size)
+				mapSchedule[strconv.Itoa(item.NID)] = item.Size
 			}
 
 			// 调用 sendSchedule，这里暂时是统一发给有节点 todo 有必要只给分配的节点?
@@ -51,15 +55,26 @@ func (c *Coordinator) Start() {
 	//处理投票
 
 	// 处理心跳
+	processHeartbeat := func() {
+		for heartbeat := range c.epochHeartbeat {
+			c.sendHeartbeat(heartbeat) // 发送心跳
+		}
+	}
+
 	for _, node := range c.mockerNodes {
 		go node.Start()
 	}
 	// 启动协程处理调度任务
 	go processSchedule()
+	// 启动协程处理心跳
+	go processHeartbeat()
+
+	// todo 这里还有一个接收节点的commitSlot的
+	// 这里收到了节点commitSlot后，通过channel发送给taskManager(commitSlot)
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string, params map[string]interface{}, schedule map[string]string) {
+func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
 	if err != nil {
@@ -70,7 +85,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 	request := pb.ScheduleRequest{
 		Sign:     sign,
 		Slot:     strconv.Itoa(slot),
-		Size:     strconv.Itoa(size),
+		Size:     size,
 		Schedule: schedule,
 		Model:    model,
 		Params:   convertedParams,
@@ -112,7 +127,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 			}
 
 			// 根据节点反馈更新统计
-			assignedSize, _ := strconv.Atoi(schedule[resp.NodeId])
+			assignedSize := schedule[resp.NodeId]
 			nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
 				LogWriter.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
@@ -133,7 +148,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 	//close(rejectedChannel)
 
 	// 统计结果
-	acceptedSize := 0
+	acceptedSize := int32(0)
 	acceptSchedules := make([]paradigm.ScheduleItem, 0)
 	for item := range successChannel {
 		acceptedSize += item.Size
@@ -175,7 +190,51 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int, model string
 
 }
 
-func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, addressMap map[int]string) *Coordinator {
+func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
+	var wg sync.WaitGroup
+	disconnected := make(chan int, len(c.ips))                               // 用于说明节点失联
+	response := make(chan *pb.HeartbeatResponse, len(c.ips))                 // 用于给voteHandler传递
+	voteHandler := handler.NewVoteHandler(heartbeat, c.commitSlot, response) // 处理投票结果
+	go voteHandler.Process()                                                 // 准备处理投票
+	// 遍历所有节点
+	for nodeID, address := range c.ips {
+		wg.Add(1) // 增加 WaitGroup 计数器
+		go func(nodeID int, address string, heartbeat *pb.HeartbeatRequest) {
+			defer wg.Done() // 减少 WaitGroup 计数器
+
+			conn, err := grpc.Dial(address, grpc.WithInsecure())
+			if err != nil {
+				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				disconnected <- nodeID
+				return
+			}
+			defer conn.Close()
+
+			client := pb.NewCoordinatorClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			// 发送心跳
+			resp, err := client.Heartbeat(ctx, heartbeat)
+			if err != nil {
+				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
+				//rejectedChannel <- 0 // 默认统计为未接受
+				disconnected <- nodeID // 暂定为当作失联
+				return
+			}
+			response <- resp // 交给voteHandler处理
+
+		}(nodeID, address, heartbeat)
+	}
+
+	// 等待所有节点处理完成
+	wg.Wait()
+	close(response)     // 关闭response，voteHandler开始处理投票结果
+	close(disconnected) // 关闭disconnected, 后续monitor结束处理 todo
+
+}
+
+func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, addressMap map[int]string, epochHeartbeat chan *pb.HeartbeatRequest) *Coordinator {
 	// 加载配置中的节点IP
 
 	c := Coordinator{
@@ -183,7 +242,9 @@ func NewCoordinator(pendingSchedules chan paradigm.TaskSchedule, unprocessedTask
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
 		ips:              addressMap,
+		commitSlot:       commitSlot,
 		mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
+		epochHeartbeat:   epochHeartbeat,
 		mu:               sync.Mutex{},
 	}
 	for i, ip := range c.ips {

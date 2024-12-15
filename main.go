@@ -10,6 +10,7 @@ import (
 	"BHLayer2Node/Schedule"
 	"BHLayer2Node/Task"
 	"BHLayer2Node/paradigm"
+	pb "BHLayer2Node/pb/service"
 	"fmt"
 	"strconv"
 	"time"
@@ -25,7 +26,7 @@ func main() {
 	pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
 	scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
 	commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-
+	epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
 	//slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
 	pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
 	epochEvent := make(chan bool, 1)
@@ -39,18 +40,18 @@ func main() {
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
-	httpEngine := HTTP.NewFakeHttpEngine(unprocessedTasks, initTasks)
+	httpEngine := HTTP.NewFakeHttpEngine(initTasks)
 	httpEngine.Setup(*config)
 
 	event := Event.NewEvent(epochEvent)
-	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, addressMap)
+	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, addressMap, epochHeartbeat)
 
-	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions)
-
-	chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
-	if err != nil {
-		LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	}
+	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
+	mockerChainUpper := ChainUpper.NewMockerChainUpper(pendingTransactions)
+	//chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
+	//if err != nil {
+	//	LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	//}
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
@@ -66,7 +67,8 @@ func main() {
 	go taskManager.Start()
 	go coordinator.Start()
 	go event.Start()
-	go chainUpper.Start()
+	//go chainUpper.Start()
+	go mockerChainUpper.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))

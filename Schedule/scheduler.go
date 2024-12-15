@@ -62,7 +62,7 @@ func (s *Scheduler) process(slot paradigm.UnprocessedTask) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 获取节点列表
+	// 获取节点列表 todo
 	nIDs := []int{1, 2}
 	if len(nIDs) == 0 {
 		LogWriter.Log("ERROR", "No connected nodes available for scheduling")
