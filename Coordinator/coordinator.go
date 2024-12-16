@@ -33,11 +33,11 @@ type Coordinator struct {
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
 	nodeAddresses    map[int]Config.BHNodeAddress  // 节点地址映射，节点ID -> 地址
-  epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
 	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
-  
-	//mockerNodes      []*Mocker.MockerExecutionNode
-	mu sync.Mutex // 保护共享数据
+
+	mockerNodes []*Mocker.MockerExecutionNode
+	mu          sync.Mutex // 保护共享数据
 }
 
 func (c *Coordinator) Start() {
@@ -68,6 +68,10 @@ func (c *Coordinator) Start() {
 
 	// todo 这里还有一个接收节点的commitSlot的
 	// 这里收到了节点commitSlot后，通过channel发送给taskManager(commitSlot)
+
+	for _, node := range c.mockerNodes {
+		go node.Start()
+	}
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
@@ -189,12 +193,12 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 
 func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 	var wg sync.WaitGroup
-	disconnected := make(chan int, len(c.ips))                               // 用于说明节点失联
-	response := make(chan *pb.HeartbeatResponse, len(c.ips))                 // 用于给voteHandler传递
+	disconnected := make(chan int, len(c.nodeAddresses))                     // 用于说明节点失联
+	response := make(chan *pb.HeartbeatResponse, len(c.nodeAddresses))       // 用于给voteHandler传递
 	voteHandler := handler.NewVoteHandler(heartbeat, c.commitSlot, response) // 处理投票结果
 	go voteHandler.Process()                                                 // 准备处理投票
 	// 遍历所有节点
-	for nodeID, address := range c.ips {
+	for nodeID, address := range c.nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, heartbeat *pb.HeartbeatRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
@@ -221,7 +225,7 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 			}
 			response <- resp // 交给voteHandler处理
 
-		}(nodeID, address, heartbeat)
+		}(nodeID, address.GetAddrStr(), heartbeat)
 	}
 
 	// 等待所有节点处理完成
@@ -239,12 +243,12 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		scheduledTasks:   scheduledTasks,
 		nodeAddresses:    config.BHNodeAddressMap,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
-		commitSlot:       commitSlot,
-		epochHeartbeat:   epochHeartbeat,
-		mu:               sync.Mutex{},
+		commitSlot:     commitSlot,
+		epochHeartbeat: epochHeartbeat,
+		mu:             sync.Mutex{},
 	}
-	//for i, ip := range c.nodeAddresses {
-	//	c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, ip, commitSlot))
-	//}
+	for i, address := range c.nodeAddresses {
+		c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, address.GetAddrStr(), commitSlot))
+	}
 	return &c
 }

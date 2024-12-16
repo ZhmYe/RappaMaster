@@ -23,9 +23,9 @@ func Worker(id int, queue chan map[string]interface{}, instance *SlotCommit.Slot
 				LogWriter.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", id, result))
 
 				sign := result["Sign"].(string)
-				slot := result["Slot"].(int)
-				process := result["Process"].(int)
-				nid := result["ID"].(int)
+				slot := result["Slot"].(int32)
+				process := result["Process"].(int32)
+				nid := result["ID"].(int32)
 				epoch := result["Epoch"].(int)
 
 				// 转换 sign 为 bytes32
