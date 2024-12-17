@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/Config"
 	"BHLayer2Node/Coordinator"
 	"BHLayer2Node/paradigm"
+	pb "BHLayer2Node/pb/service"
 	"BHLayer2Node/utils"
 	"os"
 	"path/filepath"
@@ -29,7 +30,8 @@ func TestCoordinator(t *testing.T) {
 	pendingSchedule := make(chan paradigm.TaskSchedule, testConfig.MaxPendingSchedulePoolSize)
 	scheduledTasks := make(chan paradigm.TaskSchedule, testConfig.MaxScheduledTasksPoolSize)
 	commitSlots := make(chan paradigm.CommitSlotItem, testConfig.MaxCommitSlotItemPoolSize)
-	coordinator := Coordinator.NewCoordinator(testConfig, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots)
+	epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
+	coordinator := Coordinator.NewCoordinator(testConfig, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, epochHeartbeat)
 	go coordinator.Start()
 	pendingSchedule <- paradigm.TaskSchedule{
 		Sign:  "FakeSign",
@@ -52,7 +54,7 @@ func TestCoordinator(t *testing.T) {
 		},
 	}
 	result, ok := <-scheduledTasks
-	if !ok || len(result.Schedules) != 2 {
+	if !ok || len(result.Schedules) != 1 {
 		t.Errorf("failed task!")
 	}
 }

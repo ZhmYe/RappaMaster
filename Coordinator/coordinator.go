@@ -3,7 +3,6 @@ package Coordinator
 import (
 	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
-	"BHLayer2Node/Mocker"
 	"BHLayer2Node/handler"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
@@ -36,8 +35,8 @@ type Coordinator struct {
 	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
 	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
 
-	mockerNodes []*Mocker.MockerExecutionNode
-	mu          sync.Mutex // 保护共享数据
+	//mockerNodes []*Mocker.MockerExecutionNode
+	mu sync.Mutex // 保护共享数据
 }
 
 func (c *Coordinator) Start() {
@@ -61,17 +60,18 @@ func (c *Coordinator) Start() {
 			c.sendHeartbeat(heartbeat) // 发送心跳
 		}
 	}
+
+	// 处理commitslot
+
 	// 启动协程处理调度任务
 	go processSchedule()
 	// 启动协程处理心跳
 	go processHeartbeat()
-
-	// todo 这里还有一个接收节点的commitSlot的
 	// 这里收到了节点commitSlot后，通过channel发送给taskManager(commitSlot)
 
-	for _, node := range c.mockerNodes {
-		go node.Start()
-	}
+	//for _, node := range c.mockerNodes {
+	//	go node.Start()
+	//}
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
@@ -108,7 +108,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 			}
 			defer conn.Close()
 
-			client := pb.NewCoordinatorClient(conn)
+			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -211,7 +211,7 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 			}
 			defer conn.Close()
 
-			client := pb.NewCoordinatorClient(conn)
+			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -247,8 +247,8 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		epochHeartbeat: epochHeartbeat,
 		mu:             sync.Mutex{},
 	}
-	for i, address := range c.nodeAddresses {
-		c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, address.GetAddrStr(), commitSlot))
-	}
+	//for i, address := range c.nodeAddresses {
+	//	c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, address.GetAddrStr(), commitSlot))
+	//}
 	return &c
 }
