@@ -47,14 +47,16 @@ func TestCoordinator(t *testing.T) {
 				NID:  0,
 				Size: 25,
 			},
-			{
-				NID:  1,
-				Size: 25,
-			},
 		},
 	}
 	result, ok := <-scheduledTasks
+	result2, ok2 := <-commitSlots
+
 	if !ok || len(result.Schedules) != 1 {
+		t.Errorf("failed task!")
+	}
+
+	if !ok2 || result2.Sign != result.Sign {
 		t.Errorf("failed task!")
 	}
 }

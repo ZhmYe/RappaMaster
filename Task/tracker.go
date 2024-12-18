@@ -7,7 +7,7 @@ import (
 
 // Tracker 追踪任务状态
 type Tracker struct {
-	config        Config.BHLayer2NodeConfig
+	config        *Config.BHLayer2NodeConfig
 	taskBuckets   [][]string // 二维切片，每个索引对应剩余时间
 	maxEpochDelay int
 	mu            sync.Mutex
@@ -99,14 +99,14 @@ func (t *Tracker) expandBuckets(required int) {
 }
 
 // Setup 初始化 Tracker
-func (t *Tracker) Setup(config Config.BHLayer2NodeConfig) {
+func (t *Tracker) Setup(config *Config.BHLayer2NodeConfig) {
 	t.config = config
 	t.taskBuckets = make([][]string, 0)
 	t.maxEpochDelay = 1 // todo
 }
 
 // NewTracker 创建新的 Tracker
-func NewTracker(config Config.BHLayer2NodeConfig) *Tracker {
+func NewTracker(config *Config.BHLayer2NodeConfig) *Tracker {
 	tracker := &Tracker{}
 	tracker.Setup(config)
 	return tracker

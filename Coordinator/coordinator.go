@@ -8,6 +8,7 @@ import (
 	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"sync"
 	"time"
@@ -31,12 +32,15 @@ type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
-	nodeAddresses    map[int]Config.BHNodeAddress  // 节点地址映射，节点ID -> 地址
+	nodeAddresses    map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
+	nodeClientMap    map[int]pb.NodeExecutorClient // 用于管理grpc与节点之间的客户端，线程安全，避免重复创建
+	serverPort       int                           // coordinator对节点暴露的grpc端口
 	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
 	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
-
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
+
+	pb.UnimplementedCoordinatorServer
 }
 
 func (c *Coordinator) Start() {
@@ -52,7 +56,6 @@ func (c *Coordinator) Start() {
 			c.sendSchedule(schedule.Sign, schedule.Slot, schedule.Size, schedule.Model, schedule.Params, mapSchedule)
 		}
 	}
-	//处理投票
 
 	// 处理心跳
 	processHeartbeat := func() {
@@ -62,16 +65,47 @@ func (c *Coordinator) Start() {
 	}
 
 	// 处理commitslot
+	processCommitSlot := func() {
+		// 监听指定端口
+		lis, err := net.Listen("tcp", ":"+strconv.Itoa(c.serverPort))
+		if err != nil {
+			LogWriter.Log("ERROR", fmt.Sprintf("Failed to listen: %v", err))
+		}
+		server := grpc.NewServer()
+		pb.RegisterCoordinatorServer(server, c)
+		LogWriter.Log("DEBUG", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
+		if err := server.Serve(lis); err != nil {
+			LogWriter.Log("ERROR", fmt.Sprintf("Failed to serve: %v", err))
+		}
+	}
 
 	// 启动协程处理调度任务
 	go processSchedule()
 	// 启动协程处理心跳
 	go processHeartbeat()
 	// 这里收到了节点commitSlot后，通过channel发送给taskManager(commitSlot)
+	go processCommitSlot()
 
 	//for _, node := range c.mockerNodes {
 	//	go node.Start()
 	//}
+}
+
+// 获取与节点连接的客户端
+func (c *Coordinator) getClient(nodeId int) (pb.NodeExecutorClient, error) {
+	client, ok := c.nodeClientMap[nodeId]
+	//采用lazy获取
+	if !ok {
+		address := c.nodeAddresses[nodeId]
+		conn, err := grpc.Dial(address.GetAddrStr(), grpc.WithInsecure())
+		if err != nil {
+			return nil, err
+		}
+		newClient := pb.NewNodeExecutorClient(conn)
+		c.nodeClientMap[nodeId] = newClient
+		client = newClient
+	}
+	return client, nil
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
@@ -100,18 +134,13 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
-
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
+			client, err := c.getClient(nodeID)
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				return
 			}
-			defer conn.Close()
-
-			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-
 			// 发送调度请求
 			resp, err := client.Schedule(ctx, request)
 			if err != nil {
@@ -202,16 +231,12 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, heartbeat *pb.HeartbeatRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
-
-			conn, err := grpc.Dial(address, grpc.WithInsecure())
+			client, err := c.getClient(nodeID)
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
-				disconnected <- nodeID
+				disconnected <- nodeID // 暂定为当作失联
 				return
 			}
-			defer conn.Close()
-
-			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -235,6 +260,27 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 
 }
 
+// 服务端方法，用于处理提交的slot
+func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest) (*pb.SlotCommitResponse, error) {
+	nodeId, _ := strconv.Atoi(req.NodeId)
+	slot, _ := strconv.Atoi(req.Slot)
+	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
+		Nid:     int32(nodeId),
+		Process: req.Size,
+		Sign:    req.Sign,
+		Slot:    int32(slot),
+		Epoch:   -1,
+	})
+	//TODO  将提交的结果放入commitSlot，这里暂时认为节点的合成数据有效
+	c.commitSlot <- item
+	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot{%v}", item))
+	return &pb.SlotCommitResponse{
+		Valid: "True",
+		Sign:  req.Sign,
+		Slot:  req.Slot,
+	}, nil
+}
+
 func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, epochHeartbeat chan *pb.HeartbeatRequest) *Coordinator {
 	// 加载配置中的节点IP
 	c := Coordinator{
@@ -242,6 +288,8 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
 		nodeAddresses:    config.BHNodeAddressMap,
+		nodeClientMap:    make(map[int]pb.NodeExecutorClient),
+		serverPort:       config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
 		commitSlot:     commitSlot,
 		epochHeartbeat: epochHeartbeat,
