@@ -3,6 +3,7 @@ package Coordinator
 import (
 	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Network/Grpc"
 	"BHLayer2Node/handler"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
@@ -32,11 +33,12 @@ type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
-	nodeAddresses    map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
-	nodeClientMap    map[int]pb.NodeExecutorClient // 用于管理grpc与节点之间的客户端，线程安全，避免重复创建
-	serverPort       int                           // coordinator对节点暴露的grpc端口
-	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
-	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
+	//nodeAddresses    map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
+	connManager    *Grpc.NodeGrpcManager        //用于管理GRPC客户端连接
+	nodeConnMap    map[int]*grpc.ClientConn     // 用于管理grpc与节点之间的channel，避免重复创建
+	serverPort     int                          // coordinator对节点暴露的grpc端口
+	epochHeartbeat chan *pb.HeartbeatRequest    // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	commitSlot     chan paradigm.CommitSlotItem // 交给taskManager更新
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
 
@@ -92,24 +94,25 @@ func (c *Coordinator) Start() {
 }
 
 // 获取与节点连接的客户端
-func (c *Coordinator) getClient(nodeId int) (pb.NodeExecutorClient, error) {
-	client, ok := c.nodeClientMap[nodeId]
-	//采用lazy获取
-	if !ok {
-		address := c.nodeAddresses[nodeId]
-		conn, err := grpc.Dial(address.GetAddrStr(), grpc.WithInsecure())
-		if err != nil {
-			return nil, err
-		}
-		newClient := pb.NewNodeExecutorClient(conn)
-		c.nodeClientMap[nodeId] = newClient
-		client = newClient
-	}
-	return client, nil
-}
+//func (c *Coordinator) getClient(nodeId int) (pb.NodeExecutorClient, error) {
+//	client, ok := c.nodeClientMap[nodeId]
+//	//采用lazy获取
+//	if !ok {
+//		address := c.nodeAddresses[nodeId]
+//		conn, err := grpc.Dial(address.GetAddrStr(), grpc.WithInsecure())
+//		if err != nil {
+//			return nil, err
+//		}
+//		newClient := pb.NewNodeExecutorClient(conn)
+//		c.nodeClientMap[nodeId] = newClient
+//		client = newClient
+//	}
+//	return client, nil
+//}
 
 // sendSchedule 向所有节点发送某个sign的调度计划
 func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
+	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
 	if err != nil {
@@ -127,22 +130,26 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 	}
 
 	var wg sync.WaitGroup
-	successChannel := make(chan paradigm.ScheduleItem, len(c.nodeAddresses)) // 用于统计成功的任务大小
+	successChannel := make(chan paradigm.ScheduleItem, len(nodeAddresses)) // 用于统计成功的任务大小
 
 	// 遍历所有节点
-	for nodeID, address := range c.nodeAddresses {
+	for nodeID, address := range nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
-			client, err := c.getClient(nodeID)
+
+			// 建立grpc连接
+			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				return
 			}
+			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
+
 			// 发送调度请求
-			resp, err := client.Schedule(ctx, request)
+			resp, err := client.Schedule(ctx, request, grpc.WaitForReady(true))
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
 				//rejectedChannel <- 0 // 默认统计为未接受
@@ -221,29 +228,34 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 }
 
 func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
+	nodeAddresses := c.connManager.GetNodeAddresses()
 	var wg sync.WaitGroup
-	disconnected := make(chan int, len(c.nodeAddresses))                     // 用于说明节点失联
-	response := make(chan *pb.HeartbeatResponse, len(c.nodeAddresses))       // 用于给voteHandler传递
+	disconnected := make(chan int, len(nodeAddresses))                       // 用于说明节点失联
+	response := make(chan *pb.HeartbeatResponse, len(nodeAddresses))         // 用于给voteHandler传递
 	voteHandler := handler.NewVoteHandler(heartbeat, c.commitSlot, response) // 处理投票结果
 	go voteHandler.Process()                                                 // 准备处理投票
 	// 遍历所有节点
-	for nodeID, address := range c.nodeAddresses {
+	for nodeID, address := range nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器
 		go func(nodeID int, address string, heartbeat *pb.HeartbeatRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
-			client, err := c.getClient(nodeID)
+
+			// 建立grpc连接
+			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				disconnected <- nodeID // 暂定为当作失联
 				return
 			}
+			client := pb.NewNodeExecutorClient(conn)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			// 发送心跳
-			resp, err := client.Heartbeat(ctx, heartbeat)
+			resp, err := client.Heartbeat(ctx, heartbeat, grpc.WaitForReady(true))
+			//TODO grpc在建立连接时其实就可以判断出节点是否失联
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
+				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send heartbeat to node %d: %v", nodeID, err))
 				//rejectedChannel <- 0 // 默认统计为未接受
 				disconnected <- nodeID // 暂定为当作失联
 				return
@@ -287,9 +299,9 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		pendingSchedules: pendingSchedules,
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
-		nodeAddresses:    config.BHNodeAddressMap,
-		nodeClientMap:    make(map[int]pb.NodeExecutorClient),
-		serverPort:       config.GrpcPort,
+		//nodeAddresses:    config.BHNodeAddressMap,
+		connManager: Grpc.NewNodeGrpcPool(config.BHNodeAddressMap, 5, 5*time.Minute),
+		serverPort:  config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
 		commitSlot:     commitSlot,
 		epochHeartbeat: epochHeartbeat,

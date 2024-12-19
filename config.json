@@ -1,5 +1,5 @@
 {
-  "GrpcPort": 50051,
+  "GrpcPort": 1235,
   "HttpPort": 8080,
   "MaxUnprocessedTaskPoolSize": 100,
   "MaxPendingSchedulePoolSize": 100,
@@ -13,10 +13,6 @@
     "0": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1234
-    },
-    "1": {
-      "NodeIPAddress": "127.0.0.1",
-      "NodeGrpcPort": 1243
     }
   }
 }

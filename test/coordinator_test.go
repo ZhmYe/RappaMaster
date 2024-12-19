@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var testConfig *Config.BHLayer2NodeConfig
@@ -51,7 +52,7 @@ func TestCoordinator(t *testing.T) {
 	}
 	result, ok := <-scheduledTasks
 	result2, ok2 := <-commitSlots
-
+	time.Sleep(10 * time.Second)
 	if !ok || len(result.Schedules) != 1 {
 		t.Errorf("failed task!")
 	}
