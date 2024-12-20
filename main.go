@@ -35,15 +35,9 @@ func main() {
 	//grpcEngine.Setup(*config)
 	httpEngine := HTTP.NewFakeHttpEngine(initTasks)
 	httpEngine.Setup(*config)
-
 	event := Event.NewEvent(epochEvent)
-
 	coordinator := Coordinator.NewCoordinator(config, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, epochHeartbeat)
-
-
-// 	coordinator := Coordinator.NewCoordinator(pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, addressMap, epochHeartbeat)
-
-	taskManager := Task.NewTaskManager(*config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
+	taskManager := Task.NewTaskManager(config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
 	mockerChainUpper := ChainUpper.NewMockerChainUpper(pendingTransactions)
 	//chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
 	//if err != nil {

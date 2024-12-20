@@ -176,7 +176,7 @@ func (t *TaskManager) buildHeartbeat(validTaskMap map[string]int32) *pb.Heartbea
 		Epoch:     int32(t.currentEpoch),
 	}
 }
-func NewTaskManager(config Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
+func NewTaskManager(config *Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
 	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool,
 	initTasks chan paradigm.UnprocessedTask, pendingTransactions chan paradigm.Transaction, epochHeartbeat chan *pb.HeartbeatRequest) *TaskManager {
 	return &TaskManager{

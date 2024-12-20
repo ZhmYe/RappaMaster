@@ -49,7 +49,7 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	// 模拟生成的请求
 	request := HttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
-		Size:  100, // 模拟固定大小
+		Size:  50, // 模拟固定大小
 		Model: "ctgan",
 		Params: map[string]interface{}{
 			"condition_column": "native-country",
