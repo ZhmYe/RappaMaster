@@ -8,14 +8,14 @@ import (
 
 // Task 描述一个合成任务
 type Task struct {
-	Sign    string
-	Slot    int
-	Model   string
-	Params  map[string]interface{}
-	size    int32 // 总的数据量
-	process int32 // 已经完成的数据量
-
-	records []paradigm.SlotRecord // 记录每个slot的调度和完成情况
+	Sign       string
+	Slot       int
+	Model      string
+	Params     map[string]interface{}
+	size       int32                 // 总的数据量
+	process    int32                 // 已经完成的数据量
+	isReliable bool                  // 是否可信 TODO: @YZM 这里需要加入任务是否可信的部分，这个需要在http前端得到
+	records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
 }
 
 // UpdateSchedule 更新调度情况
@@ -76,12 +76,13 @@ func (t *Task) IsFinish() bool {
 
 func NewTask(sign string, model string, params map[string]interface{}, total int32) *Task {
 	return &Task{
-		Sign:    sign,
-		Slot:    -1,
-		Model:   model,
-		Params:  params,
-		size:    total,
-		process: 0,
-		records: make([]paradigm.SlotRecord, 0),
+		Sign:       sign,
+		Slot:       -1,
+		Model:      model,
+		Params:     params,
+		size:       total,
+		process:    0,
+		records:    make([]paradigm.SlotRecord, 0),
+		isReliable: true, // todo 这里先统一写成true
 	}
 }

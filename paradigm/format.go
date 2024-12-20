@@ -12,8 +12,10 @@ type TaskSchedule struct {
 type ScheduleItem struct {
 	//Sign   string
 	//Slot   int
-	Size int32
-	NID  int
+	Size       int32
+	NID        int
+	Commitment []byte
+	Hash       SlotHash
 	//Model  string
 	//Params map[string]interface{}
 }

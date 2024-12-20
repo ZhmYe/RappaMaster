@@ -7,6 +7,10 @@ import (
 	"strconv"
 )
 
+// TODO @SD 这里加上一个字段
+// MaxEpochDelay 对应proto里的timeout
+// 然后在tracker和coordinator里的相关参数修改
+
 // 定义通信节点的地址配置
 type BHNodeAddress struct {
 	NodeIPAddress string //节点IP

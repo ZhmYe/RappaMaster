@@ -1,6 +1,9 @@
 package paradigm
 
-import "BHLayer2Node/pb/service"
+import (
+	"BHLayer2Node/pb/service"
+	"fmt"
+)
 
 // CommitSlotItem 节点完成任务后提交
 // 2024-12-15 13:04 这里假定正确节点运行的逻辑是，将n个数据块全部分发（出现超时会重新分配直到完成）
@@ -13,23 +16,39 @@ type CommitState int
 
 const (
 	INVALID   CommitState = iota // 不合法的提交,这里指commitment不通过 todo
-	ABORT                        // abort，说明原先节点提交后，投票失败
 	JUSTIFIED                    // 就是默认的状态，收到commit后就设置为justified
-	FINALIZE                     // 说明确认了，可以上链
+	FINALIZE                     // 说明确认了，可以上链 TODO @YZM： 这里目前是只要通过投票就统一标记为FINALIZE，因为这说明commitment是被所有节点认可，至于最后是否能够上链，取决于zkp
 )
 
 type CommitSlotItem struct {
 	*service.JustifiedSlot
-	state CommitState
+	state       CommitState
+	hash        SlotHash
+	InvalidType InvalidCommitType
 	//epoch int // 在哪个epoch被提交
 	//Commitment SimpleCommitment // 这里简单做一下 todo
 	//votes map[int]string // 投票，暂时先不要这个，后续要加上 todo
 }
 
+type InvalidCommitType int
+
+const (
+	INVALID_SLOT       InvalidCommitType = iota // 不合法（负数或过大）的slot
+	EXPIRE_SLOT                                 // 过期的slot
+	INVALID_COMMITMENT                          // 承诺不通过
+	VERIFIED_FAILED                             // 异常的存储状态
+	// TODO
+
+	UNKNOWN
+	NONE
+)
+
 func (c *CommitSlotItem) Record() ScheduleItem {
 	return ScheduleItem{
-		Size: c.Process,
-		NID:  int(c.Nid),
+		Size:       c.Process,
+		NID:        int(c.Nid),
+		Commitment: c.Commitment,
+		Hash:       c.hash,
 	}
 }
 func (c *CommitSlotItem) Check() bool {
@@ -39,7 +58,7 @@ func (c *CommitSlotItem) Check() bool {
 		return true
 	}
 	if !check() {
-		c.SetInvalid()
+		c.SetInvalid(INVALID_COMMITMENT)
 		return false
 	}
 	return true
@@ -47,26 +66,59 @@ func (c *CommitSlotItem) Check() bool {
 func (c *CommitSlotItem) State() CommitState {
 	return c.state
 }
-func (c *CommitSlotItem) SetAbort() {
-	c.state = ABORT
-}
-func (c *CommitSlotItem) SetInvalid() {
+
+//func (c *CommitSlotItem) SetAbort() {
+//	c.state = ABORT
+//}
+
+func (c *CommitSlotItem) SetInvalid(t InvalidCommitType) {
 	c.state = INVALID
+	c.InvalidType = t
 }
 func (c *CommitSlotItem) SetDefault() {
 	c.state = JUSTIFIED
+	c.InvalidType = NONE
 }
 func (c *CommitSlotItem) SetFinalize() {
+	c.SetDefault()
 	c.state = FINALIZE
 }
 func (c *CommitSlotItem) SetEpoch(e int32) {
 	c.Epoch = e
 }
+func (c *CommitSlotItem) computeHash() {
+	// todo 这里的哈希可以修改
+	generateHash := func(sign string, slot int, node int) SlotHash {
+		return fmt.Sprintf("%s_%d_%d", sign, slot, node)
+	}
+	c.hash = generateHash(c.Sign, int(c.Slot), int(c.Nid))
+
+}
+func (c *CommitSlotItem) SlotHash() SlotHash {
+	return c.hash
+}
+
+//func (c *CommitSlotItem) HasProof() bool {
+//	return c.proof
+//}
 
 // NewCommitSlotItem 默认的commitSlot，状态为justified
 func NewCommitSlotItem(slot *service.JustifiedSlot) CommitSlotItem {
-	return CommitSlotItem{
+	s := CommitSlotItem{
 		JustifiedSlot: slot,
 		state:         JUSTIFIED,
+		InvalidType:   NONE,
+		//proof:         false,
 	}
+	s.computeHash()
+	return s
+}
+func NewFakeCommitSlotItem(hash SlotHash) CommitSlotItem {
+	s := CommitSlotItem{
+		JustifiedSlot: nil,
+		state:         FINALIZE,
+		hash:          hash,
+		InvalidType:   NONE,
+	}
+	return s
 }

@@ -9,6 +9,7 @@ import (
 	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -27,8 +28,6 @@ import (
 // 每隔一段时间，发起SlotVote，从tracker中打包一部分slot（来自各个节点）出来，发送给所有节点进行投票，以bitmap的形式传输投票结果
 // 最后获得k票以上的slot们可以被打包，然后将slot和其投票结果元数据等作为交易传递给chainupper准备上链
 
-// Coordinator
-// 2024-11-25 先完成schedule
 type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
@@ -272,24 +271,41 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 
 }
 
-// 服务端方法，用于处理提交的slot
+// CommitSlot 服务端方法，用于处理提交的slot
 func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest) (*pb.SlotCommitResponse, error) {
-	nodeId, _ := strconv.Atoi(req.NodeId)
-	slot, _ := strconv.Atoi(req.Slot)
+	//nodeId, _ := strconv.Atoi(req.NodeId)
+	//slot, _ := strconv.Atoi(req.Slot)
+
 	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
-		Nid:     int32(nodeId),
-		Process: req.Size,
-		Sign:    req.Sign,
-		Slot:    int32(slot),
-		Epoch:   -1,
+		Nid:        req.NodeId,
+		Process:    req.Size,
+		Sign:       req.Sign,
+		Slot:       req.Slot,
+		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
+		Commitment: req.Commitment,
 	})
-	//TODO  将提交的结果放入commitSlot，这里暂时认为节点的合成数据有效
+	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
 	c.commitSlot <- item
 	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot{%v}", item))
+	generateRandomSeed := func() []byte {
+		size := 256 // 暂定
+		randomBytes := make([]byte, size)
+
+		// 使用 crypto/rand 生成安全随机字节
+		rand.Read(randomBytes)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		return randomBytes
+	}
+	// TODO 这里的MaxEpochDelay修改成从配置里读,可以存在结构体里
+	maxEpochDelay := 1
+	// 这里就简单的回复即可，后续所有的东西都由heartbeat、chainupper来给定
 	return &pb.SlotCommitResponse{
-		Valid: "True",
-		Sign:  req.Sign,
-		Slot:  req.Slot,
+		Seed:    generateRandomSeed(),
+		Timeout: int32(maxEpochDelay),
+		Hash:    item.SlotHash(), // TODO: Hash是用来让节点在收到heartbeat后判断： 1. 是否本地有一些未确认的数据不需要保存了; 2. 是否自己的任务被拒绝了，是否太慢了
 	}, nil
 }
 

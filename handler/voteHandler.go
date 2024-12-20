@@ -19,16 +19,15 @@ func (handler *VoteHandler) Process() {
 		votes := response.Votes
 		// 遍历回复中的所有投票
 		for _, vote := range votes {
-			slot := vote.Slot
 			// 找到对应的slot
-			instance, exist := handler.voteInstance[fmt.Sprintf("%s_%d_%d", slot.Sign, slot.Slot, slot.Nid)]
+			instance, exist := handler.voteInstance[fmt.Sprintf("%s", vote.Hash)]
 			if exist {
 				if vote.State {
 					// 如果同意
-					instance.Accept(int(slot.Nid))
+					instance.Accept(int(vote.NodeId))
 				} else {
 					// 如果拒绝
-					instance.Reject(int(slot.Nid), vote.Desp)
+					instance.Reject(int(vote.NodeId), vote.Desp)
 				}
 			} else {
 				// 这里暂时先不报错
@@ -43,32 +42,21 @@ func (handler *VoteHandler) Process() {
 	for _, instance := range handler.voteInstance {
 		if instance.Check() {
 			// 如果通过投票了，那么就finalize
-			slot := instance.Slot
-			slot.SetFinalize()
-			LogWriter.Log("VOTE", fmt.Sprintf("%d CommitSlot in Task %s Slot %d pass the Vote...", instance.Slot.Nid, instance.Slot.Sign, instance.Slot.Slot))
-			handler.accepts <- slot
+			//slot := instance.Slot
+			//slot.SetFinalize()
+			LogWriter.Log("VOTE", fmt.Sprintf("%s CommitSlot pass the Vote...", instance.Hash))
+			// TODO @YZM 这里简单构造了一个假的commitSlot，因为taskManager只需要hash，可以分成两个channel
+			handler.accepts <- paradigm.NewFakeCommitSlotItem(instance.Hash)
 		} else {
-			LogWriter.Log("VOTE", fmt.Sprintf("%d CommitSlot in Task %s Slot %d does not pass the Vote!!!", instance.Slot.Nid, instance.Slot.Sign, instance.Slot.Slot))
+			LogWriter.Log("VOTE", fmt.Sprintf("%s CommitSlot does not pass the Vote!!!", instance.Hash))
 		}
 	}
 }
 
 func NewVoteHandler(heartbeat *pb.HeartbeatRequest, accepts chan paradigm.CommitSlotItem, responses chan *pb.HeartbeatResponse) *VoteHandler {
 	instances := make(map[string]*paradigm.SlotVote)
-	for _, slot := range heartbeat.Commits {
-		instances[fmt.Sprintf("%s_%d_%d", slot.Sign, slot.Slot, slot.Nid)] = &paradigm.SlotVote{
-			Slot: paradigm.NewCommitSlotItem(slot),
-			//Slot: paradigm.CommitSlotItem{
-			//	Nid:     int(slot.Nid),
-			//	Process: int(slot.Process),
-			//	Sign:    slot.Sign,
-			//	Slot:    int(slot.Slot),
-			//
-			//},
-			Total:   0,
-			Vote:    0,
-			Message: make(map[int]string),
-		}
+	for hash, commitment := range heartbeat.Commits {
+		instances[fmt.Sprintf("%s", hash)] = paradigm.NewSlotVote(hash, commitment)
 	}
 	return &VoteHandler{
 		voteInstance: instances,
