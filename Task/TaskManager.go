@@ -134,6 +134,14 @@ func (t *TaskManager) UpdateTask(sign string, model string, size int32, params m
 		nextSlot, _ := task.Next()
 		go func(slot paradigm.UnprocessedTask) {
 			t.unprocessedTasks <- slot
+			// 上链新Task
+			t.pendingTransactions <- &paradigm.InitTaskTransaction{
+				Sign:       task.Sign,
+				Size:       task.size,
+				Model:      task.Model,
+				IsReliable: task.isReliable,
+				Params:     task.Params,
+			}
 		}(nextSlot)
 		LogWriter.Log("TRACKER", fmt.Sprintf("Update New Task, sign: %s, slot: 0", sign))
 	}
@@ -179,11 +187,13 @@ func (t *TaskManager) UpdateEpoch() {
 				continue
 			}
 			t.epochRecord.finalize(commitSlotItem)
-			go func(transaction *paradigm.CommitSlotTransaction) {
+			// 上链任务推进情况
+			go func(transaction *paradigm.TaskProcessTransaction) {
 				t.pendingTransactions <- transaction
-			}(&paradigm.CommitSlotTransaction{
+			}(&paradigm.TaskProcessTransaction{
 				CommitSlotItem: commitSlotItem,
-				Epoch:          t.currentEpoch,
+				Proof:          nil,
+				Signatures:     nil,
 			})
 		} else {
 			// 未在指定时间内完成，那么直接丢弃
@@ -197,6 +207,23 @@ func (t *TaskManager) UpdateEpoch() {
 	// 更新epoch的时候，构建心跳
 	heartbeat := t.buildHeartbeat()
 	t.epochHeartbeat <- heartbeat
+	go func(epochRecord EpochRecord) {
+		justified := make([]paradigm.SlotHash, 0)
+		finalized := make([]paradigm.SlotHash, 0)
+		//invalids := make(map[paradigm.SlotHash]paradigm.InvalidCommitType)
+		for hash, _ := range epochRecord.commits {
+			justified = append(justified, hash)
+		}
+		for hash, _ := range epochRecord.finalizes {
+			finalized = append(finalized, hash)
+		}
+		// 上链epoch信息
+		t.pendingTransactions <- &paradigm.EpochRecordTransaction{
+			Justified: justified,
+			Finalized: finalized,
+			Invalids:  epochRecord.invalids,
+		}
+	}(*t.epochRecord)
 	// 下面的内容和心跳无关
 	for _, sign := range outOfDateTasks {
 		task := t.tasks[sign]

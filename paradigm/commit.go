@@ -30,7 +30,7 @@ type CommitSlotItem struct {
 	//votes map[int]string // 投票，暂时先不要这个，后续要加上 todo
 }
 
-type InvalidCommitType int
+type InvalidCommitType = int32
 
 const (
 	INVALID_SLOT       InvalidCommitType = iota // 不合法（负数或过大）的slot
@@ -85,6 +85,7 @@ func (c *CommitSlotItem) SetFinalize() {
 }
 func (c *CommitSlotItem) SetEpoch(e int32) {
 	c.Epoch = e
+	c.JustifiedSlot.Epoch = e
 }
 func (c *CommitSlotItem) computeHash() {
 	// todo 这里的哈希可以修改

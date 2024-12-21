@@ -31,6 +31,17 @@ func (c *MockerChainUpper) Start() {
 		case transaction := <-c.pendingTransactions:
 			// 先简单写一下
 			c.mu.Lock()
+			switch transaction.(type) {
+			case *paradigm.EpochRecordTransaction:
+				LogWriter.Log("CHAINUP", "receive a EpochRecordTransaction...")
+			case *paradigm.InitTaskTransaction:
+				LogWriter.Log("CHAINUP", "receive a InitTaskTransaction...")
+			case *paradigm.TaskProcessTransaction:
+
+				LogWriter.Log("CHAINUP", "receive a TaskProcessTransaction...")
+			default:
+				panic("Invalid Transaction Type!!!")
+			}
 			c.transactionPool = append(c.transactionPool, transaction)
 			c.mu.Unlock()
 		default:

@@ -299,7 +299,7 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 
 		return randomBytes
 	}
-	// TODO 这里的MaxEpochDelay修改成从配置里读,可以存在结构体里
+	// TODO @SD 这里的MaxEpochDelay修改成从配置里读,可以存在结构体里
 	maxEpochDelay := 1
 	// 这里就简单的回复即可，后续所有的东西都由heartbeat、chainupper来给定
 	return &pb.SlotCommitResponse{

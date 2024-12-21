@@ -41,7 +41,7 @@ message JustifiedSlot {
 message HeartbeatRequest {
   map<string, bytes> commits = 1;     // 提交的CommitSlotItem列表
   map<string, bytes> finalizes = 2;   // 完成的CommitSlotItem列表
-  map<string, bytes> invalids = 3;    // 这个epoch中检测出的有问题的slot
+  map<string, int32> invalids = 3;    // 这个epoch中检测出的有问题的slot
 //  map<string, int32> tasks = 3;            // 在这个epoch中过期的任务的最新slot
   int32 epoch = 4;
 }

@@ -72,9 +72,10 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 func (m *MockerExecutionNode) Heartbeat(ctx context.Context, req *service.HeartbeatRequest) (*service.HeartbeatResponse, error) {
 	// todo
 	votes := make([]*service.Vote, 0)
-	for _, slot := range req.Commits {
+	for hash, _ := range req.Commits {
 		votes = append(votes, &service.Vote{
-			Slot:   slot,
+			//Slot:   slot,
+			Hash:   hash,
 			NodeId: int32(m.nodeID),
 			State:  true,
 			Desp:   "",
@@ -96,8 +97,8 @@ func (m *MockerExecutionNode) Heartbeat(ctx context.Context, req *service.Heartb
 
 func (m *MockerExecutionNode) CommitSlot(ctx context.Context, req *service.SlotCommitRequest) (*service.SlotCommitResponse, error) {
 	return &service.SlotCommitResponse{
-		Valid: "",
-		Sign:  "",
-		Slot:  "",
+		Seed:    nil,
+		Hash:    "",
+		Timeout: 0,
 	}, nil
 }

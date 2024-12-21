@@ -64,7 +64,7 @@ func (c *ChainUpper) UpChain() {
 	if len(packedTransactions) > 0 {
 		// 将交易打包为链上合约的参数
 		for id, tx := range packedTransactions {
-			result := tx.Params()
+			result := tx.CallData()
 			if result["Process"] == -1 {
 				LogWriter.Log("ERROR", fmt.Sprintf("Transaction %d BUG: %v", id, result))
 				continue
