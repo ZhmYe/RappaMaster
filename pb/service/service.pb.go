@@ -108,7 +108,6 @@ func (x *JustifiedSlot) GetCommitment() []byte {
 	return nil
 }
 
-// TODO: @SD 下面的request改了
 // Heartbeat request message
 type HeartbeatRequest struct {
 	state         protoimpl.MessageState

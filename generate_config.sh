@@ -32,6 +32,7 @@ cat <<EOL >$config_path
 {
   "GrpcPort": 50051,
   "HttpPort": 8080,
+  "MaxEpochDelay ": 1,
   "MaxUnprocessedTaskPoolSize": 100,
   "MaxPendingSchedulePoolSize": 100,
   "MaxScheduledTasksPoolSize": 100,

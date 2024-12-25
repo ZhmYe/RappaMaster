@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
-	"time"
 )
 
 // NodeGrpcManager gRPC 连接管理
@@ -15,8 +14,7 @@ type NodeGrpcManager struct {
 	connPool      map[int]*grpc.ClientConn      // 按nodeId分组的连接池
 }
 
-// NewNodeGrpcPool 创建一个新的连接池
-func NewNodeGrpcPool(nodeAddresses map[int]*Config.BHNodeAddress, maxConns int, connExpiry time.Duration) *NodeGrpcManager {
+func NewNodeGrpcManager(nodeAddresses map[int]*Config.BHNodeAddress) *NodeGrpcManager {
 	p := &NodeGrpcManager{
 		connPool:      make(map[int]*grpc.ClientConn),
 		nodeAddresses: nodeAddresses,

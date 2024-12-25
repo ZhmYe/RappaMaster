@@ -36,7 +36,6 @@ func (t *TaskManager) Start() {
 			case <-t.epochChangeEvent:
 				t.UpdateEpoch() // 如果epoch更新，那么先更新epoch，此时有新的任务也会进入下一个epoch
 			case commitSlotItem := <-t.commitSlot: // 如果不需要更新epoch，那么优先commit或finalize
-				commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
 				// 判断类别,如果是新commit的则commit，如果已经通过投票，则finalize
 				switch commitSlotItem.State() {
 				case paradigm.JUSTIFIED:
@@ -181,7 +180,8 @@ func (t *TaskManager) UpdateEpoch() {
 		if pendingSlot.Check() {
 			// 这个commitSlot在指定时间内完成了存储任务(vote)和可信任务(zkp)
 			commitSlotItem := *pendingSlot.CommitSlotItem
-			err := t.Commit(commitSlotItem) // 正式更新任务
+			commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
+			err := t.Commit(commitSlotItem)                // 正式更新任务
 			if err != nil {
 				LogWriter.Log("ERROR", err.Error())
 				continue

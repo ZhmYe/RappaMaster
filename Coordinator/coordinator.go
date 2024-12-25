@@ -32,12 +32,11 @@ type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
-	//nodeAddresses    map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
-	connManager    *Grpc.NodeGrpcManager        //用于管理GRPC客户端连接
-	nodeConnMap    map[int]*grpc.ClientConn     // 用于管理grpc与节点之间的channel，避免重复创建
-	serverPort     int                          // coordinator对节点暴露的grpc端口
-	epochHeartbeat chan *pb.HeartbeatRequest    // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
-	commitSlot     chan paradigm.CommitSlotItem // 交给taskManager更新
+	maxEpochDelay    int                           //说明多少时间后需要传递一个zkp证明以及多久后开始投票
+	connManager      *Grpc.NodeGrpcManager         //用于管理GRPC客户端连接
+	serverPort       int                           // coordinator对节点暴露的grpc端口
+	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
 
@@ -91,23 +90,6 @@ func (c *Coordinator) Start() {
 	//	go node.Start()
 	//}
 }
-
-// 获取与节点连接的客户端
-//func (c *Coordinator) getClient(nodeId int) (pb.NodeExecutorClient, error) {
-//	client, ok := c.nodeClientMap[nodeId]
-//	//采用lazy获取
-//	if !ok {
-//		address := c.nodeAddresses[nodeId]
-//		conn, err := grpc.Dial(address.GetAddrStr(), grpc.WithInsecure())
-//		if err != nil {
-//			return nil, err
-//		}
-//		newClient := pb.NewNodeExecutorClient(conn)
-//		c.nodeClientMap[nodeId] = newClient
-//		client = newClient
-//	}
-//	return client, nil
-//}
 
 // sendSchedule 向所有节点发送某个sign的调度计划
 func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
@@ -299,12 +281,11 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 
 		return randomBytes
 	}
-	// TODO @SD 这里的MaxEpochDelay修改成从配置里读,可以存在结构体里
-	maxEpochDelay := 1
+
 	// 这里就简单的回复即可，后续所有的东西都由heartbeat、chainupper来给定
 	return &pb.SlotCommitResponse{
 		Seed:    generateRandomSeed(),
-		Timeout: int32(maxEpochDelay),
+		Timeout: int32(c.maxEpochDelay),
 		Hash:    item.SlotHash(), // TODO: Hash是用来让节点在收到heartbeat后判断： 1. 是否本地有一些未确认的数据不需要保存了; 2. 是否自己的任务被拒绝了，是否太慢了
 	}, nil
 }
@@ -315,9 +296,9 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		pendingSchedules: pendingSchedules,
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
-		//nodeAddresses:    config.BHNodeAddressMap,
-		connManager: Grpc.NewNodeGrpcPool(config.BHNodeAddressMap, 5, 5*time.Minute),
-		serverPort:  config.GrpcPort,
+		maxEpochDelay:    config.MaxEpochDelay,
+		connManager:      Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
+		serverPort:       config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
 		commitSlot:     commitSlot,
 		epochHeartbeat: epochHeartbeat,

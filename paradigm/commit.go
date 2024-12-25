@@ -85,7 +85,7 @@ func (c *CommitSlotItem) SetFinalize() {
 }
 func (c *CommitSlotItem) SetEpoch(e int32) {
 	c.Epoch = e
-	c.JustifiedSlot.Epoch = e
+	//c.JustifiedSlot.Epoch = e
 }
 func (c *CommitSlotItem) computeHash() {
 	// todo 这里的哈希可以修改

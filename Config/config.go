@@ -7,10 +7,6 @@ import (
 	"strconv"
 )
 
-// TODO @SD 这里加上一个字段
-// MaxEpochDelay 对应proto里的timeout
-// 然后在tracker和coordinator里的相关参数修改
-
 // 定义通信节点的地址配置
 type BHNodeAddress struct {
 	NodeIPAddress string //节点IP
@@ -30,6 +26,7 @@ func (b *BHNodeAddress) GetAddrStr() string {
 type BHLayer2NodeConfig struct {
 	GrpcPort                   int // gRPC 服务端口
 	HttpPort                   int // HTTP 服务端口
+	MaxEpochDelay              int //MaxEpochDelay 对应proto里的timeout
 	MaxUnprocessedTaskPoolSize int // HTTP 请求池的最大大小
 	MaxPendingSchedulePoolSize int
 	MaxScheduledTasksPoolSize  int
@@ -57,6 +54,7 @@ type BHLayer2NodeConfig struct {
 var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	GrpcPort:                   50051, // 默认 gRPC 端口
 	HttpPort:                   8080,  // 默认 HTTP 端口
+	MaxEpochDelay:              1,
 	MaxUnprocessedTaskPoolSize: 100,
 	MaxPendingSchedulePoolSize: 100,
 	MaxScheduledTasksPoolSize:  100,
