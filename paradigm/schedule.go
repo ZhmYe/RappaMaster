@@ -28,18 +28,19 @@ type UnprocessedTask struct {
 	Model  string                 // 模型名称
 	Params map[string]interface{} // 不确定的模型参数
 }
-type PendingSlotItem struct {
-	Sign     string                 // task sign
-	Slot     int                    // slot index
-	Size     int                    // data size
-	Model    string                 // 模型名称
-	Params   map[string]interface{} // 不确定的模型参数
-	Schedule []TaskSchedule         // 调度
-}
 
-func (s *PendingSlotItem) UpdateSchedule(schedule []TaskSchedule) {
-	s.Schedule = schedule
-}
+//type PendingSlotItem struct {
+//	Sign     string                 // task sign
+//	Slot     int                    // slot index
+//	Size     int                    // data size
+//	Model    string                 // 模型名称
+//	Params   map[string]interface{} // 不确定的模型参数
+//	Schedule []TaskSchedule         // 调度
+//}
+//
+//func (s *PendingSlotItem) UpdateSchedule(schedule []TaskSchedule) {
+//	s.Schedule = schedule
+//}
 
 type SlotRecord struct {
 	Slot     int            // id
