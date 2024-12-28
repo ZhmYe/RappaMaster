@@ -38,7 +38,7 @@ func NewLogWriter(logPath string, debug bool) *LogWriter {
 // Init initializes the logger
 func (lw *LogWriter) Init() error {
 	var writers []io.Writer
-	writers = append(writers, os.Stdout)
+	//writers = append(writers, os.Stdout)
 
 	if !lw.Debug {
 		currentTime := time.Now().Format("2006-01-02_15-04-05")

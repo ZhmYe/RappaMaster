@@ -41,7 +41,7 @@ func (handler *VoteHandler) Process() {
 	// 开始判断所有的instance是否通过投票，如果通过，则将对应的slot作为finalize
 	for _, instance := range handler.voteInstance {
 		if instance.Check() {
-			// 如果通过投票了，那么就finalize
+			// 如果通过投票了，那么就finalize TODO @YZM
 			//slot := instance.Slot
 			//slot.SetFinalize()
 			LogWriter.Log("VOTE", fmt.Sprintf("%s CommitSlot pass the Vote...", instance.Hash))

@@ -39,3 +39,9 @@ func GetProjectRoot() (string, error) {
 	// 未找到标识文件，返回错误
 	return "", os.ErrNotExist
 }
+
+func StringToBytes32(s string) [32]byte {
+	var b [32]byte
+	copy(b[:], s)
+	return b
+}

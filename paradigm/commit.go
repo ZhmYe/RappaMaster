@@ -15,9 +15,10 @@ import (
 type CommitState int
 
 const (
-	INVALID   CommitState = iota // 不合法的提交,这里指commitment不通过 todo
-	JUSTIFIED                    // 就是默认的状态，收到commit后就设置为justified
-	FINALIZE                     // 说明确认了，可以上链 TODO @YZM： 这里目前是只要通过投票就统一标记为FINALIZE，因为这说明commitment是被所有节点认可，至于最后是否能够上链，取决于zkp
+	INVALID      CommitState = iota // 不合法的提交,这里指commitment不通过 todo
+	UNDETERMINED                    // 节点提交后就是undetermined状态
+	JUSTIFIED                       // 投票完成后设置为justified
+	FINALIZE                        // 说明确认了，可以上链
 )
 
 type CommitSlotItem struct {
@@ -76,7 +77,7 @@ func (c *CommitSlotItem) SetInvalid(t InvalidCommitType) {
 	c.InvalidType = t
 }
 func (c *CommitSlotItem) SetDefault() {
-	c.state = JUSTIFIED
+	c.state = UNDETERMINED
 	c.InvalidType = NONE
 }
 func (c *CommitSlotItem) SetFinalize() {
@@ -103,11 +104,11 @@ func (c *CommitSlotItem) SlotHash() SlotHash {
 //	return c.proof
 //}
 
-// NewCommitSlotItem 默认的commitSlot，状态为justified
+// NewCommitSlotItem 默认的commitSlot，状态为undetermined
 func NewCommitSlotItem(slot *service.JustifiedSlot) CommitSlotItem {
 	s := CommitSlotItem{
 		JustifiedSlot: slot,
-		state:         JUSTIFIED,
+		state:         UNDETERMINED,
 		InvalidType:   NONE,
 		//proof:         false,
 	}
@@ -117,7 +118,7 @@ func NewCommitSlotItem(slot *service.JustifiedSlot) CommitSlotItem {
 func NewFakeCommitSlotItem(hash SlotHash) CommitSlotItem {
 	s := CommitSlotItem{
 		JustifiedSlot: nil,
-		state:         FINALIZE,
+		state:         JUSTIFIED,
 		hash:          hash,
 		InvalidType:   NONE,
 	}

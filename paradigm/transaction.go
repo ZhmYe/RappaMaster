@@ -1,9 +1,7 @@
 package paradigm
 
 import (
-	"BHLayer2Node/utils"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
-	"math/big"
 )
 
 /*** Transaction相关内容 ***/
@@ -138,93 +136,4 @@ func NewPackedTransaction(tx Transaction, receipt *types.Receipt) *PackedTransac
 		Id:      -1,
 		Receipt: receipt,
 	}
-}
-
-type PackedParams interface {
-	UpdateFromTransaction(tx Transaction) // 根据交易得到参数
-	//getSigns() [][32]byte                 // 看起来应该所有参数都有签名
-	GetParams() []interface{} // todo 初步先认为全是bigInts
-	ParamsLen() int
-	BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction
-}
-
-// TODO 这里每多一个交易类型就要加上对应的参数
-
-type InitTaskTransactionParams struct {
-	// TODO @XQ
-}
-
-func (p *InitTaskTransactionParams) UpdateFromTransaction(tx Transaction) {
-
-}
-
-//	func (p *InitTaskTransactionParams) getSigns() [][32]byte {
-//		return [][32]byte{}
-//	}
-func (p *InitTaskTransactionParams) GetParams() []interface{} {
-	return []interface{}{}
-}
-func (p *InitTaskTransactionParams) ParamsLen() int {
-	return -1
-}
-func (p *InitTaskTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
-	return []*PackedTransaction{}
-}
-
-type TaskProcessTransactionParams struct {
-	// TODO @XQ
-	signs                                                  [][32]byte
-	slotsBigInt, processesBigInt, nidsBigInt, epochsBigInt []*big.Int
-	txs                                                    []*TaskProcessTransaction
-}
-
-func (p *TaskProcessTransactionParams) UpdateFromTransaction(tx Transaction) {
-	switch tx.(type) {
-	case *TaskProcessTransaction:
-		calldata := tx.CallData()
-		p.txs = append(p.txs, tx.(*TaskProcessTransaction))
-		p.signs = append(p.signs, utils.StringToBytes32(calldata["Sign"].(string)))
-		p.slotsBigInt = append(p.slotsBigInt, new(big.Int).SetUint64(uint64(calldata["Slot"].(int32))))
-		p.processesBigInt = append(p.processesBigInt, new(big.Int).SetUint64(uint64(calldata["Process"].(int32))))
-		p.nidsBigInt = append(p.nidsBigInt, new(big.Int).SetUint64(uint64(calldata["ID"].(int32))))
-		p.epochsBigInt = append(p.epochsBigInt, new(big.Int).SetUint64(uint64(calldata["Epoch"].(int32))))
-	default:
-		panic("TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
-
-	}
-}
-func (p *TaskProcessTransactionParams) GetParams() []interface{} {
-	return []interface{}{p.signs, p.slotsBigInt, p.processesBigInt, p.nidsBigInt, p.epochsBigInt}
-}
-func (p *TaskProcessTransactionParams) ParamsLen() int {
-	return 5
-}
-func (p *TaskProcessTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
-	// todo 这里暂时先为多个receipt做好准备
-	// 要判断receipt和transaction长度 todo
-
-	// 现在只有一个receipt
-	receipt := receipts[0]
-	result := make([]*PackedTransaction, 0)
-	for _, tx := range p.txs {
-		result = append(result, NewPackedTransaction(tx, receipt))
-	}
-	return result
-}
-
-type EpochRecordTransactionParams struct {
-	// TODO @XQ
-}
-
-func (p *EpochRecordTransactionParams) UpdateFromTransaction(tx Transaction) {
-
-}
-func (p *EpochRecordTransactionParams) GetParams() []interface{} {
-	return []interface{}{}
-}
-func (p *EpochRecordTransactionParams) ParamsLen() int {
-	return -1
-}
-func (p *EpochRecordTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
-	return []*PackedTransaction{}
 }

@@ -16,10 +16,10 @@ type PendingCommitSlotTrack struct {
 func (t *PendingCommitSlotTrack) Check() bool {
 	return t.hasWonVote && t.hasVerifiedProof
 }
-func NewPendingCommitSlotTrack(item *CommitSlotItem, needProof bool) *PendingCommitSlotTrack {
+func NewPendingCommitSlotTrack(item *CommitSlotItem, isReliable bool) *PendingCommitSlotTrack {
 	return &PendingCommitSlotTrack{
 		CommitSlotItem:   item,
-		hasVerifiedProof: needProof, // 如果不需要可信证明，那么就是完成了
+		hasVerifiedProof: isReliable, // 如果不需要可信证明，那么就是完成了
 		hasWonVote:       false,
 	}
 }

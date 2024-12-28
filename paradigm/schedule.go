@@ -41,17 +41,3 @@ type UnprocessedTask struct {
 //func (s *PendingSlotItem) UpdateSchedule(schedule []TaskSchedule) {
 //	s.Schedule = schedule
 //}
-
-type SlotRecord struct {
-	Slot     int            // id
-	Schedule TaskSchedule   // 调度
-	Process  []ScheduleItem // 完成情况
-}
-
-func NewSlotRecord(slot int) SlotRecord {
-	return SlotRecord{
-		Slot:     slot,
-		Schedule: TaskSchedule{},
-		Process:  make([]ScheduleItem, 0),
-	}
-}

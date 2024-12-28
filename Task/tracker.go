@@ -68,7 +68,7 @@ func (t *Tracker) expandBuckets(required int) {
 func (t *Tracker) Setup(config *Config.BHLayer2NodeConfig) {
 	t.config = config
 	t.taskBuckets = make([][]string, 0)
-	t.maxEpochDelay = 1 // TODO @SD 这里要改成从config读
+	t.maxEpochDelay = config.MaxEpochDelay
 }
 
 // NewTracker 创建新的 Tracker

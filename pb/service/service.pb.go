@@ -477,7 +477,6 @@ func (x *ScheduleResponse) GetErrorMessage() string {
 	return ""
 }
 
-// TODO: @SD 下面这两个都改了，request多了一个commitment同上,response是我这里写好了，python里接收到后留一下process()函数，然后里面啥也不用写
 type SlotCommitRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
