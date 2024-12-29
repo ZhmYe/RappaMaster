@@ -1,6 +1,7 @@
 package ChainUpper
 
 import (
+	"BHLayer2Node/ChainUpper/service"
 	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	SlotCommit "BHLayer2Node/ChainUpper/contract/slotCommit"
-	"BHLayer2Node/ChainUpper/service"
 	"context"
 	"encoding/hex"
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
@@ -21,9 +21,11 @@ type ChainUpper struct {
 	transactionPool     []paradigm.Transaction    // 所有的交易
 	unprocessedIndex    int                       // 未处理的交易index，包括这一index
 	mu                  sync.Mutex
-	queue               chan map[string]interface{} // 用于异步上链的队列
-	client              *client.Client              // FISCO-BCOS 客户端
-	instance            *SlotCommit.SlotCommit      // 合约实例
+	//queue               chan map[string]interface{} // 用于异步上链的队列
+	queue    chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
+	client   *client.Client            // FISCO-BCOS 客户端
+	instance *SlotCommit.SlotCommit    // 合约实例
+	count    int                       // add by zhmye, 这里是用来给每笔交易赋予一个id的
 }
 
 func (c *ChainUpper) Start() {
@@ -63,15 +65,43 @@ func (c *ChainUpper) UpChain() {
 	packedTransactions := pack()
 	if len(packedTransactions) > 0 {
 		// 将交易打包为链上合约的参数
-		for id, tx := range packedTransactions {
-			result := tx.Params()
-			if result["Process"] == -1 {
-				LogWriter.Log("ERROR", fmt.Sprintf("Transaction %d BUG: %v", id, result))
+		for _, tx := range packedTransactions {
+			// modify by zhmye
+			check := func(tx paradigm.Transaction) error {
+				calldata := tx.CallData()
+				switch tx.(type) {
+				// 这里可以写在Transaction的interface里，加一个Check()，然后下面统一tx.Check()
+				case *paradigm.InitTaskTransaction:
+					// todo
+					return nil
+				case *paradigm.TaskProcessTransaction:
+					if calldata["Process"].(int32) < 0 {
+						return fmt.Errorf("TaskProcessTransaction Process <0")
+					}
+					// todo
+					return nil
+				case *paradigm.EpochRecordTransaction:
+					// todo
+					return nil
+				default:
+					return nil
+				}
+			}
+			if err := check(tx); err != nil {
+				//panic(err)
+				LogWriter.Log("ERROR", err.Error())
 				continue
 			} else {
-				c.queue <- result // 推送到异步队列
-				LogWriter.Log("CHAINUP", fmt.Sprintf("Transaction %d pushed to queue: %v", id, result))
+				c.queue <- tx
 			}
+			//result := tx.CallData()
+			//if result["Process"] == -1 {
+			//	LogWriter.Log("ERROR", fmt.Sprintf("Transaction %d BUG: %v", id, result))
+			//	continue
+			//} else {
+			//	c.queue <- result // 推送到异步队列
+			//	LogWriter.Log("CHAINUP", fmt.Sprintf("Transaction %d pushed to queue: %v", id, result))
+			//}
 		}
 		// LogWriter.Log("CHAINUP", fmt.Sprintf("%d Transactions pushed to queue for async processing", len(packedTransactions)))
 		LogWriter.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
@@ -81,7 +111,7 @@ func (c *ChainUpper) UpChain() {
 	}
 }
 
-func NewChainUpper(pendingTransactions chan paradigm.Transaction, config *Config.BHLayer2NodeConfig) (*ChainUpper, error) {
+func NewChainUpper(pendingTransactions chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, config *Config.BHLayer2NodeConfig) (*ChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{
@@ -112,9 +142,11 @@ func NewChainUpper(pendingTransactions chan paradigm.Transaction, config *Config
 	LogWriter.Log("INFO", fmt.Sprintf("transaction hash: ", receipt.TransactionHash))
 
 	// 初始化队列和 Worker
-	queue := make(chan map[string]interface{}, config.QueueBufferSize)
+	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
 	for i := 0; i < config.WorkerCount; i++ {
-		go service.Worker(i, queue, instance, client)
+		worker := service.NewUpchainWorker(i, queue, dev, instance, client)
+		go worker.Process()
+		//go service. (i, queue, instance, client)
 	}
 	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 

@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/ChainUpper"
 	"BHLayer2Node/Config"
 	"BHLayer2Node/Coordinator"
+	"BHLayer2Node/Dev"
 	"BHLayer2Node/Event"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Network/HTTP"
@@ -12,7 +13,6 @@ import (
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
-	"time"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	//slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
 	pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
 	epochEvent := make(chan bool, 1)
-
+	devTransactionChannel := make(chan []*paradigm.PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
@@ -38,7 +38,8 @@ func main() {
 	event := Event.NewEvent(epochEvent)
 	coordinator := Coordinator.NewCoordinator(config, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, epochHeartbeat)
 	taskManager := Task.NewTaskManager(config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
-	mockerChainUpper := ChainUpper.NewMockerChainUpper(pendingTransactions)
+	mockerChainUpper, _ := ChainUpper.NewMockerChainUpper(pendingTransactions, devTransactionChannel)
+	dev := Dev.NewDev(devTransactionChannel)
 	//chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
 	//if err != nil {
 	//	LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
@@ -85,10 +86,5 @@ func main() {
 	// 主程序保持运行，等待任务完成
 	LogWriter.Log("INFO", "Main program is running...")
 	//time.Sleep(200 * time.Second)
-	timeStart := time.Now()
-	for {
-		if time.Since(timeStart) >= 200*time.Second {
-			break
-		}
-	}
+	dev.Start()
 }

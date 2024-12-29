@@ -2,10 +2,12 @@ package paradigm
 
 // SlotVote 针对某一个slot的投票
 type SlotVote struct {
-	Slot    CommitSlotItem
-	Total   int            // 节点总数
-	Vote    int            // 收到的投票数
-	Message map[int]string // 这个简单记录所有投票
+	//Slot    CommitSlotItem
+	Hash       SlotHash
+	Commitment SlotCommitment
+	Total      int            // 节点总数
+	Vote       int            // 收到的投票数
+	Message    map[int]string // 这个简单记录所有投票
 }
 
 func (v *SlotVote) Accept(id int) {
@@ -24,11 +26,12 @@ func (v *SlotVote) Check() bool {
 	}
 	return check()
 }
-func NewSlotVote(slot CommitSlotItem) *SlotVote {
+func NewSlotVote(hash SlotHash, commitment SlotCommitment) *SlotVote {
 	return &SlotVote{
-		Slot:    slot,
-		Total:   0,
-		Vote:    0,
-		Message: make(map[int]string),
+		Hash:       hash,
+		Commitment: commitment,
+		Total:      0,
+		Vote:       0,
+		Message:    make(map[int]string),
 	}
 }

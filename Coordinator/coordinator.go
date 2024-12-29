@@ -9,6 +9,7 @@ import (
 	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -27,18 +28,15 @@ import (
 // 每隔一段时间，发起SlotVote，从tracker中打包一部分slot（来自各个节点）出来，发送给所有节点进行投票，以bitmap的形式传输投票结果
 // 最后获得k票以上的slot们可以被打包，然后将slot和其投票结果元数据等作为交易传递给chainupper准备上链
 
-// Coordinator
-// 2024-11-25 先完成schedule
 type Coordinator struct {
 	pendingSchedules chan paradigm.TaskSchedule    // 等待被发送的调度任务
 	unprocessedTasks chan paradigm.UnprocessedTask // 待处理任务
 	scheduledTasks   chan paradigm.TaskSchedule    // 已经完成调度的任务
-	//nodeAddresses    map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
-	connManager    *Grpc.NodeGrpcManager        //用于管理GRPC客户端连接
-	nodeConnMap    map[int]*grpc.ClientConn     // 用于管理grpc与节点之间的channel，避免重复创建
-	serverPort     int                          // coordinator对节点暴露的grpc端口
-	epochHeartbeat chan *pb.HeartbeatRequest    // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
-	commitSlot     chan paradigm.CommitSlotItem // 交给taskManager更新
+	maxEpochDelay    int                           //说明多少时间后需要传递一个zkp证明以及多久后开始投票
+	connManager      *Grpc.NodeGrpcManager         //用于管理GRPC客户端连接
+	serverPort       int                           // coordinator对节点暴露的grpc端口
+	epochHeartbeat   chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	commitSlot       chan paradigm.CommitSlotItem  // 交给taskManager更新
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
 
@@ -93,25 +91,8 @@ func (c *Coordinator) Start() {
 	//}
 }
 
-// 获取与节点连接的客户端
-//func (c *Coordinator) getClient(nodeId int) (pb.NodeExecutorClient, error) {
-//	client, ok := c.nodeClientMap[nodeId]
-//	//采用lazy获取
-//	if !ok {
-//		address := c.nodeAddresses[nodeId]
-//		conn, err := grpc.Dial(address.GetAddrStr(), grpc.WithInsecure())
-//		if err != nil {
-//			return nil, err
-//		}
-//		newClient := pb.NewNodeExecutorClient(conn)
-//		c.nodeClientMap[nodeId] = newClient
-//		client = newClient
-//	}
-//	return client, nil
-//}
-
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
+func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
@@ -122,7 +103,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 
 	request := pb.ScheduleRequest{
 		Sign:     sign,
-		Slot:     strconv.Itoa(slot),
+		Slot:     slot,
 		Size:     size,
 		Schedule: schedule,
 		Model:    model,
@@ -272,24 +253,40 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 
 }
 
-// 服务端方法，用于处理提交的slot
+// CommitSlot 服务端方法，用于处理提交的slot
 func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest) (*pb.SlotCommitResponse, error) {
-	nodeId, _ := strconv.Atoi(req.NodeId)
-	slot, _ := strconv.Atoi(req.Slot)
+	//nodeId, _ := strconv.Atoi(req.NodeId)
+	//slot, _ := strconv.Atoi(req.Slot)
+
 	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
-		Nid:     int32(nodeId),
-		Process: req.Size,
-		Sign:    req.Sign,
-		Slot:    int32(slot),
-		Epoch:   -1,
+		Nid:        req.NodeId,
+		Process:    req.Size,
+		Sign:       req.Sign,
+		Slot:       req.Slot,
+		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
+		Commitment: req.Commitment,
 	})
-	//TODO  将提交的结果放入commitSlot，这里暂时认为节点的合成数据有效
+	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
 	c.commitSlot <- item
 	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot{%v}", item))
+	generateRandomSeed := func() []byte {
+		size := 256 // 暂定
+		randomBytes := make([]byte, size)
+
+		// 使用 crypto/rand 生成安全随机字节
+		rand.Read(randomBytes)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		return randomBytes
+	}
+
+	// 这里就简单的回复即可，后续所有的东西都由heartbeat、chainupper来给定
 	return &pb.SlotCommitResponse{
-		Valid: "True",
-		Sign:  req.Sign,
-		Slot:  req.Slot,
+		Seed:    generateRandomSeed(),
+		Timeout: int32(c.maxEpochDelay),
+		Hash:    item.SlotHash(), // TODO: Hash是用来让节点在收到heartbeat后判断： 1. 是否本地有一些未确认的数据不需要保存了; 2. 是否自己的任务被拒绝了，是否太慢了
 	}, nil
 }
 
@@ -299,9 +296,9 @@ func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan par
 		pendingSchedules: pendingSchedules,
 		unprocessedTasks: unprocessedTasks,
 		scheduledTasks:   scheduledTasks,
-		//nodeAddresses:    config.BHNodeAddressMap,
-		connManager: Grpc.NewNodeGrpcPool(config.BHNodeAddressMap, 5, 5*time.Minute),
-		serverPort:  config.GrpcPort,
+		maxEpochDelay:    config.MaxEpochDelay,
+		connManager:      Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
+		serverPort:       config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
 		commitSlot:     commitSlot,
 		epochHeartbeat: epochHeartbeat,

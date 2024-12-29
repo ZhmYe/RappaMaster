@@ -50,7 +50,7 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	request := HttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
 		Size:  50, // 模拟固定大小
-		Model: "ctgan",
+		Model: paradigm.ModelTypeToString(paradigm.CTGAN),
 		Params: map[string]interface{}{
 			"condition_column": "native-country",
 			"condition_value":  "United-States",

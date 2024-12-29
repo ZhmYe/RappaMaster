@@ -11,7 +11,15 @@ type Monitor struct {
 func (m *Monitor) Advice(nIDs []int, size int32) []int32 {
 	result := make([]int32, 0)
 	for len(result) < len(nIDs) {
-		result = append(result, size/int32(len(nIDs)))
+		// todo @YZM 这里先简单定下范围
+		adviceSize := size / int32(len(nIDs))
+		if adviceSize > 10 {
+			adviceSize = 10
+		}
+		if adviceSize == 0 {
+			adviceSize = 1
+		}
+		result = append(result, adviceSize)
 	}
 	result[0] += size % int32(len(nIDs))
 	return result

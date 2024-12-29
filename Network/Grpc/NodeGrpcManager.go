@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
-	"time"
 )
 
-// gRPC 连接管理
+// NodeGrpcManager gRPC 连接管理
 type NodeGrpcManager struct {
 	nodeAddresses map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
 	connPool      map[int]*grpc.ClientConn      // 按nodeId分组的连接池
 }
 
-// 创建一个新的连接池
-func NewNodeGrpcPool(nodeAddresses map[int]*Config.BHNodeAddress, maxConns int, connExpiry time.Duration) *NodeGrpcManager {
+func NewNodeGrpcManager(nodeAddresses map[int]*Config.BHNodeAddress) *NodeGrpcManager {
 	p := &NodeGrpcManager{
 		connPool:      make(map[int]*grpc.ClientConn),
 		nodeAddresses: nodeAddresses,
@@ -24,7 +22,7 @@ func NewNodeGrpcPool(nodeAddresses map[int]*Config.BHNodeAddress, maxConns int, 
 	return p
 }
 
-// 获取一个 gRPC 连接
+// GetConn 获取一个 gRPC 连接
 func (p *NodeGrpcManager) GetConn(nodeId int) (*grpc.ClientConn, error) {
 	// 如果连接池中有可用的连接，直接返回
 	if conn, ok := p.connPool[nodeId]; ok {
@@ -47,12 +45,12 @@ func (p *NodeGrpcManager) GetConn(nodeId int) (*grpc.ClientConn, error) {
 	}
 }
 
-// 获取节点的地址列表
+// GetNodeAddresses 获取节点的地址列表
 func (p *NodeGrpcManager) GetNodeAddresses() map[int]*Config.BHNodeAddress {
 	return p.nodeAddresses
 }
 
-// 关闭连接池中的所有连接
+// CloseAll 关闭连接池中的所有连接
 func (p *NodeGrpcManager) CloseAll() {
 	for nodeId, conn := range p.connPool {
 		conn.Close()
