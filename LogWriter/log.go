@@ -38,7 +38,7 @@ func NewLogWriter(logPath string, debug bool) *LogWriter {
 // Init initializes the logger
 func (lw *LogWriter) Init() error {
 	var writers []io.Writer
-	//writers = append(writers, os.Stdout)
+	writers = append(writers, os.Stdout)
 
 	if !lw.Debug {
 		currentTime := time.Now().Format("2006-01-02_15-04-05")
@@ -71,6 +71,7 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["COORDINATOR"] = func(msg string) { lw.log("COORDINATOR", msg) }
 	lw.LogLevels["TRACKER"] = func(msg string) { lw.log("TRACKER", msg) }
 	lw.LogLevels["VOTE"] = func(msg string) { lw.log("VOTE", msg) }
+	lw.LogLevels["EPOCH"] = func(msg string) { lw.log("EPOCH", msg) }
 }
 
 // log logs a message with a specific level

@@ -31,7 +31,6 @@ message JustifiedSlot {
   string sign = 3;        // 签名
   int32 slot = 4;         // 槽位ID
   int32 epoch = 5;        // 提交的epoch
-  // TODO: @SD 这里需要在python代码里先加一个commitment字段上去，可以先不真的算后面具体怎么算还要改，先放一个函数在那compute_commitment,我不记得我有没有放了
   bytes commitment = 6; // 提交slot的时候向Master承诺，自己生成的数据文件的commitment
   // state字段省略
 }
@@ -39,10 +38,11 @@ message JustifiedSlot {
 // Heartbeat request message
 message HeartbeatRequest {
   map<string, bytes> commits = 1;     // 提交的CommitSlotItem列表
-  map<string, bytes> finalizes = 2;   // 完成的CommitSlotItem列表
-  map<string, int32> invalids = 3;    // 这个epoch中检测出的有问题的slot
+  map<string, bytes> justifieds = 2;
+  map<string, bytes> finalizes = 3;   // 完成的CommitSlotItem列表
+  map<string, int32> invalids = 4;    // 这个epoch中检测出的有问题的slot
 //  map<string, int32> tasks = 3;            // 在这个epoch中过期的任务的最新slot
-  int32 epoch = 4;
+  int32 epoch = 5;
 }
 
 // Heartbeat response message
@@ -68,7 +68,7 @@ message Vote {
 
 message ScheduleRequest {
   string sign = 1; // 任务标记
-  string slot = 2;
+  int32 slot = 2;
   int32 size = 3; // 数据总量
   map<string, int32> schedule = 4; // 分配，节点id: 数据量
   string model = 5; // 模型名称

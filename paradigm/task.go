@@ -8,7 +8,7 @@ import (
 // Task 描述一个合成任务
 type Task struct {
 	Sign       string
-	Slot       int
+	Slot       int32
 	Model      string
 	Params     map[string]interface{}
 	Size       int32 // 总的数据量

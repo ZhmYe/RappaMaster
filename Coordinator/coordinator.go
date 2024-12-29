@@ -92,7 +92,7 @@ func (c *Coordinator) Start() {
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
+func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
@@ -103,7 +103,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int, size int32, model stri
 
 	request := pb.ScheduleRequest{
 		Sign:     sign,
-		Slot:     strconv.Itoa(slot),
+		Slot:     slot,
 		Size:     size,
 		Schedule: schedule,
 		Model:    model,

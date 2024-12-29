@@ -1,6 +1,7 @@
 package paradigm
 
 import (
+	"BHLayer2Node/LogWriter"
 	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
@@ -136,11 +137,12 @@ type EpochRecord struct {
 	//commits   []*service.JustifiedSlot
 	//finalizes []*service.JustifiedSlot
 	//invalids  []*service.JustifiedSlot
-	Id        int                            // Epoch id
-	Commits   map[SlotHash]SlotCommitment    // 在这个epoch里commit的slot，目前状态为undetermined, map的内容为commitment
-	Finalizes map[SlotHash]SlotCommitment    // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
-	Invalids  map[SlotHash]InvalidCommitType // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
-	Tasks     map[string]int32               // 新收到的任务sign, 对应的数据量
+	Id         int                         // Epoch id
+	Commits    map[SlotHash]SlotCommitment // 在这个epoch里commit的slot，目前状态为undetermined, map的内容为commitment
+	Justifieds map[SlotHash]SlotCommitment
+	Finalizes  map[SlotHash]SlotCommitment    // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
+	Invalids   map[SlotHash]InvalidCommitType // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
+	Tasks      map[string]int32               // 新收到的任务sign, 对应的数据量
 }
 
 func (r *EpochRecord) UpdateTask(task *Task) {
@@ -159,6 +161,19 @@ func (r *EpochRecord) Commit(slot *CommitSlotItem) {
 	}
 	if check() {
 		r.Commits[slot.SlotHash()] = slot.Commitment
+	}
+}
+func (r *EpochRecord) Justified(slot *CommitSlotItem) {
+	check := func() bool {
+		if slot.State() != JUSTIFIED {
+			return false
+		}
+		return true
+	}
+	if check() {
+		r.Justifieds[slot.hash] = slot.Commitment
+	} else {
+		slot.SetInvalid(UNKNOWN) // TODO
 	}
 }
 func (r *EpochRecord) Finalize(slot *CommitSlotItem) {
@@ -196,7 +211,13 @@ func (r *EpochRecord) Refresh() {
 	r.Finalizes = make(map[SlotHash]SlotCommitment)
 	r.Invalids = make(map[SlotHash]InvalidCommitType)
 }
-
+func (r *EpochRecord) Echo() {
+	LogWriter.Log("EPOCH", fmt.Sprintf("Epoch %d Record: ", r.Id))
+	LogWriter.Log("EPOCH", fmt.Sprintf("	Commits: %v", r.Commits))
+	LogWriter.Log("EPOCH", fmt.Sprintf("	Justifieds: %v", r.Justifieds))
+	LogWriter.Log("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
+	LogWriter.Log("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
+}
 func NewEpochRecord() *EpochRecord {
 	return &EpochRecord{
 		Id:        0,

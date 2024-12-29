@@ -44,7 +44,7 @@ func (t *TaskManager) Start() {
 				case paradigm.UNDETERMINED:
 					// 该slot刚被提交
 					// 这里需要先确认一下这个slot是否是合法的, 如果这个slot已经是过时的了，没有必要进入投票
-					isValid := t.CheckSlotIsValid(commitSlotItem.Sign, int(commitSlotItem.Slot))
+					isValid := t.CheckSlotIsValid(commitSlotItem.Sign, commitSlotItem.Slot)
 					if isValid != paradigm.NONE {
 						t.epochRecord.Abort(&commitSlotItem, isValid)
 						continue
@@ -128,7 +128,7 @@ func (t *TaskManager) CheckTaskIsFinish(sign string) bool {
 		return task.IsFinish()
 	}
 }
-func (t *TaskManager) CheckSlotIsValid(sign string, slot int) paradigm.InvalidCommitType {
+func (t *TaskManager) CheckSlotIsValid(sign string, slot int32) paradigm.InvalidCommitType {
 	if _, exist := t.tasks[sign]; !exist {
 		return paradigm.INVALID_SLOT
 	} // todo 这里可以区分slot和sign
@@ -228,10 +228,14 @@ func (t *TaskManager) UpdateEpoch() {
 	t.epochHeartbeat <- heartbeat
 	//fmt.Println(t.epochRecord)
 	go func(epochRecord EpochRecord) {
+		commits := make([]paradigm.SlotHash, 0)
 		justified := make([]paradigm.SlotHash, 0)
 		finalized := make([]paradigm.SlotHash, 0)
 		//invalids := make(map[paradigm.SlotHash]paradigm.InvalidCommitType)
 		for hash, _ := range epochRecord.Commits {
+			commits = append(commits, hash)
+		}
+		for hash, _ := range epochRecord.Justifieds {
 			justified = append(justified, hash)
 		}
 		for hash, _ := range epochRecord.Finalizes {
@@ -247,6 +251,7 @@ func (t *TaskManager) UpdateEpoch() {
 		}
 	}(*t.epochRecord)
 	// 下面的内容和心跳无关
+	t.epochRecord.Echo()
 	for _, sign := range outOfDateTasks {
 		task := t.tasks[sign]
 		if t.CheckTaskIsFinish(sign) {
@@ -265,9 +270,10 @@ func (t *TaskManager) UpdateEpoch() {
 func (t *TaskManager) buildHeartbeat() *pb.HeartbeatRequest {
 	//fmt.Println(len(t.epochRecord.commits), len(t.epochRecord.finalizes), 111)
 	return &pb.HeartbeatRequest{
-		Commits:   t.epochRecord.Commits,
-		Finalizes: t.epochRecord.Finalizes,
-		Invalids:  t.epochRecord.Invalids,
+		Commits:    t.epochRecord.Commits,
+		Justifieds: t.epochRecord.Justifieds,
+		Finalizes:  t.epochRecord.Finalizes,
+		Invalids:   t.epochRecord.Invalids,
 		//Tasks:     validTaskMap,
 		Epoch: int32(t.currentEpoch),
 	}
