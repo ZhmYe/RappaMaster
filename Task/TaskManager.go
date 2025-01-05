@@ -278,20 +278,18 @@ func (t *TaskManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Epoch: int32(t.currentEpoch),
 	}
 }
-func NewTaskManager(config *Config.BHLayer2NodeConfig, scheduledTasks chan paradigm.TaskSchedule,
-	commitSlot chan paradigm.CommitSlotItem, unprocessedTasks chan paradigm.UnprocessedTask, epochChangeEvent chan bool,
-	initTasks chan paradigm.UnprocessedTask, pendingTransactions chan paradigm.Transaction, epochHeartbeat chan *pb.HeartbeatRequest) *TaskManager {
+func NewTaskManager(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *TaskManager {
 	return &TaskManager{
 		tasks:               make(map[string]*Task),
 		mu:                  sync.Mutex{},
 		tracker:             NewTracker(config),
-		scheduledTasks:      scheduledTasks,
-		commitSlot:          commitSlot,
-		unprocessedTasks:    unprocessedTasks,
-		epochChangeEvent:    epochChangeEvent,
-		initTasks:           initTasks,
-		pendingTransactions: pendingTransactions,
-		epochHeartbeat:      epochHeartbeat,
+		scheduledTasks:      channel.ScheduledTasks,
+		commitSlot:          channel.CommitSlots,
+		unprocessedTasks:    channel.UnprocessedTasks,
+		epochChangeEvent:    channel.EpochEvent,
+		initTasks:           channel.InitTasks,
+		pendingTransactions: channel.PendingTransactions,
+		epochHeartbeat:      channel.EpochHeartbeat,
 		//slotToVotes:      slotToVotes,
 		epochRecord:       paradigm.NewEpochRecord(),
 		pendingCommitSlot: make(map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack),

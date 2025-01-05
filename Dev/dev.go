@@ -60,11 +60,11 @@ func (d *Dev) Start() {
 	}
 }
 
-func NewDev(tx chan []*paradigm.PackedTransaction) *Dev {
+func NewDev(channel *paradigm.RappaChannel) *Dev {
 	return &Dev{
 		tasks:  make(map[string]*paradigm.DevTask),
 		epochs: make(map[int]*paradigm.DevEpoch),
-		tx:     tx,
+		tx:     channel.DevTransactionChannel,
 		tID:    0,
 	}
 }

@@ -111,7 +111,7 @@ func (c *ChainUpper) UpChain() {
 	}
 }
 
-func NewChainUpper(pendingTransactions chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, config *Config.BHLayer2NodeConfig) (*ChainUpper, error) {
+func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeConfig) (*ChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{
@@ -144,14 +144,14 @@ func NewChainUpper(pendingTransactions chan paradigm.Transaction, dev chan []*pa
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
 	for i := 0; i < config.WorkerCount; i++ {
-		worker := service.NewUpchainWorker(i, queue, dev, instance, client)
+		worker := service.NewUpchainWorker(i, queue, channel.DevTransactionChannel, instance, client)
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}
 	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 
 	return &ChainUpper{
-		pendingTransactions: pendingTransactions,
+		pendingTransactions: channel.PendingTransactions,
 		transactionPool:     make([]paradigm.Transaction, 0),
 		unprocessedIndex:    0,
 		mu:                  sync.Mutex{},

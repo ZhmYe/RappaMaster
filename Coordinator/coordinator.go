@@ -295,18 +295,18 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 	}, nil
 }
 
-func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, epochHeartbeat chan *pb.HeartbeatRequest) *Coordinator {
+func NewCoordinator(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *Coordinator {
 	// 加载配置中的节点IP
 	c := Coordinator{
-		pendingSchedules: pendingSchedules,
-		unprocessedTasks: unprocessedTasks,
-		scheduledTasks:   scheduledTasks,
+		pendingSchedules: channel.PendingSchedule,
+		unprocessedTasks: channel.UnprocessedTasks,
+		scheduledTasks:   channel.ScheduledTasks,
 		maxEpochDelay:    config.MaxEpochDelay,
 		connManager:      Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
 		serverPort:       config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
-		commitSlot:     commitSlot,
-		epochHeartbeat: epochHeartbeat,
+		commitSlot:     channel.CommitSlots,
+		epochHeartbeat: channel.EpochHeartbeat,
 		mu:             sync.Mutex{},
 	}
 	//for i, address := range c.nodeAddresses {

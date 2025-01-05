@@ -115,11 +115,11 @@ func (s *Scheduler) SetTaskManager(manager *Task.TaskManager) {
 }
 
 // NewScheduler 创建新的 Scheduler todo
-func NewScheduler(unprocessedTasks chan paradigm.UnprocessedTask, pendingSchedule chan paradigm.TaskSchedule) *Scheduler {
+func NewScheduler(channel *paradigm.RappaChannel) *Scheduler {
 	return &Scheduler{
 		//grpcEngine:       nil,
-		unprocessedTasks: unprocessedTasks,
-		pendingSchedules: pendingSchedule,
+		unprocessedTasks: channel.UnprocessedTasks,
+		pendingSchedules: channel.PendingSchedule,
 		config:           nil,
 		mu:               sync.Mutex{},
 	}

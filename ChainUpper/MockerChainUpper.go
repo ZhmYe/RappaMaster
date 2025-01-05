@@ -103,7 +103,7 @@ func (c *MockerChainUpper) UpChain() {
 		LogWriter.Log("WARNING", "Nothing to up to Blockchain..., len(transactionPool) = 0")
 	}
 }
-func NewMockerChainUpper(pendingTransactions chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction) (*MockerChainUpper, error) {
+func NewMockerChainUpper(channel *paradigm.RappaChannel) (*MockerChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	//privateKey, _ := hex.DecodeString(config.PrivateKey)
 	//client, err := client.DialContext(context.Background(), &client.Config{
@@ -136,14 +136,14 @@ func NewMockerChainUpper(pendingTransactions chan paradigm.Transaction, dev chan
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, 10000)
 	for i := 0; i < 1; i++ {
-		worker := service.NewMockerUpChainWorker(i, queue, dev)
+		worker := service.NewMockerUpChainWorker(i, queue, channel.DevTransactionChannel)
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}
 	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 
 	return &MockerChainUpper{
-		pendingTransactions: pendingTransactions,
+		pendingTransactions: channel.PendingTransactions,
 		transactionPool:     make([]paradigm.Transaction, 0),
 		unprocessedIndex:    0,
 		mu:                  sync.Mutex{},
