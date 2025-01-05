@@ -47,9 +47,9 @@ func (c *Coordinator) Start() {
 	// 处理调度,向节点发送调度信息
 	processSchedule := func() {
 		for schedule := range c.pendingSchedules {
-			mapSchedule := make(map[string]int32)
+			mapSchedule := make(map[int]int32)
 			for _, item := range schedule.Schedules {
-				mapSchedule[strconv.Itoa(item.NID)] = item.Size
+				mapSchedule[item.NID] = item.Size
 			}
 
 			// 调用 sendSchedule，这里暂时是统一发给有节点 todo 有必要只给分配的节点?
@@ -92,7 +92,7 @@ func (c *Coordinator) Start() {
 }
 
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model string, params map[string]interface{}, schedule map[string]int32) {
+func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, model string, params map[string]interface{}, schedule map[int]int32) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
@@ -101,21 +101,25 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model st
 		panic(err)
 	}
 
-	request := pb.ScheduleRequest{
-		Sign:     sign,
-		Slot:     slot,
-		Size:     size,
-		Schedule: schedule,
-		Model:    model,
-		Params:   convertedParams,
-	}
-
 	var wg sync.WaitGroup
 	successChannel := make(chan paradigm.ScheduleItem, len(nodeAddresses)) // 用于统计成功的任务大小
 
 	// 遍历所有节点
 	for nodeID, address := range nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器
+		// TODO @YZM 这里暂时先这样写了，就是给每个slot一个标识
+		computeScheduleHash := func(nodeID int) paradigm.SlotHash {
+			return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
+		}
+		request := pb.ScheduleRequest{
+			Sign:   sign,
+			Slot:   slot,
+			Size:   schedule[nodeID],
+			NodeID: int32(nodeID),
+			Model:  model,
+			Params: convertedParams,
+			Hash:   computeScheduleHash(nodeID),
+		}
 		go func(nodeID int, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
 
@@ -145,7 +149,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model st
 			}
 
 			// 根据节点反馈更新统计
-			assignedSize := schedule[resp.NodeId]
+			assignedSize := schedule[nodeID]
 			nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
 				LogWriter.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
@@ -172,19 +176,19 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model st
 		acceptedSize += item.Size
 		acceptSchedules = append(acceptSchedules, item)
 	}
-	remainingSize := size - acceptedSize
+	remainingSize := totalSize - acceptedSize
 
 	// 输出统计结果
 	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted", sign, remainingSize))
 	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", sign, acceptedSize))
 	// 然后这里把数据放到scheduler重新来
 	//newSlot := slot
-	if remainingSize == size {
+	if remainingSize == totalSize {
 		// 如果所有节点都不接受，直接重新调度
 		c.unprocessedTasks <- paradigm.UnprocessedTask{
 			Sign:   sign,
 			Slot:   slot,
-			Size:   size,
+			Size:   totalSize,
 			Model:  model,
 			Params: params,
 		}
@@ -198,7 +202,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, size int32, model st
 		c.scheduledTasks <- paradigm.TaskSchedule{
 			Sign:      sign,
 			Slot:      slot,
-			Size:      size,
+			Size:      totalSize,
 			Model:     model,
 			Params:    params,
 			Schedules: acceptSchedules,
@@ -266,9 +270,10 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
 		Commitment: req.Commitment,
 	})
+	item.SetHash(req.Hash) // 设置slotHash
 	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
 	c.commitSlot <- item
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot{%v}", item))
+	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot: {%s}", item.SlotHash()))
 	generateRandomSeed := func() []byte {
 		size := 256 // 暂定
 		randomBytes := make([]byte, size)
@@ -290,18 +295,18 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 	}, nil
 }
 
-func NewCoordinator(config *Config.BHLayer2NodeConfig, pendingSchedules chan paradigm.TaskSchedule, unprocessedTasks chan paradigm.UnprocessedTask, scheduledTasks chan paradigm.TaskSchedule, commitSlot chan paradigm.CommitSlotItem, epochHeartbeat chan *pb.HeartbeatRequest) *Coordinator {
+func NewCoordinator(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *Coordinator {
 	// 加载配置中的节点IP
 	c := Coordinator{
-		pendingSchedules: pendingSchedules,
-		unprocessedTasks: unprocessedTasks,
-		scheduledTasks:   scheduledTasks,
+		pendingSchedules: channel.PendingSchedule,
+		unprocessedTasks: channel.UnprocessedTasks,
+		scheduledTasks:   channel.ScheduledTasks,
 		maxEpochDelay:    config.MaxEpochDelay,
 		connManager:      Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
 		serverPort:       config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
-		commitSlot:     commitSlot,
-		epochHeartbeat: epochHeartbeat,
+		commitSlot:     channel.CommitSlots,
+		epochHeartbeat: channel.EpochHeartbeat,
 		mu:             sync.Mutex{},
 	}
 	//for i, address := range c.nodeAddresses {

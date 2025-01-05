@@ -52,6 +52,7 @@ func (c *CommitSlotItem) Record() ScheduleItem {
 		Hash:       c.hash,
 	}
 }
+
 func (c *CommitSlotItem) Check() bool {
 	// todo
 	check := func() bool {
@@ -88,6 +89,11 @@ func (c *CommitSlotItem) SetEpoch(e int32) {
 	c.Epoch = e
 	//c.JustifiedSlot.Epoch = e
 }
+
+func (c *CommitSlotItem) SetHash(hash SlotHash) {
+	c.hash = hash
+}
+
 func (c *CommitSlotItem) computeHash() {
 	// todo 这里的哈希可以修改
 	generateHash := func(sign string, slot int, node int) SlotHash {
@@ -96,6 +102,7 @@ func (c *CommitSlotItem) computeHash() {
 	c.hash = generateHash(c.Sign, int(c.Slot), int(c.Nid))
 
 }
+
 func (c *CommitSlotItem) SlotHash() SlotHash {
 	return c.hash
 }
@@ -112,7 +119,8 @@ func NewCommitSlotItem(slot *service.JustifiedSlot) CommitSlotItem {
 		InvalidType:   NONE,
 		//proof:         false,
 	}
-	s.computeHash()
+	//s.hash = s.Hash // todo 这里简单这样写一下
+	//s.computeHash()
 	return s
 }
 func NewFakeCommitSlotItem(hash SlotHash) CommitSlotItem {

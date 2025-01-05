@@ -11,7 +11,6 @@ import (
 	"BHLayer2Node/Schedule"
 	"BHLayer2Node/Task"
 	"BHLayer2Node/paradigm"
-	pb "BHLayer2Node/pb/service"
 	"fmt"
 )
 
@@ -19,34 +18,35 @@ func main() {
 	config := Config.LoadBHLayer2NodeConfig("config.json")
 
 	// 初始化 channels
-	initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	//pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
-	pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
-	scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
-	commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
-	//slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
-	epochEvent := make(chan bool, 1)
-	devTransactionChannel := make(chan []*paradigm.PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
+	//initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
+	//unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
+	////pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
+	//pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
+	//scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
+	//commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
+	//epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
+	////slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
+	//pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
+	//epochEvent := make(chan bool, 1)
+	//devTransactionChannel := make(chan []*paradigm.PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
+	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
-	httpEngine := HTTP.NewFakeHttpEngine(initTasks)
+	httpEngine := HTTP.NewFakeHttpEngine(rappaChannel)
 	httpEngine.Setup(*config)
-	event := Event.NewEvent(epochEvent)
-	coordinator := Coordinator.NewCoordinator(config, pendingSchedule, unprocessedTasks, scheduledTasks, commitSlots, epochHeartbeat)
-	taskManager := Task.NewTaskManager(config, scheduledTasks, commitSlots, unprocessedTasks, epochEvent, initTasks, pendingTransactions, epochHeartbeat)
-	mockerChainUpper, _ := ChainUpper.NewMockerChainUpper(pendingTransactions, devTransactionChannel)
-	dev := Dev.NewDev(devTransactionChannel)
-	//chainUpper, err := ChainUpper.NewChainUpper(pendingTransactions, config)
+	event := Event.NewEvent(rappaChannel)
+	coordinator := Coordinator.NewCoordinator(config, rappaChannel)
+	taskManager := Task.NewTaskManager(config, rappaChannel)
+	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
+	dev := Dev.NewDev(rappaChannel)
+	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	//if err != nil {
 	//	LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
 	//}
 
 	// 初始化 Scheduler
-	scheduler := Schedule.NewScheduler(unprocessedTasks, pendingSchedule)
+	scheduler := Schedule.NewScheduler(rappaChannel)
 	// 配置 Scheduler
 	scheduler.Setup(config)
 	//scheduler.SetGrpc(grpcEngine)
@@ -60,8 +60,7 @@ func main() {
 	//定时，如果大于10s,EpochEvent队列里放置一个true
 	go event.Start()
 
-	//go chainUpper.Start()
-	go mockerChainUpper.Start()
+	go chainUpper.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))

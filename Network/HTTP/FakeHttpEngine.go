@@ -70,9 +70,9 @@ func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
 }
 
 // NewFakeHttpEngine 创建并返回一个新的 FakeHttpEngine 实例
-func NewFakeHttpEngine(initTasks chan paradigm.UnprocessedTask) *FakeHttpEngine {
+func NewFakeHttpEngine(channel *paradigm.RappaChannel) *FakeHttpEngine {
 	return &FakeHttpEngine{
-		initTasks: initTasks,
+		initTasks: channel.InitTasks,
 		//PendingRequestPool: PendingRequestPool,
 	}
 }

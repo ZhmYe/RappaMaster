@@ -1,6 +1,9 @@
 package Event
 
-import "time"
+import (
+	"BHLayer2Node/paradigm"
+	"time"
+)
 
 // Event 事件
 type Event struct {
@@ -20,6 +23,6 @@ func (e *Event) Start() {
 	go epochForward()
 }
 
-func NewEvent(epoch chan bool) *Event {
-	return &Event{EpochEvent: epoch}
+func NewEvent(channel *paradigm.RappaChannel) *Event {
+	return &Event{EpochEvent: channel.EpochEvent}
 }
