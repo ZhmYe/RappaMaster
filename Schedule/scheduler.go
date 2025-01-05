@@ -84,6 +84,7 @@ func (s *Scheduler) process(slot paradigm.UnprocessedTask) {
 		schedules = append(schedules, paradigm.ScheduleItem{
 			Size: allocatedSize,
 			NID:  id,
+			//Hash: computeScheduleHash(id),
 		})
 	}
 	taskSchedule := paradigm.TaskSchedule{
