@@ -17,18 +17,6 @@ import (
 func main() {
 	config := Config.LoadBHLayer2NodeConfig("config.json")
 
-	// 初始化 channels
-	//initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	//unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	////pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
-	//pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
-	//scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
-	//commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
-	////slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
-	//epochEvent := make(chan bool, 1)
-	//devTransactionChannel := make(chan []*paradigm.PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
 	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
