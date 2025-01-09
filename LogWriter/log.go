@@ -72,6 +72,7 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["TRACKER"] = func(msg string) { lw.log("TRACKER", msg) }
 	lw.LogLevels["VOTE"] = func(msg string) { lw.log("VOTE", msg) }
 	lw.LogLevels["EPOCH"] = func(msg string) { lw.log("EPOCH", msg) }
+	lw.LogLevels["COLLECT"] = func(msg string) { lw.log("COLLECT", msg) }
 }
 
 // log logs a message with a specific level

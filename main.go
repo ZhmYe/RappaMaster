@@ -2,6 +2,7 @@ package main
 
 import (
 	"BHLayer2Node/ChainUpper"
+	"BHLayer2Node/Collector"
 	"BHLayer2Node/Config"
 	"BHLayer2Node/Coordinator"
 	"BHLayer2Node/Dev"
@@ -17,18 +18,6 @@ import (
 func main() {
 	config := Config.LoadBHLayer2NodeConfig("config.json")
 
-	// 初始化 channels
-	//initTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	//unprocessedTasks := make(chan paradigm.UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	////pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
-	//pendingSchedule := make(chan paradigm.TaskSchedule, config.MaxPendingSchedulePoolSize)
-	//scheduledTasks := make(chan paradigm.TaskSchedule, config.MaxScheduledTasksPoolSize)
-	//commitSlots := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
-	////slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//pendingTransactions := make(chan paradigm.Transaction, config.MaxCommitSlotItemPoolSize) // todo
-	//epochEvent := make(chan bool, 1)
-	//devTransactionChannel := make(chan []*paradigm.PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
 	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
@@ -40,6 +29,7 @@ func main() {
 	taskManager := Task.NewTaskManager(config, rappaChannel)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	dev := Dev.NewDev(rappaChannel)
+	collector := Collector.NewCollector(rappaChannel)
 	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	//if err != nil {
 	//	LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
@@ -61,6 +51,7 @@ func main() {
 	go event.Start()
 
 	go chainUpper.Start()
+	go collector.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))
