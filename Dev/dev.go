@@ -12,8 +12,10 @@ type Dev struct {
 	epochs map[int]*paradigm.DevEpoch   // 所有的epoch,以epochID为map
 	//updateEpoch  chan *paradigm.EpochRecord        // 更新epoch来传递内容，由chainupper给定txhash
 	//transactions map[int]interface{}               // 这里一笔交易对应一个task或者一个slot或者一个epoch
-	tx  chan []*paradigm.PackedTransaction // 上链完成后的交易,在异步上链组件中批量给出
-	tID int
+	tx                     chan []*paradigm.PackedTransaction // 上链完成后的交易,在异步上链组件中批量给出
+	toCollectorSlotChannel chan paradigm.CommitSlotItem       // 传递给collector
+	tID                    int
+	// todo @YZM 这里加上transaction receipt，便于查看
 }
 
 func (d *Dev) Start() {
@@ -52,6 +54,10 @@ func (d *Dev) Start() {
 				} else {
 					panic("Error in Process Task!!!")
 				}
+				// 这里更新了task的slot，那么可以将这里的Slot传递给collector
+				commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
+				d.toCollectorSlotChannel <- *commitSlotItem
+
 			default:
 				panic("Unknown Transaction!!!")
 			}
@@ -62,9 +68,10 @@ func (d *Dev) Start() {
 
 func NewDev(channel *paradigm.RappaChannel) *Dev {
 	return &Dev{
-		tasks:  make(map[string]*paradigm.DevTask),
-		epochs: make(map[int]*paradigm.DevEpoch),
-		tx:     channel.DevTransactionChannel,
-		tID:    0,
+		tasks:                  make(map[string]*paradigm.DevTask),
+		epochs:                 make(map[int]*paradigm.DevEpoch),
+		tx:                     channel.DevTransactionChannel,
+		toCollectorSlotChannel: channel.ToCollectorSlotChannel,
+		tID:                    0,
 	}
 }

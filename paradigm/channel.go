@@ -9,13 +9,14 @@ type RappaChannel struct {
 	InitTasks        chan UnprocessedTask
 	UnprocessedTasks chan UnprocessedTask
 	//PendingRequestPool chan UnprocessedTask
-	PendingSchedule       chan TaskSchedule
-	ScheduledTasks        chan TaskSchedule
-	CommitSlots           chan CommitSlotItem
-	EpochHeartbeat        chan *pb.HeartbeatRequest
-	PendingTransactions   chan Transaction
-	EpochEvent            chan bool
-	DevTransactionChannel chan []*PackedTransaction
+	PendingSchedule        chan TaskSchedule
+	ScheduledTasks         chan TaskSchedule
+	CommitSlots            chan CommitSlotItem
+	EpochHeartbeat         chan *pb.HeartbeatRequest
+	PendingTransactions    chan Transaction
+	EpochEvent             chan bool
+	DevTransactionChannel  chan []*PackedTransaction
+	ToCollectorSlotChannel chan CommitSlotItem
 }
 
 func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
@@ -30,16 +31,18 @@ func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 	pendingTransactions := make(chan Transaction, config.MaxCommitSlotItemPoolSize) // todo
 	epochEvent := make(chan bool, 1)
 	devTransactionChannel := make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
+	toCollectSlotChanel := make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize)         // todo
 	return &RappaChannel{
 		InitTasks:        initTasks,
 		UnprocessedTasks: unprocessedTasks,
 		//PendingRequestPool:    pendingSchedule,
-		PendingSchedule:       pendingSchedule,
-		ScheduledTasks:        scheduledTasks,
-		CommitSlots:           commitSlots,
-		EpochHeartbeat:        epochHeartbeat,
-		PendingTransactions:   pendingTransactions,
-		EpochEvent:            epochEvent,
-		DevTransactionChannel: devTransactionChannel,
+		PendingSchedule:        pendingSchedule,
+		ScheduledTasks:         scheduledTasks,
+		CommitSlots:            commitSlots,
+		EpochHeartbeat:         epochHeartbeat,
+		PendingTransactions:    pendingTransactions,
+		EpochEvent:             epochEvent,
+		DevTransactionChannel:  devTransactionChannel,
+		ToCollectorSlotChannel: toCollectSlotChanel,
 	}
 }
