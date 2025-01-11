@@ -13,10 +13,12 @@ type HttpTaskRequest = paradigm.UnprocessedTask
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
 	//PendingRequestPool chan HttpTaskRequest          // 给 Scheduler 的请求池，接收来自前端的数据
-	initTasks chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
-	config    Config.BHLayer2NodeConfig
-	ip        string // IP 地址
-	port      int    // 端口
+	initTasks          chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
+	fakeCollectChannel chan [2]interface{}
+	slotCollectChannel chan paradigm.CollectRequest
+	config             Config.BHLayer2NodeConfig
+	ip                 string // IP 地址
+	port               int    // 端口
 }
 
 // HandleRequest 处理请求
@@ -34,6 +36,24 @@ func (e *FakeHttpEngine) HandleRequest() {
 	//time.Sleep(10 * time.Second)
 	//}
 }
+func (e *FakeHttpEngine) HandleCollect() {
+	// 当收到一个task完成的消息后，生成两个不同的collect请求
+	for fakeSign := range e.fakeCollectChannel {
+		sign := fakeSign[0].(string)
+		size := fakeSign[1].(int32)
+		request := e.generateFakeCollectRequest(sign, size)
+		go func(collectChannel chan []byte) {
+			e.slotCollectChannel <- request
+			result := make([][]byte, 0)
+			for slotRecoverData := range collectChannel {
+				result = append(result, slotRecoverData)
+			}
+			// 等待channel关闭
+			LogWriter.Log("DEBUG", fmt.Sprintf("Task %s Collect Finish, Size: %d", sign, size))
+			fmt.Println(result, len(result))
+		}(request.TransferChannel)
+	}
+}
 
 // Start 启动 HTTP 引擎
 func (e *FakeHttpEngine) Start() {
@@ -42,6 +62,7 @@ func (e *FakeHttpEngine) Start() {
 
 	// 启动请求处理 Goroutine
 	go e.HandleRequest()
+	go e.HandleCollect()
 }
 
 // generateFakeRequest 模拟生成 HTTP 请求格式化后的结果
@@ -59,6 +80,15 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", request))
 	return request
 }
+func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32) paradigm.CollectRequest {
+	request := paradigm.CollectRequest{
+		Sign:            sign,
+		Size:            size,
+		TransferChannel: make(chan []byte),
+	}
+	LogWriter.Log("DEBUG", fmt.Sprintf("Generate Fake Collect Request: %+v", request))
+	return request
+}
 
 // Setup 配置 HTTP 引擎
 func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
@@ -72,7 +102,9 @@ func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
 // NewFakeHttpEngine 创建并返回一个新的 FakeHttpEngine 实例
 func NewFakeHttpEngine(channel *paradigm.RappaChannel) *FakeHttpEngine {
 	return &FakeHttpEngine{
-		initTasks: channel.InitTasks,
+		initTasks:          channel.InitTasks,
+		fakeCollectChannel: channel.FakeCollectSignChannel,
+		slotCollectChannel: channel.ToCollectorRequestChannel,
 		//PendingRequestPool: PendingRequestPool,
 	}
 }

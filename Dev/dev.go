@@ -14,6 +14,7 @@ type Dev struct {
 	//transactions map[int]interface{}               // 这里一笔交易对应一个task或者一个slot或者一个epoch
 	tx                     chan []*paradigm.PackedTransaction // 上链完成后的交易,在异步上链组件中批量给出
 	toCollectorSlotChannel chan paradigm.CommitSlotItem       // 传递给collector
+	taskFinishSignChannel  chan [2]interface{}                // todo 这里是测试collect用的
 	tID                    int
 	// todo @YZM 这里加上transaction receipt，便于查看
 }
@@ -50,6 +51,9 @@ func (d *Dev) Start() {
 				taskSign := slot.Sign
 				if task, exist := d.tasks[taskSign]; exist {
 					task.UpdateCommitSlot(slot) // 将commitSlot添加到task的对应slotRecord中
+					if task.IsFinished() {
+						d.taskFinishSignChannel <- [2]interface{}{task.Task.Sign, task.Task.Process}
+					}
 					//task.Print()
 				} else {
 					panic("Error in Process Task!!!")
@@ -72,6 +76,7 @@ func NewDev(channel *paradigm.RappaChannel) *Dev {
 		epochs:                 make(map[int]*paradigm.DevEpoch),
 		tx:                     channel.DevTransactionChannel,
 		toCollectorSlotChannel: channel.ToCollectorSlotChannel,
+		taskFinishSignChannel:  channel.FakeCollectSignChannel,
 		tID:                    0,
 	}
 }
