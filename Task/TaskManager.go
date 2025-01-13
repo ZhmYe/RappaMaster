@@ -44,23 +44,26 @@ func (t *TaskManager) Start() {
 				case paradigm.UNDETERMINED:
 					// 该slot刚被提交
 					// 这里需要先确认一下这个slot是否是合法的, 如果这个slot已经是过时的了，没有必要进入投票
-					isValid := t.CheckSlotIsValid(commitSlotItem.Sign, commitSlotItem.Slot)
-					if isValid != paradigm.NONE {
-						t.epochRecord.Abort(&commitSlotItem, isValid)
-						continue
-					}
+					//isValid := t.CheckSlotIsValid(commitSlotItem.Sign, commitSlotItem.Slot)
+					//if isValid != paradigm.NONE {
+					//	t.epochRecord.Abort(&commitSlotItem, isValid)
+					//	continue
+					//} // 不考虑过时
 					// TODO @YZM 这里是没有判断重复的，是否可以这么考虑，如果节点给的数据多，那是好事，只要它两次提交的数据不是一样的，这部分判断在后面zkp相关里 先不管
 					t.pendingCommitSlot[commitSlotItem.SlotHash()] = paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.CheckIsReliable(commitSlotItem.Sign)) // 等待verify
 					// JUSITIFIED的slot必须在一段时间内完成存储和可信证明
 					t.tracker.UpdateSlot(commitSlotItem.SlotHash())
 					t.epochRecord.Commit(&commitSlotItem) // 无论如何都要放到commit里，用于投票
 				case paradigm.JUSTIFIED:
-					// 这里的Finalize只是说明通过投票了，在无需可信证明的情况下，可以上链
+					// 这里的JUSTIFIED只是说明通过投票了，在无需可信证明的情况下，可以上链
 					// 这里直接commit，commit里不需要额外的check,随时可以上链
 
 					// 接下来只需要将那个对应的pending给设置为win vote 剩下的由Tracker自己处理
 					//t.pendingCommitSlot[commitSlotItem.SlotHash()].ReceiveProof()
-					t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					// TODO @YZM 这里slot的提交时间要理一下
+					if _, exist := t.pendingCommitSlot[commitSlotItem.SlotHash()]; exist {
+						t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					}
 					//err := t.Commit(commitSlotItem)
 					//if err != nil {
 					//	LogWriter.Log("ERROR", err.Error())
@@ -77,7 +80,7 @@ func (t *TaskManager) Start() {
 
 					// 接下来只需要将那个对应的pending给设置为win vote 剩下的由Tracker自己处理
 					//t.pendingCommitSlot[commitSlotItem.SlotHash()].ReceiveProof()
-					t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					//t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
 				//err := t.Commit(commitSlotItem)
 				//if err != nil {
 				//	LogWriter.Log("ERROR", err.Error())

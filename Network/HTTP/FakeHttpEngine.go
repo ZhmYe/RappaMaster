@@ -38,10 +38,15 @@ func (e *FakeHttpEngine) HandleRequest() {
 }
 func (e *FakeHttpEngine) HandleCollect() {
 	// 当收到一个task完成的消息后，生成两个不同的collect请求
+	idx := 0
 	for fakeSign := range e.fakeCollectChannel {
 		sign := fakeSign[0].(string)
 		size := fakeSign[1].(int32)
-		request := e.generateFakeCollectRequest(sign, size)
+		generate_mission := func(sign string, size int32) string {
+			return fmt.Sprintf("%s_%d_%d", sign, size, idx)
+		}
+		mission := generate_mission(sign, size)
+		request := e.generateFakeCollectRequest(sign, size, mission)
 		go func(collectChannel chan []byte) {
 			e.slotCollectChannel <- request
 			result := make([][]byte, 0)
@@ -70,7 +75,7 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	// 模拟生成的请求
 	request := HttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
-		Size:  50, // 模拟固定大小
+		Size:  5, // 模拟固定大小
 		Model: paradigm.ModelTypeToString(paradigm.CTGAN),
 		Params: map[string]interface{}{
 			"condition_column": "native-country",
@@ -80,9 +85,10 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", request))
 	return request
 }
-func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32) paradigm.CollectRequest {
+func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32, mission string) paradigm.CollectRequest {
 	request := paradigm.CollectRequest{
 		Sign:            sign,
+		Mission:         mission,
 		Size:            size,
 		TransferChannel: make(chan []byte),
 	}

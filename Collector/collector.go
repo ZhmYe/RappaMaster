@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
+	"BHLayer2Node/pb/service"
 	"fmt"
 )
 
@@ -67,6 +68,7 @@ func (c *Collector) processCollect(collectRequest paradigm.CollectRequest) {
 
 	sign := collectRequest.Sign
 	total := collectRequest.Size
+	mission := collectRequest.Mission
 	remain := collectRequest.Size
 	// 取出有序的taskSlot
 	taskSlot := c.taskSlots[sign]
@@ -84,10 +86,11 @@ func (c *Collector) processCollect(collectRequest paradigm.CollectRequest) {
 	// 得到如果要收齐这个collect要求，可以对slotHashList里的slot进行collect
 	// 这里为了不妨碍slot的更新，通过go func开始异步
 	collectInstance := paradigm.CollectSlotInstance{
+		Mission:         mission,
 		SlotHashs:       slotHashList,
 		Transfer:        collectRequest.TransferChannel,
-		ResponseChannel: make(chan paradigm.RecoverResponse, Config.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
-		RequestChannel:  c.channel.SlotCollectChannel,
+		ResponseChannel: make(chan service.RecoverResponse, Config.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
+		Connection:      c.channel.SlotCollectChannel,
 	}
 	go collectInstance.Collect()
 }

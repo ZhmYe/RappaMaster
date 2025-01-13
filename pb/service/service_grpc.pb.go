@@ -19,107 +19,111 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Coordinator_CommitSlot_FullMethodName = "/service.Coordinator/CommitSlot"
+	RappaMaster_CommitSlot_FullMethodName = "/service.RappaMaster/CommitSlot"
 )
 
-// CoordinatorClient is the client API for Coordinator service.
+// RappaMasterClient is the client API for RappaMaster service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// 这个是layer端的服务协议
-type CoordinatorClient interface {
-	// Commit 节点向Coordinator返回自己已经完成的Task Slot
+// **
+// NOTE: 定义Master处的接口
+// *
+type RappaMasterClient interface {
+	// CommitSlot Executor向Master提交自己完成的Task Slot
 	CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error)
 }
 
-type coordinatorClient struct {
+type rappaMasterClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewCoordinatorClient(cc grpc.ClientConnInterface) CoordinatorClient {
-	return &coordinatorClient{cc}
+func NewRappaMasterClient(cc grpc.ClientConnInterface) RappaMasterClient {
+	return &rappaMasterClient{cc}
 }
 
-func (c *coordinatorClient) CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error) {
+func (c *rappaMasterClient) CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SlotCommitResponse)
-	err := c.cc.Invoke(ctx, Coordinator_CommitSlot_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaMaster_CommitSlot_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// CoordinatorServer is the server API for Coordinator service.
-// All implementations must embed UnimplementedCoordinatorServer
+// RappaMasterServer is the server API for RappaMaster service.
+// All implementations must embed UnimplementedRappaMasterServer
 // for forward compatibility.
 //
-// 这个是layer端的服务协议
-type CoordinatorServer interface {
-	// Commit 节点向Coordinator返回自己已经完成的Task Slot
+// **
+// NOTE: 定义Master处的接口
+// *
+type RappaMasterServer interface {
+	// CommitSlot Executor向Master提交自己完成的Task Slot
 	CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error)
-	mustEmbedUnimplementedCoordinatorServer()
+	mustEmbedUnimplementedRappaMasterServer()
 }
 
-// UnimplementedCoordinatorServer must be embedded to have
+// UnimplementedRappaMasterServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedCoordinatorServer struct{}
+type UnimplementedRappaMasterServer struct{}
 
-func (UnimplementedCoordinatorServer) CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error) {
+func (UnimplementedRappaMasterServer) CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommitSlot not implemented")
 }
-func (UnimplementedCoordinatorServer) mustEmbedUnimplementedCoordinatorServer() {}
-func (UnimplementedCoordinatorServer) testEmbeddedByValue()                     {}
+func (UnimplementedRappaMasterServer) mustEmbedUnimplementedRappaMasterServer() {}
+func (UnimplementedRappaMasterServer) testEmbeddedByValue()                     {}
 
-// UnsafeCoordinatorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to CoordinatorServer will
+// UnsafeRappaMasterServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RappaMasterServer will
 // result in compilation errors.
-type UnsafeCoordinatorServer interface {
-	mustEmbedUnimplementedCoordinatorServer()
+type UnsafeRappaMasterServer interface {
+	mustEmbedUnimplementedRappaMasterServer()
 }
 
-func RegisterCoordinatorServer(s grpc.ServiceRegistrar, srv CoordinatorServer) {
-	// If the following call pancis, it indicates UnimplementedCoordinatorServer was
+func RegisterRappaMasterServer(s grpc.ServiceRegistrar, srv RappaMasterServer) {
+	// If the following call pancis, it indicates UnimplementedRappaMasterServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Coordinator_ServiceDesc, srv)
+	s.RegisterService(&RappaMaster_ServiceDesc, srv)
 }
 
-func _Coordinator_CommitSlot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaMaster_CommitSlot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SlotCommitRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CoordinatorServer).CommitSlot(ctx, in)
+		return srv.(RappaMasterServer).CommitSlot(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Coordinator_CommitSlot_FullMethodName,
+		FullMethod: RappaMaster_CommitSlot_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CoordinatorServer).CommitSlot(ctx, req.(*SlotCommitRequest))
+		return srv.(RappaMasterServer).CommitSlot(ctx, req.(*SlotCommitRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Coordinator_ServiceDesc is the grpc.ServiceDesc for Coordinator service.
+// RappaMaster_ServiceDesc is the grpc.ServiceDesc for RappaMaster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Coordinator_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.Coordinator",
-	HandlerType: (*CoordinatorServer)(nil),
+var RappaMaster_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.RappaMaster",
+	HandlerType: (*RappaMasterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "CommitSlot",
-			Handler:    _Coordinator_CommitSlot_Handler,
+			Handler:    _RappaMaster_CommitSlot_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -127,147 +131,191 @@ var Coordinator_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	NodeExecutor_Heartbeat_FullMethodName = "/service.NodeExecutor/Heartbeat"
-	NodeExecutor_Schedule_FullMethodName  = "/service.NodeExecutor/Schedule"
+	RappaExecutor_Heartbeat_FullMethodName = "/service.RappaExecutor/Heartbeat"
+	RappaExecutor_Schedule_FullMethodName  = "/service.RappaExecutor/Schedule"
+	RappaExecutor_Collect_FullMethodName   = "/service.RappaExecutor/Collect"
 )
 
-// NodeExecutorClient is the client API for NodeExecutor service.
+// RappaExecutorClient is the client API for RappaExecutor service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// 这个是节点端的服务协议
-type NodeExecutorClient interface {
+// **
+// NOTE: 定义Executor处的接口
+// *
+type RappaExecutorClient interface {
 	// Heartbeat 向follower同步slot状态，同时监控节点状态
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
 	Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error)
+	// Collect 用于向节点收集chunk，恢复文件数据
+	Collect(ctx context.Context, in *RecoverRequest, opts ...grpc.CallOption) (*RecoverResponse, error)
 }
 
-type nodeExecutorClient struct {
+type rappaExecutorClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewNodeExecutorClient(cc grpc.ClientConnInterface) NodeExecutorClient {
-	return &nodeExecutorClient{cc}
+func NewRappaExecutorClient(cc grpc.ClientConnInterface) RappaExecutorClient {
+	return &rappaExecutorClient{cc}
 }
 
-func (c *nodeExecutorClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+func (c *rappaExecutorClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HeartbeatResponse)
-	err := c.cc.Invoke(ctx, NodeExecutor_Heartbeat_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaExecutor_Heartbeat_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *nodeExecutorClient) Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error) {
+func (c *rappaExecutorClient) Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ScheduleResponse)
-	err := c.cc.Invoke(ctx, NodeExecutor_Schedule_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaExecutor_Schedule_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// NodeExecutorServer is the server API for NodeExecutor service.
-// All implementations must embed UnimplementedNodeExecutorServer
+func (c *rappaExecutorClient) Collect(ctx context.Context, in *RecoverRequest, opts ...grpc.CallOption) (*RecoverResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecoverResponse)
+	err := c.cc.Invoke(ctx, RappaExecutor_Collect_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RappaExecutorServer is the server API for RappaExecutor service.
+// All implementations must embed UnimplementedRappaExecutorServer
 // for forward compatibility.
 //
-// 这个是节点端的服务协议
-type NodeExecutorServer interface {
+// **
+// NOTE: 定义Executor处的接口
+// *
+type RappaExecutorServer interface {
 	// Heartbeat 向follower同步slot状态，同时监控节点状态
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
 	Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error)
-	mustEmbedUnimplementedNodeExecutorServer()
+	// Collect 用于向节点收集chunk，恢复文件数据
+	Collect(context.Context, *RecoverRequest) (*RecoverResponse, error)
+	mustEmbedUnimplementedRappaExecutorServer()
 }
 
-// UnimplementedNodeExecutorServer must be embedded to have
+// UnimplementedRappaExecutorServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedNodeExecutorServer struct{}
+type UnimplementedRappaExecutorServer struct{}
 
-func (UnimplementedNodeExecutorServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+func (UnimplementedRappaExecutorServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
-func (UnimplementedNodeExecutorServer) Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error) {
+func (UnimplementedRappaExecutorServer) Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Schedule not implemented")
 }
-func (UnimplementedNodeExecutorServer) mustEmbedUnimplementedNodeExecutorServer() {}
-func (UnimplementedNodeExecutorServer) testEmbeddedByValue()                      {}
+func (UnimplementedRappaExecutorServer) Collect(context.Context, *RecoverRequest) (*RecoverResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Collect not implemented")
+}
+func (UnimplementedRappaExecutorServer) mustEmbedUnimplementedRappaExecutorServer() {}
+func (UnimplementedRappaExecutorServer) testEmbeddedByValue()                       {}
 
-// UnsafeNodeExecutorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to NodeExecutorServer will
+// UnsafeRappaExecutorServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RappaExecutorServer will
 // result in compilation errors.
-type UnsafeNodeExecutorServer interface {
-	mustEmbedUnimplementedNodeExecutorServer()
+type UnsafeRappaExecutorServer interface {
+	mustEmbedUnimplementedRappaExecutorServer()
 }
 
-func RegisterNodeExecutorServer(s grpc.ServiceRegistrar, srv NodeExecutorServer) {
-	// If the following call pancis, it indicates UnimplementedNodeExecutorServer was
+func RegisterRappaExecutorServer(s grpc.ServiceRegistrar, srv RappaExecutorServer) {
+	// If the following call pancis, it indicates UnimplementedRappaExecutorServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&NodeExecutor_ServiceDesc, srv)
+	s.RegisterService(&RappaExecutor_ServiceDesc, srv)
 }
 
-func _NodeExecutor_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaExecutor_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeExecutorServer).Heartbeat(ctx, in)
+		return srv.(RappaExecutorServer).Heartbeat(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NodeExecutor_Heartbeat_FullMethodName,
+		FullMethod: RappaExecutor_Heartbeat_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeExecutorServer).Heartbeat(ctx, req.(*HeartbeatRequest))
+		return srv.(RappaExecutorServer).Heartbeat(ctx, req.(*HeartbeatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NodeExecutor_Schedule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaExecutor_Schedule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ScheduleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(NodeExecutorServer).Schedule(ctx, in)
+		return srv.(RappaExecutorServer).Schedule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: NodeExecutor_Schedule_FullMethodName,
+		FullMethod: RappaExecutor_Schedule_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(NodeExecutorServer).Schedule(ctx, req.(*ScheduleRequest))
+		return srv.(RappaExecutorServer).Schedule(ctx, req.(*ScheduleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// NodeExecutor_ServiceDesc is the grpc.ServiceDesc for NodeExecutor service.
+func _RappaExecutor_Collect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecoverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RappaExecutorServer).Collect(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RappaExecutor_Collect_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RappaExecutorServer).Collect(ctx, req.(*RecoverRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// RappaExecutor_ServiceDesc is the grpc.ServiceDesc for RappaExecutor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var NodeExecutor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.NodeExecutor",
-	HandlerType: (*NodeExecutorServer)(nil),
+var RappaExecutor_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.RappaExecutor",
+	HandlerType: (*RappaExecutorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Heartbeat",
-			Handler:    _NodeExecutor_Heartbeat_Handler,
+			Handler:    _RappaExecutor_Heartbeat_Handler,
 		},
 		{
 			MethodName: "Schedule",
-			Handler:    _NodeExecutor_Schedule_Handler,
+			Handler:    _RappaExecutor_Schedule_Handler,
+		},
+		{
+			MethodName: "Collect",
+			Handler:    _RappaExecutor_Collect_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

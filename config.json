@@ -1,7 +1,7 @@
 {
   "GrpcPort": 1235,
   "HttpPort": 8080,
-  "MaxEpochDelay ": 1,
+  "MaxEpochDelay ": 2,
   "MaxUnprocessedTaskPoolSize": 100,
   "MaxPendingSchedulePoolSize": 100,
   "MaxScheduledTasksPoolSize": 100,

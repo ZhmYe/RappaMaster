@@ -4,19 +4,13 @@ import (
 	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Network/Grpc"
-	"BHLayer2Node/handler"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
-	"context"
 	"fmt"
-	"math/rand"
+	"google.golang.org/grpc"
 	"net"
 	"strconv"
 	"sync"
-	"time"
-
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Coordinator，用于协调各部分的运行，作为代码的核心进程运行
@@ -29,19 +23,19 @@ import (
 // 最后获得k票以上的slot们可以被打包，然后将slot和其投票结果元数据等作为交易传递给chainupper准备上链
 
 type Coordinator struct {
-	pendingSchedules      chan paradigm.TaskSchedule    // 等待被发送的调度任务
-	unprocessedTasks      chan paradigm.UnprocessedTask // 待处理任务
-	scheduledTasks        chan paradigm.TaskSchedule    // 已经完成调度的任务
-	maxEpochDelay         int                           //说明多少时间后需要传递一个zkp证明以及多久后开始投票
-	connManager           *Grpc.NodeGrpcManager         //用于管理GRPC客户端连接
-	serverPort            int                           // coordinator对节点暴露的grpc端口
-	epochHeartbeat        chan *pb.HeartbeatRequest     // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
-	commitSlot            chan paradigm.CommitSlotItem  // 交给taskManager更新
-	recoverRequestChannel chan paradigm.RecoverRequest  // CollectInstance确认收集哪些slot以后发给coordinator进行分发
+	pendingSchedules      chan paradigm.TaskSchedule      // 等待被发送的调度任务
+	unprocessedTasks      chan paradigm.UnprocessedTask   // 待处理任务
+	scheduledTasks        chan paradigm.TaskSchedule      // 已经完成调度的任务
+	maxEpochDelay         int                             //说明多少时间后需要传递一个zkp证明以及多久后开始投票
+	connManager           *Grpc.NodeGrpcManager           //用于管理GRPC客户端连接
+	serverPort            int                             // coordinator对节点暴露的grpc端口
+	epochHeartbeat        chan *pb.HeartbeatRequest       // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	commitSlot            chan paradigm.CommitSlotItem    // 交给taskManager更新
+	recoverRequestChannel chan paradigm.RecoverConnection // CollectInstance确认收集哪些slot以后发给coordinator进行分发
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
 
-	pb.UnimplementedCoordinatorServer
+	pb.UnimplementedRappaMasterServer
 }
 
 func (c *Coordinator) Start() {
@@ -73,30 +67,32 @@ func (c *Coordinator) Start() {
 			LogWriter.Log("ERROR", fmt.Sprintf("Failed to listen: %v", err))
 		}
 		server := grpc.NewServer()
-		pb.RegisterCoordinatorServer(server, c)
+		pb.RegisterRappaMasterServer(server, c)
 		LogWriter.Log("DEBUG", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
 		if err := server.Serve(lis); err != nil {
 			LogWriter.Log("ERROR", fmt.Sprintf("Failed to serve: %v", err))
 		}
+
 	}
 
 	processCollect := func() {
 		for recoverRequest := range c.recoverRequestChannel {
 			// todo @YZM 这里通过grpc发给节点
 			// 假装发一下，然后返回一下response
-			index := 0
-			responseChannel := recoverRequest.ResponseChannel
-			LogWriter.Log("DEBUG", "Send Recover Request to nodes...")
-			for _, hash := range recoverRequest.Hashs {
-				response := paradigm.RecoverResponse{
-					SlotHash: hash,
-					Data:     []byte(fmt.Sprintf("%d", index)),
-				}
-				index++
-				responseChannel <- response
-			}
+			//index := 0
+			//responseChannel := recoverRequest.ResponseChannel
+			//LogWriter.Log("DEBUG", "Send Recover Request to nodes...")
+			//for _, hash := range recoverRequest.Hashs {
+			//	response := paradigm.RecoverResponse{
+			//		SlotHash: hash,
+			//		Data:     []byte(fmt.Sprintf("%d", index)),
+			//	}
+			//	index++
+			//	responseChannel <- response
+			//}
+			c.sendCollect(recoverRequest)
 			LogWriter.Log("DEBUG", "Receive All Recover Responses from nodes...")
-			close(responseChannel)
+			//close(responseChannel)
 		}
 	}
 	// 启动协程处理调度任务
@@ -112,212 +108,6 @@ func (c *Coordinator) Start() {
 	//for _, node := range c.mockerNodes {
 	//	go node.Start()
 	//}
-}
-
-// sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, model string, params map[string]interface{}, schedule map[int]int32) {
-	nodeAddresses := c.connManager.GetNodeAddresses()
-	// 将 params 转换为 *struct pb.Struct
-	convertedParams, err := structpb.NewStruct(params)
-	if err != nil {
-		LogWriter.Log("ERROR", fmt.Sprintf("Failed to convert params: %v", err))
-		panic(err)
-	}
-
-	var wg sync.WaitGroup
-	successChannel := make(chan paradigm.ScheduleItem, len(nodeAddresses)) // 用于统计成功的任务大小
-
-	// 遍历所有节点
-	for nodeID, address := range nodeAddresses {
-		wg.Add(1) // 增加 WaitGroup 计数器
-		// TODO @YZM 这里暂时先这样写了，就是给每个slot一个标识
-		computeScheduleHash := func(nodeID int) paradigm.SlotHash {
-			return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
-		}
-		request := pb.ScheduleRequest{
-			Sign:   sign,
-			Slot:   slot,
-			Size:   schedule[nodeID],
-			NodeID: int32(nodeID),
-			Model:  model,
-			Params: convertedParams,
-			Hash:   computeScheduleHash(nodeID),
-		}
-		go func(nodeID int, address string, request *pb.ScheduleRequest) {
-			defer wg.Done() // 减少 WaitGroup 计数器
-
-			// 建立grpc连接
-			conn, err := c.connManager.GetConn(nodeID)
-			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
-				return
-			}
-			client := pb.NewNodeExecutorClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			// 发送调度请求
-			resp, err := client.Schedule(ctx, request, grpc.WaitForReady(true))
-			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
-				//rejectedChannel <- 0 // 默认统计为未接受
-				return
-			}
-
-			// 校验任务标识
-			if resp.Sign != sign {
-				LogWriter.Log("ERROR", fmt.Sprintf("Task Sign does not match: %s != %s", resp.Sign, sign))
-				//rejectedChannel <- 0 // 默认统计为未接受
-				return
-			}
-
-			// 根据节点反馈更新统计
-			assignedSize := schedule[nodeID]
-			nID, _ := strconv.Atoi(resp.NodeId)
-			if resp.Accept {
-				LogWriter.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
-				successChannel <- paradigm.ScheduleItem{
-					Size: assignedSize,
-					NID:  nID,
-				}
-			} else {
-				LogWriter.Log("ERROR", fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage))
-				//rejectedChannel <- assignedSize
-			}
-		}(nodeID, address.GetAddrStr(), &request)
-	}
-
-	// 等待所有节点处理完成
-	wg.Wait()
-	close(successChannel)
-	//close(rejectedChannel)
-
-	// 统计结果
-	acceptedSize := int32(0)
-	acceptSchedules := make([]paradigm.ScheduleItem, 0)
-	for item := range successChannel {
-		acceptedSize += item.Size
-		acceptSchedules = append(acceptSchedules, item)
-	}
-	remainingSize := totalSize - acceptedSize
-	if remainingSize < 0 {
-		remainingSize = 0
-	}
-	// 输出统计结果
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted", sign, remainingSize))
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", sign, acceptedSize))
-	// 然后这里把数据放到scheduler重新来
-	//newSlot := slot
-	if remainingSize == totalSize {
-		// 如果所有节点都不接受，直接重新调度
-		c.unprocessedTasks <- paradigm.UnprocessedTask{
-			Sign:   sign,
-			Slot:   slot,
-			Size:   totalSize,
-			Model:  model,
-			Params: params,
-		}
-		LogWriter.Log("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s slot %d scheduling...", sign, slot))
-	} else {
-		// 如果有节点接受，那么如果节点有反馈，那么在反馈处更新unprocessedTask
-		// 如果没有反馈，那么有额外处理 todo
-		// 认为这是一个合法的slot
-		LogWriter.Log("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s slot %d, Waiting for result...", sign, slot))
-		// 这是最后真正的schedule,由tracker获取
-		c.scheduledTasks <- paradigm.TaskSchedule{
-			Sign:      sign,
-			Slot:      slot,
-			Size:      totalSize,
-			Model:     model,
-			Params:    params,
-			Schedules: acceptSchedules,
-		}
-
-	}
-
-}
-
-func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
-	nodeAddresses := c.connManager.GetNodeAddresses()
-	var wg sync.WaitGroup
-	disconnected := make(chan int, len(nodeAddresses))                       // 用于说明节点失联
-	response := make(chan *pb.HeartbeatResponse, len(nodeAddresses))         // 用于给voteHandler传递
-	voteHandler := handler.NewVoteHandler(heartbeat, c.commitSlot, response) // 处理投票结果
-	go voteHandler.Process()                                                 // 准备处理投票
-	// 遍历所有节点
-	for nodeID, address := range nodeAddresses {
-		wg.Add(1) // 增加 WaitGroup 计数器
-		go func(nodeID int, address string, heartbeat *pb.HeartbeatRequest) {
-			defer wg.Done() // 减少 WaitGroup 计数器
-
-			// 建立grpc连接
-			conn, err := c.connManager.GetConn(nodeID)
-			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
-				disconnected <- nodeID // 暂定为当作失联
-				return
-			}
-			client := pb.NewNodeExecutorClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			// 发送心跳
-			resp, err := client.Heartbeat(ctx, heartbeat, grpc.WaitForReady(true))
-			//TODO grpc在建立连接时其实就可以判断出节点是否失联
-			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send heartbeat to node %d: %v", nodeID, err))
-				//rejectedChannel <- 0 // 默认统计为未接受
-				disconnected <- nodeID // 暂定为当作失联
-				return
-			}
-			response <- resp // 交给voteHandler处理
-
-		}(nodeID, address.GetAddrStr(), heartbeat)
-	}
-
-	// 等待所有节点处理完成
-	wg.Wait()
-	close(response)     // 关闭response，voteHandler开始处理投票结果
-	close(disconnected) // 关闭disconnected, 后续monitor结束处理 todo
-
-}
-
-// CommitSlot 服务端方法，用于处理提交的slot
-func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest) (*pb.SlotCommitResponse, error) {
-	//nodeId, _ := strconv.Atoi(req.NodeId)
-	//slot, _ := strconv.Atoi(req.Slot)
-
-	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
-		Nid:        req.NodeId,
-		Process:    req.Size,
-		Sign:       req.Sign,
-		Slot:       req.Slot,
-		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
-		Commitment: req.Commitment,
-	})
-	item.SetHash(req.Hash) // 设置slotHash
-	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
-	c.commitSlot <- item
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot: {%s}", item.SlotHash()))
-	generateRandomSeed := func() []byte {
-		size := 256 // 暂定
-		randomBytes := make([]byte, size)
-
-		// 使用 crypto/rand 生成安全随机字节
-		rand.Read(randomBytes)
-		//if err != nil {
-		//	return nil, err
-		//}
-
-		return randomBytes
-	}
-
-	// 这里就简单的回复即可，后续所有的东西都由heartbeat、chainupper来给定
-	return &pb.SlotCommitResponse{
-		Seed:    generateRandomSeed(),
-		Timeout: int32(c.maxEpochDelay),
-		Hash:    item.SlotHash(), // TODO: Hash是用来让节点在收到heartbeat后判断： 1. 是否本地有一些未确认的数据不需要保存了; 2. 是否自己的任务被拒绝了，是否太慢了
-	}, nil
 }
 
 func NewCoordinator(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *Coordinator {
