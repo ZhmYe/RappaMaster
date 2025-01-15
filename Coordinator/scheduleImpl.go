@@ -14,7 +14,7 @@ import (
 )
 
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, model string, params map[string]interface{}, schedule map[int]int32) {
+func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, model paradigm.SupportModelType, params map[string]interface{}, schedule map[int]int32) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(params)
@@ -37,7 +37,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, mod
 			Slot:   slot,
 			Size:   schedule[nodeID],
 			NodeID: int32(nodeID),
-			Model:  model,
+			Model:  paradigm.ModelTypeToString(model),
 			Params: convertedParams,
 			Hash:   computeScheduleHash(nodeID),
 		}
@@ -108,7 +108,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, mod
 	//newSlot := slot
 	if remainingSize == totalSize {
 		// 如果所有节点都不接受，直接重新调度
-		c.unprocessedTasks <- paradigm.UnprocessedTask{
+		c.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
 			Sign:   sign,
 			Slot:   slot,
 			Size:   totalSize,
@@ -122,7 +122,7 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, mod
 		// 认为这是一个合法的slot
 		LogWriter.Log("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s slot %d, Waiting for result...", sign, slot))
 		// 这是最后真正的schedule,由tracker获取
-		c.scheduledTasks <- paradigm.TaskSchedule{
+		c.channel.ScheduledTasks <- paradigm.TaskSchedule{
 			Sign:      sign,
 			Slot:      slot,
 			Size:      totalSize,

@@ -25,8 +25,8 @@ func main() {
 	httpEngine := HTTP.NewFakeHttpEngine(rappaChannel)
 	httpEngine.Setup(*config)
 	event := Event.NewEvent(rappaChannel)
-	coordinator := Coordinator.NewCoordinator(config, rappaChannel)
-	taskManager := Task.NewTaskManager(config, rappaChannel)
+	coordinator := Coordinator.NewCoordinator(rappaChannel)
+	taskManager := Task.NewTaskManager(rappaChannel)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	dev := Dev.NewDev(rappaChannel)
 	collector := Collector.NewCollector(rappaChannel)
@@ -57,21 +57,6 @@ func main() {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))
 		return
 	}
-
-	//// 模拟前端 HTTP 请求
-	//go func() {
-	//	for i := 0; i < 5; i++ {
-	//		request := paradigm.UnprocessedTask{
-	//			Sign:   fmt.Sprintf("Task-%d", i+1),
-	//			Size:   1000,
-	//			Model:  "TestModel",
-	//			Params: map[string]interface{}{"param1": "value1"},
-	//		}
-	//		pendingRequestPool <- request
-	//		LogWriter.Log("DEBUG", fmt.Sprintf("Submitted UnprocessedTask: %+v", request))
-	//		time.Sleep(2 * time.Second)
-	//	}
-	//}()
 
 	// 主程序保持运行，等待任务完成
 	LogWriter.Log("INFO", "Main program is running...")

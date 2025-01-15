@@ -40,9 +40,6 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 				//wg.Done()
 				return
 			}
-			for _, chunk := range resp.Chunks {
-				fmt.Println(chunk.Row, chunk.Col)
-			}
 			responseChannel <- *resp // 将节点的resp返回给collect instance
 
 		}(nodeID, address.GetAddrStr(), &recoverRequest)

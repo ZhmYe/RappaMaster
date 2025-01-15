@@ -10,6 +10,8 @@
   "DefaultSlotSize": 100,
   "LogPath": "logs/",
   "DEBUG": false,
+  "ErasureCodeParamN": 9,
+  "ErasureCodeParamK": 6,
   "BHNodeAddressMap": {
     "0": {
       "NodeIPAddress": "127.0.0.1",

@@ -13,12 +13,13 @@ type HttpTaskRequest = paradigm.UnprocessedTask
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
 	//PendingRequestPool chan HttpTaskRequest          // 给 Scheduler 的请求池，接收来自前端的数据
-	initTasks          chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
-	fakeCollectChannel chan [2]interface{}
-	slotCollectChannel chan paradigm.CollectRequest
-	config             Config.BHLayer2NodeConfig
-	ip                 string // IP 地址
-	port               int    // 端口
+	//initTasks          chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
+	//fakeCollectChannel chan [2]interface{}
+	//slotCollectChannel chan paradigm.CollectRequest
+	channel *paradigm.RappaChannel
+	config  Config.BHLayer2NodeConfig
+	ip      string // IP 地址
+	port    int    // 端口
 }
 
 // HandleRequest 处理请求
@@ -30,7 +31,7 @@ func (e *FakeHttpEngine) HandleRequest() {
 
 	// 将请求推送到请求池中
 	//e.PendingRequestPool <- request
-	e.initTasks <- request
+	e.channel.InitTasks <- request
 
 	// 模拟请求间隔
 	//time.Sleep(10 * time.Second)
@@ -39,7 +40,7 @@ func (e *FakeHttpEngine) HandleRequest() {
 func (e *FakeHttpEngine) HandleCollect() {
 	// 当收到一个task完成的消息后，生成两个不同的collect请求
 	idx := 0
-	for fakeSign := range e.fakeCollectChannel {
+	for fakeSign := range e.channel.FakeCollectSignChannel {
 		sign := fakeSign[0].(string)
 		size := fakeSign[1].(int32)
 		generate_mission := func(sign string, size int32) string {
@@ -47,14 +48,14 @@ func (e *FakeHttpEngine) HandleCollect() {
 		}
 		mission := generate_mission(sign, size)
 		request := e.generateFakeCollectRequest(sign, size, mission)
-		go func(collectChannel chan []byte) {
-			e.slotCollectChannel <- request
-			result := make([][]byte, 0)
+		go func(collectChannel chan interface{}) {
+			e.channel.ToCollectorRequestChannel <- request
+			result := make([]interface{}, 0)
 			for slotRecoverData := range collectChannel {
 				result = append(result, slotRecoverData)
 			}
 			// 等待channel关闭
-			LogWriter.Log("DEBUG", fmt.Sprintf("Task %s Collect Finish, Size: %d", sign, size))
+			LogWriter.Log("DEBUG", fmt.Sprintf("Mission %s Collect Finish, Size: %d", mission, size))
 			fmt.Println(result, len(result))
 		}(request.TransferChannel)
 	}
@@ -75,8 +76,8 @@ func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
 	// 模拟生成的请求
 	request := HttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
-		Size:  5, // 模拟固定大小
-		Model: paradigm.ModelTypeToString(paradigm.CTGAN),
+		Size:  50, // 模拟固定大小
+		Model: paradigm.CTGAN,
 		Params: map[string]interface{}{
 			"condition_column": "native-country",
 			"condition_value":  "United-States",
@@ -90,7 +91,7 @@ func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32, mis
 		Sign:            sign,
 		Mission:         mission,
 		Size:            size,
-		TransferChannel: make(chan []byte),
+		TransferChannel: make(chan interface{}),
 	}
 	LogWriter.Log("DEBUG", fmt.Sprintf("Generate Fake Collect Request: %+v", request))
 	return request
@@ -108,9 +109,10 @@ func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
 // NewFakeHttpEngine 创建并返回一个新的 FakeHttpEngine 实例
 func NewFakeHttpEngine(channel *paradigm.RappaChannel) *FakeHttpEngine {
 	return &FakeHttpEngine{
-		initTasks:          channel.InitTasks,
-		fakeCollectChannel: channel.FakeCollectSignChannel,
-		slotCollectChannel: channel.ToCollectorRequestChannel,
+		//initTasks:          channel.InitTasks,
+		//fakeCollectChannel: channel.FakeCollectSignChannel,
+		//slotCollectChannel: channel.ToCollectorRequestChannel,
+		channel: channel,
 		//PendingRequestPool: PendingRequestPool,
 	}
 }

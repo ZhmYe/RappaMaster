@@ -14,10 +14,10 @@ import (
 func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	var wg sync.WaitGroup
-	disconnected := make(chan int, len(nodeAddresses))                       // 用于说明节点失联
-	response := make(chan *pb.HeartbeatResponse, len(nodeAddresses))         // 用于给voteHandler传递
-	voteHandler := handler.NewVoteHandler(heartbeat, c.commitSlot, response) // 处理投票结果
-	go voteHandler.Process()                                                 // 准备处理投票
+	disconnected := make(chan int, len(nodeAddresses))                                // 用于说明节点失联
+	response := make(chan *pb.HeartbeatResponse, len(nodeAddresses))                  // 用于给voteHandler传递
+	voteHandler := handler.NewVoteHandler(heartbeat, c.channel.CommitSlots, response) // 处理投票结果
+	go voteHandler.Process()                                                          // 准备处理投票
 	// 遍历所有节点
 	for nodeID, address := range nodeAddresses {
 		wg.Add(1) // 增加 WaitGroup 计数器

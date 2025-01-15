@@ -6,6 +6,7 @@ import (
 )
 
 type RappaChannel struct {
+	Config           *Config.BHLayer2NodeConfig
 	InitTasks        chan UnprocessedTask
 	UnprocessedTasks chan UnprocessedTask
 	//PendingRequestPool chan UnprocessedTask
@@ -16,7 +17,7 @@ type RappaChannel struct {
 	PendingTransactions    chan Transaction
 	EpochEvent             chan bool
 	DevTransactionChannel  chan []*PackedTransaction
-	ToCollectorSlotChannel chan CommitSlotItem
+	ToCollectorSlotChannel chan CollectSlotItem
 
 	ToCollectorRequestChannel chan CollectRequest
 	SlotCollectChannel        chan RecoverConnection
@@ -26,23 +27,8 @@ type RappaChannel struct {
 }
 
 func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
-	//initTasks := make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	//unprocessedTasks := make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize)
-	////pendingRequestPool := make(chan paradigm.UnprocessedTask, config.MaxHttpRequestPoolSize)
-	//pendingSchedule := make(chan TaskSchedule, config.MaxPendingSchedulePoolSize)
-	//scheduledTasks := make(chan TaskSchedule, config.MaxScheduledTasksPoolSize)
-	//commitSlots := make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//epochHeartbeat := make(chan *pb.HeartbeatRequest, 1)
-	////slotToVotes := make(chan paradigm.CommitSlotItem, config.MaxCommitSlotItemPoolSize)
-	//pendingTransactions := make(chan Transaction, config.MaxCommitSlotItemPoolSize) // todo
-	//epochEvent := make(chan bool, 1)
-	//devTransactionChannel := make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize) // todo
-	//toCollectSlotChanel := make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize)         // todo
-	//toCollectRequestChannel := make(chan CollectRequest, config.MaxCommitSlotItemPoolSize)     // todo
-	//slotCollectChannel := make(chan RecoverRequest, config.MaxCommitSlotItemPoolSize)          // todo
-
-	//slotRecoverChannel := make(chan RecoverResponse, config.MaxCommitSlotItemPoolSize) // todo
 	return &RappaChannel{
+		Config:           config,
 		InitTasks:        make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize),
 		UnprocessedTasks: make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize),
 		//PendingRequestPool:    pendingSchedule,
@@ -53,7 +39,7 @@ func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 		PendingTransactions:       make(chan Transaction, config.MaxCommitSlotItemPoolSize), // todo,
 		EpochEvent:                make(chan bool, 1),
 		DevTransactionChannel:     make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize), // todo
-		ToCollectorSlotChannel:    make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize),       // todo
+		ToCollectorSlotChannel:    make(chan CollectSlotItem, config.MaxCommitSlotItemPoolSize),      // todo
 		ToCollectorRequestChannel: make(chan CollectRequest, config.MaxCommitSlotItemPoolSize),       // todo
 		SlotCollectChannel:        make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),    // todo
 		FakeCollectSignChannel:    make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),       // todo

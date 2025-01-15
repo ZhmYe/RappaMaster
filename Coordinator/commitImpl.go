@@ -21,11 +21,12 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Sign:       req.Sign,
 		Slot:       req.Slot,
 		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
+		Padding:    req.Padding,
 		Commitment: req.Commitment,
 	})
 	item.SetHash(req.Hash) // 设置slotHash
 	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
-	c.commitSlot <- item
+	c.channel.CommitSlots <- item
 	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot: {%s}", item.SlotHash()))
 	generateRandomSeed := func() []byte {
 		size := 256 // 暂定

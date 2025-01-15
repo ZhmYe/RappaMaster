@@ -2,10 +2,10 @@ package paradigm
 
 // TaskSchedule 描述任务分配到的节点
 type TaskSchedule struct {
-	Sign      string // 任务标识
-	Slot      int32  // 第几次被调用，这里会出现一次调度不被接受，因此需要多次调度的，称为slot
-	Size      int32  // 数据总量
-	Model     string // 模型名称
+	Sign      string           // 任务标识
+	Slot      int32            // 第几次被调用，这里会出现一次调度不被接受，因此需要多次调度的，称为slot
+	Size      int32            // 数据总量
+	Model     SupportModelType // 模型名称
 	Params    map[string]interface{}
 	Schedules []ScheduleItem
 }
@@ -25,7 +25,7 @@ type UnprocessedTask struct {
 	Sign   string                 // task sign
 	Slot   int32                  // slot index
 	Size   int32                  // data size
-	Model  string                 // 模型名称
+	Model  SupportModelType       // 模型名称
 	Params map[string]interface{} // 不确定的模型参数
 }
 

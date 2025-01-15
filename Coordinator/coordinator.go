@@ -1,7 +1,6 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Network/Grpc"
 	"BHLayer2Node/paradigm"
@@ -23,15 +22,16 @@ import (
 // 最后获得k票以上的slot们可以被打包，然后将slot和其投票结果元数据等作为交易传递给chainupper准备上链
 
 type Coordinator struct {
-	pendingSchedules      chan paradigm.TaskSchedule      // 等待被发送的调度任务
-	unprocessedTasks      chan paradigm.UnprocessedTask   // 待处理任务
-	scheduledTasks        chan paradigm.TaskSchedule      // 已经完成调度的任务
-	maxEpochDelay         int                             //说明多少时间后需要传递一个zkp证明以及多久后开始投票
-	connManager           *Grpc.NodeGrpcManager           //用于管理GRPC客户端连接
-	serverPort            int                             // coordinator对节点暴露的grpc端口
-	epochHeartbeat        chan *pb.HeartbeatRequest       // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
-	commitSlot            chan paradigm.CommitSlotItem    // 交给taskManager更新
-	recoverRequestChannel chan paradigm.RecoverConnection // CollectInstance确认收集哪些slot以后发给coordinator进行分发
+	channel *paradigm.RappaChannel
+	//pendingSchedules      chan paradigm.TaskSchedule      // 等待被发送的调度任务
+	//unprocessedTasks      chan paradigm.UnprocessedTask   // 待处理任务
+	//scheduledTasks        chan paradigm.TaskSchedule      // 已经完成调度的任务
+	maxEpochDelay int                   //说明多少时间后需要传递一个zkp证明以及多久后开始投票
+	connManager   *Grpc.NodeGrpcManager //用于管理GRPC客户端连接
+	serverPort    int                   // coordinator对节点暴露的grpc端口
+	//epochHeartbeat        chan *pb.HeartbeatRequest       // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
+	//commitSlot            chan paradigm.CommitSlotItem    // 交给taskManager更新
+	//recoverRequestChannel chan paradigm.RecoverConnection // CollectInstance确认收集哪些slot以后发给coordinator进行分发
 	//mockerNodes []*Mocker.MockerExecutionNode
 	mu sync.Mutex // 保护共享数据
 
@@ -41,7 +41,7 @@ type Coordinator struct {
 func (c *Coordinator) Start() {
 	// 处理调度,向节点发送调度信息
 	processSchedule := func() {
-		for schedule := range c.pendingSchedules {
+		for schedule := range c.channel.PendingSchedule {
 			mapSchedule := make(map[int]int32)
 			for _, item := range schedule.Schedules {
 				mapSchedule[item.NID] = item.Size
@@ -54,7 +54,7 @@ func (c *Coordinator) Start() {
 
 	// 处理心跳
 	processHeartbeat := func() {
-		for heartbeat := range c.epochHeartbeat {
+		for heartbeat := range c.channel.EpochHeartbeat {
 			c.sendHeartbeat(heartbeat) // 发送心跳
 		}
 	}
@@ -76,7 +76,7 @@ func (c *Coordinator) Start() {
 	}
 
 	processCollect := func() {
-		for recoverRequest := range c.recoverRequestChannel {
+		for recoverRequest := range c.channel.SlotCollectChannel {
 			// todo @YZM 这里通过grpc发给节点
 			// 假装发一下，然后返回一下response
 			//index := 0
@@ -90,6 +90,7 @@ func (c *Coordinator) Start() {
 			//	index++
 			//	responseChannel <- response
 			//}
+			LogWriter.Log("DEBUG", "Send Recover Request to nodes...")
 			c.sendCollect(recoverRequest)
 			LogWriter.Log("DEBUG", "Receive All Recover Responses from nodes...")
 			//close(responseChannel)
@@ -110,20 +111,22 @@ func (c *Coordinator) Start() {
 	//}
 }
 
-func NewCoordinator(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *Coordinator {
+func NewCoordinator(channel *paradigm.RappaChannel) *Coordinator {
+	config := channel.Config
 	// 加载配置中的节点IP
 	c := Coordinator{
-		pendingSchedules: channel.PendingSchedule,
-		unprocessedTasks: channel.UnprocessedTasks,
-		scheduledTasks:   channel.ScheduledTasks,
-		maxEpochDelay:    config.MaxEpochDelay,
-		connManager:      Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
-		serverPort:       config.GrpcPort,
+		//pendingSchedules: channel.PendingSchedule,
+		//unprocessedTasks: channel.UnprocessedTasks,
+		//scheduledTasks:   channel.ScheduledTasks,
+		channel:       channel,
+		maxEpochDelay: config.MaxEpochDelay,
+		connManager:   Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
+		serverPort:    config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),
-		commitSlot:            channel.CommitSlots,
-		epochHeartbeat:        channel.EpochHeartbeat,
-		recoverRequestChannel: channel.SlotCollectChannel,
-		mu:                    sync.Mutex{},
+		//commitSlot:            channel.CommitSlots,
+		//epochHeartbeat:        channel.EpochHeartbeat,
+		//recoverRequestChannel: channel.SlotCollectChannel,
+		mu: sync.Mutex{},
 	}
 	//for i, address := range c.nodeAddresses {
 	//	c.mockerNodes = append(c.mockerNodes, Mocker.NewMockerExecutionNode(i, address.GetAddrStr(), commitSlot))
