@@ -19,8 +19,8 @@ type SlotRecover struct {
 	n          int
 	outputType paradigm.ModelOutputType
 	//output     []byte                   // 这里暂时先写成byte
-	// todo 还缺一个padding size
 	paddingSize []int32 // row chunk的padding size
+	storeMethod int32   // 存储方式，也是恢复方式, 一个slot只会有一种方式
 }
 
 func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {
@@ -44,7 +44,7 @@ func (r *SlotRecover) Recover() interface{} {
 		if len(rowChunks) == 0 {
 			LogWriter.Log("ERROR", fmt.Sprintf("recover %s row %d chunk failed, err: empty chunks", r.slotHash, row))
 		} else {
-			rowChunkRecoverOutput, err := r.recoverRowChunk(rowChunks, r.paddingSize[row])
+			rowChunkRecoverOutput, err := r.recoverRowChunk(rowChunks, row)
 			if err != nil {
 				LogWriter.Log("ERROR", fmt.Sprintf("recover %s row %d chunk failed, err: %v", rowChunks[0].Hash, rowChunks[0].Row, err))
 			}
@@ -64,23 +64,40 @@ func (r *SlotRecover) Recover() interface{} {
 	return r.merge(recoverOutputs)
 }
 
-func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, padding int32) ([]byte, error) {
+func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([]byte, error) {
 	// 按排列顺序，取前k个
-	sort.Slice(chunks, func(i int, j int) bool {
-		return chunks[i].Col < chunks[j].Col
-	})
-	LogWriter.Log("COLLECT", fmt.Sprintf("Start recover %s row %d chunk, padding Size = %d", chunks[0].Hash, chunks[0].Row, padding))
-	//for _, chunk := range chunks {
-	//	fmt.Println(chunk.Row, chunk.Col, chunk.Chunk)
-	//}
-	decoder := ErasureDecoder.NewErasureDecoder(r.k, r.n)
-	decodedData, err := decoder.Decode(chunks)
-	if err != nil {
-		return []byte{}, err
+	switch r.storeMethod {
+	case 1:
+		// 本地存储，那么只有可能有一个块
+		if len(chunks) != 1 {
+			return []byte{}, fmt.Errorf("local only have one chunk in each chunk, but receive %d", len(chunks))
+		}
+		LogWriter.Log("COLLECT", fmt.Sprintf("Local Store Chunk Receive Success..."))
+		return chunks[0].Chunk, nil
+	case 2:
+		panic("Replicas has not been impl...")
+	case 3:
+		// 纠删码
+		padding := r.paddingSize[row]
+		sort.Slice(chunks, func(i int, j int) bool {
+			return chunks[i].Col < chunks[j].Col
+		})
+		LogWriter.Log("COLLECT", fmt.Sprintf("Start recover %s row %d chunk with EC, padding Size = %d", chunks[0].Hash, chunks[0].Row, padding))
+		//for _, chunk := range chunks {
+		//	fmt.Println(chunk.Row, chunk.Col, chunk.Chunk)
+		//}
+		decoder := ErasureDecoder.NewErasureDecoder(r.k, r.n)
+		decodedData, err := decoder.Decode(chunks)
+		if err != nil {
+			return []byte{}, err
+		}
+		// 对decoded_data去掉padding
+		decodedData = decodedData[:len(decodedData)-int(padding)]
+		return decodedData, nil
+	default:
+		panic("Unknown Store Method...")
+
 	}
-	// 对decoded_data去掉padding
-	decodedData = decodedData[:len(decodedData)-int(padding)]
-	return decodedData, nil
 
 }
 

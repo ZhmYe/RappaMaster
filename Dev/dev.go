@@ -63,6 +63,7 @@ func (d *Dev) Start() {
 						Size:        commitSlotItem.Process,
 						OutputType:  task.Task.OutputType,
 						PaddingSize: commitSlotItem.Padding,
+						StoreMethod: commitSlotItem.Store,
 					}
 					d.channel.ToCollectorSlotChannel <- collectSlotItem
 					//task.Print()
