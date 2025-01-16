@@ -37,6 +37,11 @@ type BHLayer2NodeConfig struct {
 	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress
 	DEBUG                      bool
 
+	// 纠删码配置
+	// todo 这里考虑可以加一个枚举作为纠删码的选项
+	ErasureCodeParamN int
+	ErasureCodeParamK int
+
 	// ChainUpper 配置
 	FiscoBcosHost string // FISCO-BCOS 节点地址
 	FiscoBcosPort int    // FISCO-BCOS 节点端口
@@ -64,6 +69,9 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	LogPath:                    "logs/",
 	BHNodeAddressMap:           make(map[int]*BHNodeAddress, 0),
 	DEBUG:                      false,
+
+	ErasureCodeParamN: 9, // TODO @SD 加到config里
+	ErasureCodeParamK: 6, // 默认配置
 
 	// 默认 ChainUpper 配置
 	FiscoBcosHost: "127.0.0.1",

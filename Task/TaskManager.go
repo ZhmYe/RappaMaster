@@ -1,7 +1,6 @@
 package Task
 
 import (
-	"BHLayer2Node/Config"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
@@ -16,51 +15,55 @@ type TaskManager struct {
 	tasks             map[string]*Task
 	mu                sync.Mutex
 	tracker           *Tracker
+	channel           *paradigm.RappaChannel
 	pendingCommitSlot map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack // 等待由Justified -> Finalized的slot
-	scheduledTasks    chan paradigm.TaskSchedule
+	//scheduledTasks    chan paradigm.TaskSchedule
 	// 这里我们假定，正确节点需要在分发所有的数据块并抱枕所有数据块都落实后才发送commit
 	// 但恶意节点可以故意发送commit消息，因此我们不能直接commit，需要等待一轮投票
-	commitSlot chan paradigm.CommitSlotItem // 这里是单纯的commit上来的justified或者finalize的
+	//commitSlot chan paradigm.CommitSlotItem // 这里是单纯的commit上来的justified或者finalize的
 	//finalizeSlot        chan paradigm.CommitSlotItem // 这里是finalize的
-	unprocessedTasks    chan paradigm.UnprocessedTask
-	initTasks           chan paradigm.UnprocessedTask
-	pendingTransactions chan paradigm.Transaction
+	//unprocessedTasks    chan paradigm.UnprocessedTask
+	//initTasks           chan paradigm.UnprocessedTask
+	//pendingTransactions chan paradigm.Transaction
 	//slotToVotes      chan paradigm.CommitSlotItem
-	epochChangeEvent chan bool // 外部触发的 epoch 更新信号
-	currentEpoch     int
-	epochRecord      *EpochRecord
-	epochHeartbeat   chan *pb.HeartbeatRequest
+	//epochChangeEvent chan bool // 外部触发的 epoch 更新信号
+	currentEpoch int
+	epochRecord  *EpochRecord
+	//epochHeartbeat   chan *pb.HeartbeatRequest
 }
 
 func (t *TaskManager) Start() {
 	processTasks := func() {
 		for {
 			select {
-			case <-t.epochChangeEvent:
+			case <-t.channel.EpochEvent:
 				t.UpdateEpoch() // 如果epoch更新，那么先更新epoch，此时有新的任务也会进入下一个epoch
-			case commitSlotItem := <-t.commitSlot: // 如果不需要更新epoch，那么优先commit或finalize
+			case commitSlotItem := <-t.channel.CommitSlots: // 如果不需要更新epoch，那么优先commit或finalize
 				// 判断类别,如果是新commit的则commit，如果已经通过投票，则finalize
 				switch commitSlotItem.State() {
 				case paradigm.UNDETERMINED:
 					// 该slot刚被提交
 					// 这里需要先确认一下这个slot是否是合法的, 如果这个slot已经是过时的了，没有必要进入投票
-					isValid := t.CheckSlotIsValid(commitSlotItem.Sign, commitSlotItem.Slot)
-					if isValid != paradigm.NONE {
-						t.epochRecord.Abort(&commitSlotItem, isValid)
-						continue
-					}
+					//isValid := t.CheckSlotIsValid(commitSlotItem.Sign, commitSlotItem.Slot)
+					//if isValid != paradigm.NONE {
+					//	t.epochRecord.Abort(&commitSlotItem, isValid)
+					//	continue
+					//} // 不考虑过时
 					// TODO @YZM 这里是没有判断重复的，是否可以这么考虑，如果节点给的数据多，那是好事，只要它两次提交的数据不是一样的，这部分判断在后面zkp相关里 先不管
 					t.pendingCommitSlot[commitSlotItem.SlotHash()] = paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.CheckIsReliable(commitSlotItem.Sign)) // 等待verify
 					// JUSITIFIED的slot必须在一段时间内完成存储和可信证明
 					t.tracker.UpdateSlot(commitSlotItem.SlotHash())
 					t.epochRecord.Commit(&commitSlotItem) // 无论如何都要放到commit里，用于投票
 				case paradigm.JUSTIFIED:
-					// 这里的Finalize只是说明通过投票了，在无需可信证明的情况下，可以上链
+					// 这里的JUSTIFIED只是说明通过投票了，在无需可信证明的情况下，可以上链
 					// 这里直接commit，commit里不需要额外的check,随时可以上链
 
 					// 接下来只需要将那个对应的pending给设置为win vote 剩下的由Tracker自己处理
 					//t.pendingCommitSlot[commitSlotItem.SlotHash()].ReceiveProof()
-					t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					// TODO @YZM 这里slot的提交时间要理一下
+					if _, exist := t.pendingCommitSlot[commitSlotItem.SlotHash()]; exist {
+						t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					}
 					//err := t.Commit(commitSlotItem)
 					//if err != nil {
 					//	LogWriter.Log("ERROR", err.Error())
@@ -77,7 +80,7 @@ func (t *TaskManager) Start() {
 
 					// 接下来只需要将那个对应的pending给设置为win vote 剩下的由Tracker自己处理
 					//t.pendingCommitSlot[commitSlotItem.SlotHash()].ReceiveProof()
-					t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
+					//t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
 				//err := t.Commit(commitSlotItem)
 				//if err != nil {
 				//	LogWriter.Log("ERROR", err.Error())
@@ -102,9 +105,9 @@ func (t *TaskManager) Start() {
 				//	CommitSlotItem: commitSlotItem,
 				//	Epoch:          t.currentEpoch,
 				//}
-			case initTask := <-t.initTasks:
+			case initTask := <-t.channel.InitTasks:
 				t.UpdateTask(initTask.Sign, initTask.Model, initTask.Size, initTask.Params)
-			case schedule := <-t.scheduledTasks:
+			case schedule := <-t.channel.ScheduledTasks:
 				_, err := t.UpdateTaskSchedule(schedule)
 				// 不合法
 				if err != nil {
@@ -148,15 +151,15 @@ func (t *TaskManager) CheckIsReliable(sign string) bool {
 	task := t.tasks[sign]
 	return task.IsReliable()
 }
-func (t *TaskManager) UpdateTask(sign string, model string, size int32, params map[string]interface{}) {
+func (t *TaskManager) UpdateTask(sign string, model paradigm.SupportModelType, size int32, params map[string]interface{}) {
 	if _, exist := t.tasks[sign]; !exist {
 		task := paradigm.NewTask(sign, model, params, size)
 		t.tasks[sign] = task
 		nextSlot, _ := task.Next()
 		go func(slot paradigm.UnprocessedTask) {
-			t.unprocessedTasks <- slot
+			t.channel.UnprocessedTasks <- slot
 			// 上链新Task
-			t.pendingTransactions <- &paradigm.InitTaskTransaction{
+			t.channel.PendingTransactions <- &paradigm.InitTaskTransaction{
 				task,
 			}
 		}(nextSlot)
@@ -208,7 +211,7 @@ func (t *TaskManager) UpdateEpoch() {
 			t.epochRecord.Finalize(commitSlotItem)
 			// 上链任务推进情况
 			go func(transaction *paradigm.TaskProcessTransaction) {
-				t.pendingTransactions <- transaction
+				t.channel.PendingTransactions <- transaction
 			}(&paradigm.TaskProcessTransaction{
 				CommitSlotItem: commitSlotItem,
 				Proof:          nil,
@@ -225,7 +228,7 @@ func (t *TaskManager) UpdateEpoch() {
 	}
 	// 更新epoch的时候，构建心跳
 	heartbeat := t.buildHeartbeat()
-	t.epochHeartbeat <- heartbeat
+	t.channel.EpochHeartbeat <- heartbeat
 	//fmt.Println(t.epochRecord)
 	go func(epochRecord EpochRecord) {
 		commits := make([]paradigm.SlotHash, 0)
@@ -242,7 +245,7 @@ func (t *TaskManager) UpdateEpoch() {
 			finalized = append(finalized, hash)
 		}
 		// 上链epoch信息
-		t.pendingTransactions <- &paradigm.EpochRecordTransaction{
+		t.channel.PendingTransactions <- &paradigm.EpochRecordTransaction{
 			EpochRecord:   &epochRecord,
 			Id:            int32(t.currentEpoch),
 			CommitsHash:   justified,
@@ -261,7 +264,7 @@ func (t *TaskManager) UpdateEpoch() {
 		nextSlot, _ := task.Next()
 		//validTaskMap[nextSlot.Sign] = int32(nextSlot.Slot)
 		go func(slot paradigm.UnprocessedTask) {
-			t.unprocessedTasks <- slot
+			t.channel.UnprocessedTasks <- slot
 		}(nextSlot)
 	}
 	t.epochRecord.Refresh()
@@ -278,18 +281,21 @@ func (t *TaskManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Epoch: int32(t.currentEpoch),
 	}
 }
-func NewTaskManager(config *Config.BHLayer2NodeConfig, channel *paradigm.RappaChannel) *TaskManager {
+func NewTaskManager(channel *paradigm.RappaChannel) *TaskManager {
+	config := channel.Config
+
 	return &TaskManager{
-		tasks:               make(map[string]*Task),
-		mu:                  sync.Mutex{},
-		tracker:             NewTracker(config),
-		scheduledTasks:      channel.ScheduledTasks,
-		commitSlot:          channel.CommitSlots,
-		unprocessedTasks:    channel.UnprocessedTasks,
-		epochChangeEvent:    channel.EpochEvent,
-		initTasks:           channel.InitTasks,
-		pendingTransactions: channel.PendingTransactions,
-		epochHeartbeat:      channel.EpochHeartbeat,
+		channel: channel,
+		tasks:   make(map[string]*Task),
+		mu:      sync.Mutex{},
+		tracker: NewTracker(config),
+		//scheduledTasks:      channel.ScheduledTasks,
+		//commitSlot:          channel.CommitSlots,
+		//unprocessedTasks:    channel.UnprocessedTasks,
+		//epochChangeEvent:    channel.EpochEvent,
+		//initTasks:           channel.InitTasks,
+		//pendingTransactions: channel.PendingTransactions,
+		//epochHeartbeat:      channel.EpochHeartbeat,
 		//slotToVotes:      slotToVotes,
 		epochRecord:       paradigm.NewEpochRecord(),
 		pendingCommitSlot: make(map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack),

@@ -45,3 +45,31 @@ func StringToBytes32(s string) [32]byte {
 	copy(b[:], s)
 	return b
 }
+
+//// BinarySearch 二分查找
+//func BinarySearch(arr []interface{}, target interface{}, compare func(element interface{}, target interface{}) bool) int {
+//	left, right := 0, len(arr)-1
+//	result := -1
+//	// 迭代直到范围为空
+//	for left <= right {
+//		mid := (left + right) / 2
+//		if compare(arr[mid], target) {
+//			// 说明mid符合范围
+//			result = mid
+//		}
+//
+//		if comparisonResult == 0 {
+//			// 找到目标值
+//			return mid
+//		} else if comparisonResult < 0 {
+//			// 目标值在右边
+//			left = mid + 1
+//		} else {
+//			// 目标值在左边
+//			right = mid - 1
+//		}
+//	}
+//
+//	// 如果没有找到，返回 -1
+//	return -1
+//}

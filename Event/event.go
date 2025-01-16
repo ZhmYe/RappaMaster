@@ -7,7 +7,8 @@ import (
 
 // Event 事件
 type Event struct {
-	EpochEvent chan bool
+	//EpochEvent chan bool
+	channel *paradigm.RappaChannel
 }
 
 func (e *Event) Start() {
@@ -15,7 +16,7 @@ func (e *Event) Start() {
 		timeStart := time.Now()
 		for {
 			if time.Since(timeStart) >= 10*time.Second {
-				e.EpochEvent <- true
+				e.channel.EpochEvent <- true
 				timeStart = time.Now()
 			}
 		}
@@ -24,5 +25,5 @@ func (e *Event) Start() {
 }
 
 func NewEvent(channel *paradigm.RappaChannel) *Event {
-	return &Event{EpochEvent: channel.EpochEvent}
+	return &Event{channel: channel}
 }

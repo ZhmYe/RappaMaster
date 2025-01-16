@@ -1,7 +1,7 @@
 {
   "GrpcPort": 1235,
   "HttpPort": 8080,
-  "MaxEpochDelay ": 1,
+  "MaxEpochDelay ": 2,
   "MaxUnprocessedTaskPoolSize": 100,
   "MaxPendingSchedulePoolSize": 100,
   "MaxScheduledTasksPoolSize": 100,
@@ -10,6 +10,8 @@
   "DefaultSlotSize": 100,
   "LogPath": "logs/",
   "DEBUG": false,
+  "ErasureCodeParamN": 9,
+  "ErasureCodeParamK": 6,
   "BHNodeAddressMap": {
     "0": {
       "NodeIPAddress": "127.0.0.1",

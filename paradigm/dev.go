@@ -34,7 +34,9 @@ func (t *DevTask) Print() {
 		slot.Print()
 	}
 }
-
+func (t *DevTask) IsFinished() bool {
+	return t.Task.IsFinish()
+}
 func NewDevTask(ptx *PackedTransaction) *DevTask {
 	switch ptx.Tx.(type) {
 	case *InitTaskTransaction:

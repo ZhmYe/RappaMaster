@@ -10,10 +10,11 @@ import (
 )
 
 type MockerChainUpper struct {
-	pendingTransactions chan paradigm.Transaction // 交易channel
-	transactionPool     []paradigm.Transaction    // 所有的交易
-	unprocessedIndex    int                       // 未处理的交易index，包括这一index
-	mu                  sync.Mutex
+	channel *paradigm.RappaChannel
+	//pendingTransactions chan paradigm.Transaction // 交易channel
+	transactionPool  []paradigm.Transaction // 所有的交易
+	unprocessedIndex int                    // 未处理的交易index，包括这一index
+	mu               sync.Mutex
 	//queue               chan map[string]interface{} // 用于异步上链的队列
 	queue chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
 	//client   *client.Client            // FISCO-BCOS 客户端
@@ -33,7 +34,7 @@ func (c *MockerChainUpper) Start() {
 	}()
 	for {
 		select {
-		case transaction := <-c.pendingTransactions:
+		case transaction := <-c.channel.PendingTransactions:
 			// 先简单写一下
 			c.mu.Lock()
 			c.transactionPool = append(c.transactionPool, transaction)
@@ -143,11 +144,12 @@ func NewMockerChainUpper(channel *paradigm.RappaChannel) (*MockerChainUpper, err
 	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 
 	return &MockerChainUpper{
-		pendingTransactions: channel.PendingTransactions,
-		transactionPool:     make([]paradigm.Transaction, 0),
-		unprocessedIndex:    0,
-		mu:                  sync.Mutex{},
-		queue:               queue,
+		channel: channel,
+		//pendingTransactions: channel.PendingTransactions,
+		transactionPool:  make([]paradigm.Transaction, 0),
+		unprocessedIndex: 0,
+		mu:               sync.Mutex{},
+		queue:            queue,
 		//client:              client,
 		//instance:            instance,
 	}, nil
