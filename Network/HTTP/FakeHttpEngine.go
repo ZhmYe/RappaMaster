@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type HttpTaskRequest = paradigm.UnprocessedTask
+type FakeHttpTaskRequest = paradigm.UnprocessedTask
 
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
@@ -72,11 +72,11 @@ func (e *FakeHttpEngine) Start() {
 }
 
 // generateFakeRequest 模拟生成 HTTP 请求格式化后的结果
-func (e *FakeHttpEngine) generateFakeRequest() HttpTaskRequest {
+func (e *FakeHttpEngine) generateFakeRequest() FakeHttpTaskRequest {
 	// 模拟生成的请求
-	request := HttpTaskRequest{
+	request := FakeHttpTaskRequest{
 		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
-		Size:  50, // 模拟固定大小
+		Size:  40, // 模拟固定大小
 		Model: paradigm.CTGAN,
 		Params: map[string]interface{}{
 			"condition_column": "native-country",

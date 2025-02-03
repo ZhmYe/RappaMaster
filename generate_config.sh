@@ -40,6 +40,18 @@ cat <<EOL >$config_path
   "MaxGrpcRequestPoolSize": 200,
   "DefaultSlotSize": 100,
   "LogPath": "logs/",
+  "FiscoBcosHost": "127.0.0.1",
+  "FiscoBcosPort": 20200,
+  "GroupID": "group0",
+  "PrivateKey": "145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58",
+  "TLSCaFile": "./ChainUpper/ca.crt",
+  "TLSCertFile": "./ChainUpper/sdk.crt",
+  "TLSKeyFile": "./ChainUpper/sdk.key",
+  "QueueBufferSize": 100000,
+  "WorkerCount": 3,
+  "BatchSize": 1,
+  "ErasureCodeParamN": 9,
+  "ErasureCodeParamK": 6,
   "DEBUG": false ,
   "BHNodeAddressMap": {
 EOL
@@ -49,7 +61,8 @@ NODE_ID_LINE=""
 NODE_IP_LINE=""
 GRPC_PORT_LINE=""
 for node_file in $(ls $NODE_ROOT); do
-    node_config_path="$NODE_ROOT/$node_file/BHExecutionNode/config.json"
+  if [ -d "$NODE_ROOT/$node_file" ]; then
+    node_config_path="$NODE_ROOT/$node_file/RappaExecutor/config.json"
     if [ -f $node_config_path -a -r $node_config_path ]; then
         echo "Get config from NODE($node_file) successfully."
         # 这里使用sed格式化输出
@@ -66,6 +79,7 @@ EOL
     else
         echo "NODE($node_file) config not found!"
     fi
+  fi
 done
 
 # 处理末尾格式

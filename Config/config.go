@@ -53,6 +53,7 @@ type BHLayer2NodeConfig struct {
 	// ContractAddress       string // 链上合约地址
 	QueueBufferSize int // 上链队列缓冲区大小
 	WorkerCount     int // Worker 的数量
+	BatchSize       int
 }
 
 // DefaultBHLayer2NodeConfig 定义默认的配置值
@@ -70,7 +71,7 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	BHNodeAddressMap:           make(map[int]*BHNodeAddress, 0),
 	DEBUG:                      false,
 
-	ErasureCodeParamN: 9, // TODO @SD 加到config里
+	ErasureCodeParamN: 9,
 	ErasureCodeParamK: 6, // 默认配置
 
 	// 默认 ChainUpper 配置
@@ -84,6 +85,7 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	// ContractAddress: "ChainUpper/contract_address.txt",
 	QueueBufferSize: 100000,
 	WorkerCount:     3, // 256
+	BatchSize:       1,
 }
 
 //var (
