@@ -72,7 +72,7 @@ func (d *Oracle) Start() {
 						if task.IsFinish() && !task.HasbeenCollect {
 							d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 							task.SetCollected()
-							LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %s", task.Sign, task.Size, task.Process))
+							LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 							task.Print()
 						}
 						// 这里更新了task的slot，那么可以将这里的Slot传递给collector
