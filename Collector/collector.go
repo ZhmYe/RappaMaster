@@ -60,7 +60,7 @@ func (c *Collector) processSlotUpdate(slot paradigm.CollectSlotItem) {
 	}
 
 	c.taskSlots[slot.Sign] = taskSlotsList
-	LogWriter.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Task %s", slot.Hash, slot.Sign))
+	LogWriter.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Epoch %s", slot.Hash, slot.Sign))
 	//}
 }
 
@@ -82,7 +82,7 @@ func (c *Collector) processCollect(collectRequest paradigm.CollectRequest) {
 			break
 		}
 	}
-	LogWriter.Log("COLLECT", fmt.Sprintf("Start Collect Task %s, Size: %d, Slot to Collect: %v", sign, total, slotList))
+	LogWriter.Log("COLLECT", fmt.Sprintf("Start Collect Epoch %s, Size: %d, Slot to Collect: %v", sign, total, slotList))
 	// 得到如果要收齐这个collect要求，可以对slotHashList里的slot进行collect
 	// 这里为了不妨碍slot的更新，通过go func开始异步
 	collectInstance := CollectSlotInstance{

@@ -149,7 +149,7 @@ type EpochRecord struct {
 
 func (r *EpochRecord) UpdateTask(task *Task) {
 	if _, exist := r.Tasks[task.Sign]; exist {
-		panic("Repeat Task Sign!!!")
+		panic("Repeat Epoch Sign!!!")
 	}
 	r.Tasks[task.Sign] = task.Size
 }
@@ -173,7 +173,8 @@ func (r *EpochRecord) Justified(slot *CommitSlotItem) {
 		return true
 	}
 	if check() {
-		r.Justifieds[slot.hash] = slot.Commitment
+		//fmt.Println(slot.State(), len(r.Justifieds))
+		r.Justifieds[slot.SlotHash()] = slot.Commitment
 	} else {
 		slot.SetInvalid(UNKNOWN) // TODO
 	}
@@ -210,6 +211,7 @@ func (r *EpochRecord) Abort(slot *CommitSlotItem, reason InvalidCommitType) {
 func (r *EpochRecord) Refresh() {
 	r.Id++
 	r.Commits = make(map[SlotHash]SlotCommitment)
+	r.Justifieds = make(map[SlotHash]SlotCommitment)
 	r.Finalizes = make(map[SlotHash]SlotCommitment)
 	r.Invalids = make(map[SlotHash]InvalidCommitType)
 }
@@ -222,10 +224,11 @@ func (r *EpochRecord) Echo() {
 }
 func NewEpochRecord() *EpochRecord {
 	return &EpochRecord{
-		Id:        0,
-		Commits:   make(map[SlotHash]SlotCommitment),
-		Finalizes: make(map[SlotHash]SlotCommitment),
-		Invalids:  make(map[SlotHash]InvalidCommitType),
-		Tasks:     make(map[string]int32),
+		Id:         0,
+		Commits:    make(map[SlotHash]SlotCommitment),
+		Finalizes:  make(map[SlotHash]SlotCommitment),
+		Justifieds: make(map[SlotHash]SlotCommitment),
+		Invalids:   make(map[SlotHash]InvalidCommitType),
+		Tasks:      make(map[string]int32),
 	}
 }

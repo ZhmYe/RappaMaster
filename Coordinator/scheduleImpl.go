@@ -14,40 +14,45 @@ import (
 )
 
 // sendSchedule 向所有节点发送某个sign的调度计划
-func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, model paradigm.SupportModelType, params map[string]interface{}, schedule map[int]int32) {
+func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	nodeAddresses := c.connManager.GetNodeAddresses()
 	// 将 params 转换为 *struct pb.Struct
-	convertedParams, err := structpb.NewStruct(params)
+	convertedParams, err := structpb.NewStruct(schedule.Params)
 	if err != nil {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to convert params: %v", err))
 		panic(err)
 	}
 
 	var wg sync.WaitGroup
-	successChannel := make(chan paradigm.ScheduleItem, len(nodeAddresses)) // 用于统计成功的任务大小
-	wg.Add(len(nodeAddresses))                                             // 增加 WaitGroup 计数器
+	successChannel := make(chan *paradigm.Slot, len(nodeAddresses)) // 用于统计成功的任务大小
+	rejectChannel := make(chan [2]interface{}, len(nodeAddresses))  // 用于统计失败的任务
+	wg.Add(len(nodeAddresses))                                      // 增加 WaitGroup 计数器
 	// 遍历所有节点
-	for nodeID, address := range nodeAddresses {
+	for nID, slot := range schedule.Slots {
+		//for nodeID, address := range nodeAddresses {
 		// TODO @YZM 这里暂时先这样写了，就是给每个slot一个标识
-		computeScheduleHash := func(nodeID int) paradigm.SlotHash {
-			return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
-		}
+		//computeScheduleHash := func(nodeID int) paradigm.SlotHash {
+		//	return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
+		address := nodeAddresses[nID]
 		request := pb.ScheduleRequest{
-			Sign:   sign,
-			Slot:   slot,
-			Size:   schedule[nodeID],
-			NodeID: int32(nodeID),
-			Model:  paradigm.ModelTypeToString(model),
+			Sign:   schedule.TaskID,
+			Slot:   schedule.ScheduleID,
+			Size:   slot.ScheduleSize,
+			NodeID: int32(nID),
+			Model:  paradigm.ModelTypeToString(schedule.Model),
 			Params: convertedParams,
-			Hash:   computeScheduleHash(nodeID),
+			Hash:   slot.SlotID,
 		}
-		go func(nodeID int, address string, request *pb.ScheduleRequest) {
+		go func(nodeID int, slot *paradigm.Slot, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
 
 			// 建立grpc连接
 			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				errorMessage := fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err)
+				LogWriter.Log("ERROR", errorMessage)
+				slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, slot}
 				return
 			}
 			client := pb.NewRappaExecutorClient(conn)
@@ -57,79 +62,99 @@ func (c *Coordinator) sendSchedule(sign string, slot int32, totalSize int32, mod
 			// 发送调度请求
 			resp, err := client.Schedule(ctx, request, grpc.WaitForReady(true))
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
-				//rejectedChannel <- 0 // 默认统计为未接受
+				errorMessage := fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err)
+				LogWriter.Log("ERROR", errorMessage)
+				//slot.Status = paradigm.Failed
+				slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, slot}
 				return
 			}
 
 			// 校验任务标识
-			if resp.Sign != sign {
-				LogWriter.Log("ERROR", fmt.Sprintf("Task Sign does not match: %s != %s", resp.Sign, sign))
-				//rejectedChannel <- 0 // 默认统计为未接受
+			if resp.Sign != schedule.TaskID {
+				errorMessage := fmt.Sprintf("Epoch Sign does not match: %s != %s", resp.Sign, schedule.TaskID)
+				LogWriter.Log("ERROR", errorMessage)
+				slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, slot}
+				return
+			}
+			nID, _ := strconv.Atoi(resp.NodeId)
+			if nID != nodeID {
+				errorMessage := fmt.Sprintf("NodeID does not match: %s != %d", resp.NodeId, nodeID)
+				LogWriter.Log("ERROR", errorMessage)
+				slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, slot}
 				return
 			}
 
 			// 根据节点反馈更新统计
-			assignedSize := schedule[nodeID]
-			nID, _ := strconv.Atoi(resp.NodeId)
+			//assignedSize := request.Size
+			//nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
 				LogWriter.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
-				successChannel <- paradigm.ScheduleItem{
-					Size: assignedSize,
-					NID:  nID,
-				}
+				successChannel <- slot
+
 			} else {
-				LogWriter.Log("ERROR", fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage))
+				errorMessage := fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage)
+				LogWriter.Log("ERROR", errorMessage)
+				slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, slot}
 				//rejectedChannel <- assignedSize
 			}
-		}(nodeID, address.GetAddrStr(), &request)
+		}(nID, slot, address.GetAddrStr(), &request)
 	}
 
 	// 等待所有节点处理完成
 	wg.Wait()
 	close(successChannel)
-	//close(rejectedChannel)
-
+	close(rejectChannel)
+	//
 	// 统计结果
 	acceptedSize := int32(0)
-	acceptSchedules := make([]paradigm.ScheduleItem, 0)
+	////acceptSchedules := make([]*paradigm.Slot, 0)
 	for item := range successChannel {
-		acceptedSize += item.Size
-		acceptSchedules = append(acceptSchedules, item)
+		acceptedSize += item.ScheduleSize
+		//	//acceptSchedules = append(acceptSchedules, item)
 	}
-	remainingSize := totalSize - acceptedSize
+	rejectNumber := 0
+	for item := range rejectChannel {
+		nID, slot := item[0].(int), item[1].(*paradigm.Slot)
+		rejectNumber++
+		schedule.Slots[nID] = slot // 更新失败的slot
+	}
+	remainingSize := schedule.Size - acceptedSize
 	if remainingSize < 0 {
 		remainingSize = 0
 	}
-	// 输出统计结果
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted", sign, remainingSize))
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", sign, acceptedSize))
+	//输出统计结果
+	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted", schedule.TaskID, remainingSize))
+	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", schedule.TaskID, acceptedSize))
 	// 然后这里把数据放到scheduler重新来
 	//newSlot := slot
-	if remainingSize == totalSize {
+	if remainingSize == schedule.Size {
 		// 如果所有节点都不接受，直接重新调度
 		c.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
-			Sign:   sign,
-			Slot:   slot,
-			Size:   totalSize,
-			Model:  model,
-			Params: params,
+			TaskID: schedule.TaskID,
+			Size:   schedule.Size,
+			Model:  schedule.Model,
+			Params: schedule.Params,
 		}
-		LogWriter.Log("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s slot %d scheduling...", sign, slot))
+		LogWriter.Log("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s scheduling...", schedule.TaskID))
 	} else {
 		// 如果有节点接受，那么如果节点有反馈，那么在反馈处更新unprocessedTask
 		// 如果没有反馈，那么有额外处理 todo
 		// 认为这是一个合法的slot
-		LogWriter.Log("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s slot %d, Waiting for result...", sign, slot))
+		LogWriter.Log("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s, Waiting for result...", schedule.TaskID))
 		// 这是最后真正的schedule,由tracker获取
-		c.channel.ScheduledTasks <- paradigm.TaskSchedule{
-			Sign:      sign,
-			Slot:      slot,
-			Size:      totalSize,
-			Model:     model,
-			Params:    params,
-			Schedules: acceptSchedules,
-		}
+		//schedule.Print()
+		//for nodeID, slot := range schedule.Slots {
+		//	fmt.Println(slot.SlotID)
+		//	fmt.Println(slot.ScheduleSize)
+		//	fmt.Println(slot.Status)
+		//	fmt.Println(nodeID)
+		//}
+		c.channel.ScheduledTasks <- schedule
+		c.channel.OracleSchedules <- &schedule
 
 	}
 

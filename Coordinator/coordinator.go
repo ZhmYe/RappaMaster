@@ -41,14 +41,14 @@ type Coordinator struct {
 func (c *Coordinator) Start() {
 	// 处理调度,向节点发送调度信息
 	processSchedule := func() {
-		for schedule := range c.channel.PendingSchedule {
-			mapSchedule := make(map[int]int32)
-			for _, item := range schedule.Schedules {
-				mapSchedule[item.NID] = item.Size
-			}
+		for schedule := range c.channel.PendingSchedules {
+			//mapSchedule := make(map[int]int32)
+			//for nodeID, slot := range schedule.Slots {
+			//	mapSchedule[nodeID] = slot.ScheduleSize
+			//}
 
 			// 调用 sendSchedule，这里暂时是统一发给有节点 todo 有必要只给分配的节点?
-			c.sendSchedule(schedule.Sign, schedule.Slot, schedule.Size, schedule.Model, schedule.Params, mapSchedule)
+			c.sendSchedule(schedule)
 		}
 	}
 
