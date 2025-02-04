@@ -12,7 +12,11 @@ type SynthTaskSchedule struct {
 	Size       int32            // 调度总量
 	Model      SupportModelType // 模型名称
 	Params     map[string]interface{}
-	Slots      map[int]*Slot // 调度的Slot
+	Slots      []*Slot // 调度的Slot
+	NodeIDMap  map[int]int
+	//NbCommit int // 提交的数量
+	//NbInvalid int // 异常的数量
+	//Process  int32 // 已完成的数量
 }
 
 func (s *SynthTaskSchedule) Print() {

@@ -22,7 +22,7 @@ func main() {
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
-	httpEngine := HTTP.NewHttpEngine(rappaChannel)
+	httpEngine := HTTP.NewFakeHttpEngine(rappaChannel)
 	httpEngine.Setup(*config)
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)

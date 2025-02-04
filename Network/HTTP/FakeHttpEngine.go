@@ -8,14 +8,10 @@ import (
 	"time"
 )
 
-type HttpTaskRequest = *paradigm.SynthTaskTrackItem
+//type HttpTaskRequest = *paradigm.SynthTaskTrackItem
 
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
-	//PendingRequestPool chan HttpTaskRequest          // 给 Scheduler 的请求池，接收来自前端的数据
-	//initTasks          chan paradigm.UnprocessedTask // 给taskManager用于初始化任务的
-	//fakeCollectChannel chan [2]interface{}
-	//slotCollectChannel chan paradigm.CollectRequest
 	channel *paradigm.RappaChannel
 	config  Config.BHLayer2NodeConfig
 	ip      string // IP 地址

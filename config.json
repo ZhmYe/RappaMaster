@@ -26,6 +26,18 @@
     "0": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1234
+    },
+    "1": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1245
+    },
+    "2": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1256
+    },
+    "3": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1267
     }
   }
 }

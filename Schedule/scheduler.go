@@ -65,7 +65,7 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	}
 	s.schedules[task.TaskID]++
 	computeSlotHash := func(nID int) paradigm.SlotHash {
-		scheduleIndex := s.schedules[task.TaskID] + 1
+		scheduleIndex := s.schedules[task.TaskID]
 		return fmt.Sprintf("%s_%d_%d", task.TaskID, paradigm.ScheduleHash(scheduleIndex), nID)
 	}
 	schedule := paradigm.SynthTaskSchedule{
@@ -76,14 +76,18 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 		Params:     task.Params,
 		//Slots: make([]*paradigm.Slot, 0),
 	}
-	slots := make(map[int]*paradigm.Slot, 0)
+	slots := make([]*paradigm.Slot, 0)
+	nodeIDMap := make(map[int]int)
 	for i := 0; i < len(nIDs); i++ {
 		nID, scheduleSize := nIDs[i], size[i]
-		slot := paradigm.NewSlot(computeSlotHash(nID), scheduleSize)
+		nodeIDMap[nID] = i
+		slot := paradigm.NewSlot(computeSlotHash(nID), paradigm.ScheduleHash(scheduleIndex), scheduleSize)
 		//slots = append(slots, slot)
-		slots[nID] = slot
+		slots = append(slots, slot)
 	}
+	schedule.NodeIDMap = nodeIDMap
 	schedule.Slots = slots
+	//schedule.Print()
 	return schedule
 }
 

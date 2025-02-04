@@ -28,12 +28,13 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	rejectChannel := make(chan [2]interface{}, len(nodeAddresses))  // 用于统计失败的任务
 	wg.Add(len(nodeAddresses))                                      // 增加 WaitGroup 计数器
 	// 遍历所有节点
-	for nID, slot := range schedule.Slots {
+	for nID, index := range schedule.NodeIDMap {
 		//for nodeID, address := range nodeAddresses {
 		// TODO @YZM 这里暂时先这样写了，就是给每个slot一个标识
 		//computeScheduleHash := func(nodeID int) paradigm.SlotHash {
 		//	return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
 		address := nodeAddresses[nID]
+		slot := schedule.Slots[index]
 		request := pb.ScheduleRequest{
 			Sign:   schedule.TaskID,
 			Slot:   schedule.ScheduleID,
@@ -43,7 +44,8 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			Params: convertedParams,
 			Hash:   slot.SlotID,
 		}
-		go func(nodeID int, slot *paradigm.Slot, address string, request *pb.ScheduleRequest) {
+		//tmp := slot
+		go func(nodeID int, address string, request *pb.ScheduleRequest) {
 			defer wg.Done() // 减少 WaitGroup 计数器
 
 			// 建立grpc连接
@@ -52,7 +54,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 				errorMessage := fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err)
 				LogWriter.Log("ERROR", errorMessage)
 				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, slot}
+				rejectChannel <- [2]interface{}{nodeID, errorMessage}
 				return
 			}
 			client := pb.NewRappaExecutorClient(conn)
@@ -65,8 +67,8 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 				errorMessage := fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err)
 				LogWriter.Log("ERROR", errorMessage)
 				//slot.Status = paradigm.Failed
-				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, slot}
+				//slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, errorMessage}
 				return
 			}
 
@@ -74,16 +76,16 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			if resp.Sign != schedule.TaskID {
 				errorMessage := fmt.Sprintf("Epoch Sign does not match: %s != %s", resp.Sign, schedule.TaskID)
 				LogWriter.Log("ERROR", errorMessage)
-				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, slot}
+				//slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, errorMessage}
 				return
 			}
 			nID, _ := strconv.Atoi(resp.NodeId)
 			if nID != nodeID {
 				errorMessage := fmt.Sprintf("NodeID does not match: %s != %d", resp.NodeId, nodeID)
 				LogWriter.Log("ERROR", errorMessage)
-				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, slot}
+				//slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, errorMessage}
 				return
 			}
 
@@ -97,11 +99,11 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			} else {
 				errorMessage := fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage)
 				LogWriter.Log("ERROR", errorMessage)
-				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, slot}
+				//slot.SetError(errorMessage)
+				rejectChannel <- [2]interface{}{nodeID, errorMessage}
 				//rejectedChannel <- assignedSize
 			}
-		}(nID, slot, address.GetAddrStr(), &request)
+		}(nID, address.GetAddrStr(), &request)
 	}
 
 	// 等待所有节点处理完成
@@ -118,9 +120,11 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	}
 	rejectNumber := 0
 	for item := range rejectChannel {
-		nID, slot := item[0].(int), item[1].(*paradigm.Slot)
+		nID, errorMessage := item[0].(int), item[1].(string)
 		rejectNumber++
-		schedule.Slots[nID] = slot // 更新失败的slot
+		//schedule.Slots[nID]
+		index := schedule.NodeIDMap[nID]
+		schedule.Slots[index].SetError(errorMessage) // 更新失败的slot
 	}
 	remainingSize := schedule.Size - acceptedSize
 	if remainingSize < 0 {

@@ -9,17 +9,18 @@ import (
 
 // Task 描述一个合成任务
 type Task struct {
-	Sign       string
-	Slot       int32
-	Model      SupportModelType
-	Params     map[string]interface{}
-	Size       int32                // 总的数据量
-	Process    int32                // 已经完成的数据量
-	isReliable bool                 // 是否可信 TODO: @YZM 这里需要加入任务是否可信的部分，这个需要在http前端得到
-	OutputType ModelOutputType      // 模型类型，这里假定一个任务一个模型
-	Schedules  []*SynthTaskSchedule // 该任务的所有的调度
-	TxID       int
-	TxReceipt  *types.Receipt
+	Sign        string
+	Slot        int32
+	Model       SupportModelType
+	Params      map[string]interface{}
+	Size        int32                // 总的数据量
+	Process     int32                // 已经完成的数据量
+	isReliable  bool                 // 是否可信 TODO: @YZM 这里需要加入任务是否可信的部分，这个需要在http前端得到
+	OutputType  ModelOutputType      // 模型类型，这里假定一个任务一个模型
+	Schedules   []*SynthTaskSchedule // 该任务的所有的调度
+	scheduleMap map[ScheduleHash]int // 为了防止乱序
+	TxID        int
+	TxReceipt   *types.Receipt
 	// 以下是测试字段
 	HasbeenCollect bool
 	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
@@ -87,6 +88,7 @@ func (t *Task) InitTrack() *SynthTaskTrackItem {
 // UpdateSchedule 更新调度情况
 func (t *Task) UpdateSchedule(schedule *SynthTaskSchedule) {
 	// todo 这里有代码内部问题是没有调试的
+	t.scheduleMap[schedule.ScheduleID] = len(t.Schedules)
 	t.Schedules = append(t.Schedules, schedule) // 这里假设的是依次不错不重复
 	//return nil
 }
@@ -148,13 +150,15 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		panic("Unsupported Model Type!!!")
 	}
 	return &Task{
-		Sign:       sign,
-		Slot:       -1,
-		Model:      model,
-		OutputType: outputType,
-		Params:     params,
-		Size:       total,
-		Process:    0,
+		Sign:        sign,
+		Slot:        -1,
+		Model:       model,
+		OutputType:  outputType,
+		scheduleMap: make(map[ScheduleHash]int),
+		Schedules:   make([]*SynthTaskSchedule, 0),
+		Params:      params,
+		Size:        total,
+		Process:     0,
 		//records:    make([]paradigm.SlotRecord, 0),
 		isReliable:     true, // todo 这里先统一写成true
 		HasbeenCollect: false,

@@ -173,6 +173,7 @@ func (t *EpochManager) UpdateEpoch() {
 		})
 	}
 	for _, slot := range abortSlots {
+		//slot.SetEpoch(t.currentEpoch)
 		t.epochRecord.Abort(slot, paradigm.VERIFIED_FAILED)
 	}
 	//for _, h := range outOfDateCommitSlot {

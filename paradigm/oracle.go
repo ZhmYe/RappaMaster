@@ -6,6 +6,30 @@ import (
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
+// =============== 以下是Reference部分==============
+
+type RFType int
+
+const (
+	InitTaskTx = iota
+	EpochTx
+	SlotTX
+)
+
+// DevReference 指代一个txMap得到的结果
+type DevReference struct {
+	TxHash    string
+	TxReceipt types.Receipt // 以上是交易信息
+	Rf        RFType        // 类型
+	// 如果是InitTask，那么就是一个交易->TaskID，没有额外信息
+	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
+	// 如是果SlotTx, 那么需要包含两类信息
+	// 1. Slot所在epoch; 2. Slot所在Task
+	TaskID  TaskHash
+	EpochID int32
+	//ScheduleID ScheduleHash
+}
+
 // ================ 以下是task部分=================
 
 type DevTask struct {
