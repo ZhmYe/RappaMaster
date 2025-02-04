@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"google.golang.org/grpc"
 	"sync"
+	"time"
 )
 
 func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
@@ -29,7 +30,8 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 				return
 			}
 			client := pb.NewRappaExecutorClient(conn)
-			ctx := context.WithoutCancel(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
 			//defer cancel()
 
 			// 发送调度请求

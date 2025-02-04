@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type FakeHttpTaskRequest = paradigm.UnprocessedTask
+type HttpTaskRequest = *paradigm.SynthTaskTrackItem
 
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
@@ -27,11 +27,17 @@ type FakeHttpEngine struct {
 func (e *FakeHttpEngine) HandleRequest() {
 	//for {
 	// 模拟生成一个 HTTP 请求
-	request := e.generateFakeRequest()
+	//task := e.generateFakeRequest()
 
 	// 将请求推送到请求池中
 	//e.PendingRequestPool <- request
-	e.channel.InitTasks <- request
+	//task := paradigm.NewTask(request.TaskID, request.Model, request.Params, request.Size)
+	// 上链
+	e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{
+		e.generateFakeRequest(),
+	}
+
+	//e.channel.InitTasks <- request
 
 	// 模拟请求间隔
 	//time.Sleep(10 * time.Second)
@@ -72,19 +78,40 @@ func (e *FakeHttpEngine) Start() {
 }
 
 // generateFakeRequest 模拟生成 HTTP 请求格式化后的结果
-func (e *FakeHttpEngine) generateFakeRequest() FakeHttpTaskRequest {
+func (e *FakeHttpEngine) generateFakeRequest() *paradigm.Task {
 	// 模拟生成的请求
-	request := FakeHttpTaskRequest{
-		Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
-		Size:  40, // 模拟固定大小
-		Model: paradigm.CTGAN,
-		Params: map[string]interface{}{
+	//unprocessedTask := &paradigm.UnprocessedTask{
+	//	TaskID: fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
+	//	Size:   50,
+	//	Model:  paradigm.CTGAN,
+	//	Params: map[string]interface{}{
+	//		"condition_column": "native-country",
+	//		"condition_value":  "United-States",
+	//	},
+	//}
+	task := paradigm.NewTask(
+		fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
+		paradigm.CTGAN,
+		map[string]interface{}{
 			"condition_column": "native-country",
 			"condition_value":  "United-States",
-		},
-	}
-	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", request))
-	return request
+		}, 50)
+	//request := &paradigm.SynthTaskTrackItem{
+	//	UnprocessedTask: unprocessedTask,
+	//	Total:           unprocessedTask.Size,
+	//	History:         0,
+	//	IsReliable:      true,
+	//}
+	//Sign:  fmt.Sprintf("FakeSign-%d", time.Now().Unix()),
+	//Size:  50, // 模拟固定大小
+	//Model: paradigm.CTGAN,
+	//Params: map[string]interface{}{
+	//	"condition_column": "native-country",
+	//	"condition_value":  "United-States",
+	//},
+
+	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", task))
+	return task
 }
 func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32, mission string) paradigm.CollectRequest {
 	request := paradigm.CollectRequest{

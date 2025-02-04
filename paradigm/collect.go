@@ -11,6 +11,7 @@ type CollectSlotItem struct {
 	Size        int32           // 表示这个slot包含了多少的数据
 	OutputType  ModelOutputType // 模型输出格式，用于collector恢复
 	PaddingSize []int32         // 所有的padding size
+	StoreMethod int32           // 存储方式
 }
 
 // CollectRequest 表示一个来自前端的收集请求

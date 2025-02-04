@@ -22,6 +22,7 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Slot:       req.Slot,
 		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
 		Padding:    req.Padding,
+		Store:      req.Store,
 		Commitment: req.Commitment,
 	})
 	item.SetHash(req.Hash) // 设置slotHash

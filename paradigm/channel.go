@@ -7,11 +7,13 @@ import (
 
 type RappaChannel struct {
 	Config           *Config.BHLayer2NodeConfig
-	InitTasks        chan UnprocessedTask
+	InitTasks        chan *SynthTaskTrackItem
 	UnprocessedTasks chan UnprocessedTask
 	//PendingRequestPool chan UnprocessedTask
-	PendingSchedule        chan TaskSchedule
-	ScheduledTasks         chan TaskSchedule
+	PendingSchedules chan SynthTaskSchedule
+	OracleSchedules  chan *SynthTaskSchedule
+	//PendingSchedule        chan TaskSchedule
+	ScheduledTasks         chan SynthTaskSchedule
 	CommitSlots            chan CommitSlotItem
 	EpochHeartbeat         chan *pb.HeartbeatRequest
 	PendingTransactions    chan Transaction
@@ -29,11 +31,13 @@ type RappaChannel struct {
 func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 	return &RappaChannel{
 		Config:           config,
-		InitTasks:        make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize),
+		InitTasks:        make(chan *SynthTaskTrackItem, config.MaxUnprocessedTaskPoolSize),
 		UnprocessedTasks: make(chan UnprocessedTask, config.MaxUnprocessedTaskPoolSize),
 		//PendingRequestPool:    pendingSchedule,
-		PendingSchedule:           make(chan TaskSchedule, config.MaxPendingSchedulePoolSize),
-		ScheduledTasks:            make(chan TaskSchedule, config.MaxScheduledTasksPoolSize),
+		PendingSchedules: make(chan SynthTaskSchedule, config.MaxPendingSchedulePoolSize),
+		OracleSchedules:  make(chan *SynthTaskSchedule, config.MaxPendingSchedulePoolSize),
+		//PendingSchedule:           make(chan TaskSchedule, config.MaxPendingSchedulePoolSize),
+		ScheduledTasks:            make(chan SynthTaskSchedule, config.MaxScheduledTasksPoolSize),
 		CommitSlots:               make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize),
 		EpochHeartbeat:            make(chan *pb.HeartbeatRequest, 1),
 		PendingTransactions:       make(chan Transaction, config.MaxCommitSlotItemPoolSize), // todo,

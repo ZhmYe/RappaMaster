@@ -31,7 +31,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 			Sign:         req.Sign,
 			NodeId:       strconv.Itoa(m.nodeID),
 			Accept:       false,
-			ErrorMessage: "Task rejected due to resource constraints",
+			ErrorMessage: "Epoch rejected due to resource constraints",
 		}, nil
 	}
 
@@ -50,7 +50,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 				if process <= 0 {
 					process = 1
 				}
-				LogWriter.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Task %s Slot %d", id, size-1, req.Sign, slot))
+				LogWriter.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Epoch %s Slot %d", id, size-1, req.Sign, slot))
 				// todo 这里现在是直接提交的，没有走grpc
 				m.commitSlot <- paradigm.NewCommitSlotItem(&service.JustifiedSlot{
 					Nid:     int32(id),
