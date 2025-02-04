@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
-	SlotCommit "BHLayer2Node/ChainUpper/contract/slotCommit"
+	Store "BHLayer2Node/ChainUpper/contract/store"
 	"context"
 	"encoding/hex"
-	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"log"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/client"
 )
 
 type ChainUpper struct {
@@ -25,8 +26,8 @@ type ChainUpper struct {
 	//queue               chan map[string]interface{} // 用于异步上链的队列
 	queue    chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
 	client   *client.Client            // FISCO-BCOS 客户端
-	instance *SlotCommit.SlotCommit    // 合约实例
-	count    int                       // add by zhmye, 这里是用来给每笔交易赋予一个id的
+	instance *Store.Store
+	count    int // add by zhmye, 这里是用来给每笔交易赋予一个id的
 }
 
 func (c *ChainUpper) Start() {
@@ -135,12 +136,12 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to load contract: %v", err)
 	// }
-	address, receipt, instance, err := SlotCommit.DeploySlotCommit(client.GetTransactOpts(), client)
+	address, receipt, instance, err := Store.DeployStore(client.GetTransactOpts(), client)
 	if err != nil {
 		log.Fatal(err)
 	}
-	LogWriter.Log("INFO", fmt.Sprintf("contract address: ", address.Hex())) // the address should be saved, will use in next example
-	LogWriter.Log("INFO", fmt.Sprintf("transaction hash: ", receipt.TransactionHash))
+	LogWriter.Log("INFO", fmt.Sprintf("contract address: %s", address.Hex())) // the address should be saved, will use in next example
+	LogWriter.Log("INFO", fmt.Sprintf("transaction hash: %s", receipt.TransactionHash))
 
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
