@@ -21,7 +21,7 @@ type UpChainWorker struct {
 	devPackedTransaction chan []*paradigm.PackedTransaction // add by zhmye 这里是用来给dev的，所有已经上链的交易都要给
 	instance             *SlotCommit.SlotCommit
 	client               *client.Client
-	batchSize            int // TODO @SD 把这个加成config
+	batchSize            int
 	//signs                                                  [][32]byte
 	//slotsBigInt, processesBigInt, nidsBigInt, epochsBigInt []*big.Int
 	params map[paradigm.TransactionType]paradigm.PackedParams // 这里记录各种类型的交易参数 add by zhmye
@@ -106,14 +106,14 @@ func (w *UpChainWorker) consumer() {
 	w.params = paradigm.NewParamsMap()
 
 }
-func NewUpchainWorker(id int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *SlotCommit.SlotCommit, client *client.Client) *UpChainWorker {
+func NewUpchainWorker(id int, batchSize int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *SlotCommit.SlotCommit, client *client.Client) *UpChainWorker {
 	return &UpChainWorker{
 		id:                   id,
 		queue:                queue,
 		devPackedTransaction: dev,
 		instance:             instance,
 		client:               client,
-		batchSize:            1, // todo @SD
+		batchSize:            batchSize,
 		params:               paradigm.NewParamsMap(),
 		count:                0,
 	}
