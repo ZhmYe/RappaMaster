@@ -149,10 +149,17 @@ func (d *Oracle) Start() {
 								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								LogWriter.Log("DEBUG", "Test Query Generation...")
-								query := new(EvidencePreserveTaskTxQuery)
-								query.FromHttpJson(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
-								response := query.GenerateResponse(task)
-								fmt.Println(response)
+								query := NewEvidencePreserveTaskTxQuery(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
+								d.channel.QueryChannel <- query
+								go func() {
+									response := query.ReceiveResponse()
+									fmt.Println(response)
+								}()
+								//query := new(EvidencePreserveTaskTxQuery)
+								//query.ParseRawDataFromHttpEngine(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
+
+								//response := query.GenerateResponse(task)
+								//fmt.Println(response)
 							}
 							// 这里更新了task的slot，那么可以将这里的Slot传递给collector
 							commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
@@ -189,25 +196,44 @@ func (d *Oracle) Start() {
 
 		}
 	}
-	//processSchedule := func() {
-	//	for schedule := range d.channel.OracleSchedules {
-	//		// 这些是完成的调度
-	//		if _, exist := d.tasks[schedule.TaskID]; !exist {
-	//			panic("Unknown Task!!!")
-	//		}
-	//		task := d.tasks[schedule.TaskID]
-	//		task.UpdateSchedule(schedule) // 这里的schedule已经包含了grpc的状态
-	//		d.tasks[schedule.TaskID] = task
-	//		for _, slot := range schedule.Slots {
-	//			d.slotsMap[slot.SlotID] = slot // 这里记录所有的slot，todo 其实只要记录processing的
-	//		}
-	//	}
-	//}
-	//processSlot := func() {
-	//	// 更新slot的状态
-	//}
-	//go processTransactions()
-	//go processSlot()
+	// 处理Query
+	processQuery := func() {
+		// 来自Http的query,需要发回去，因此Query里需要有一个通道
+		// TODO 这里的txMap应该会有并发读写的问题，而且不能将这个协程合并，会影响性能
+		for query := range d.channel.QueryChannel {
+			LogWriter.Log("ORACLE", "Receive a Query")
+			switch query.(type) {
+			case *EvidencePreserveTaskTxQuery:
+				// 根据txHash查询Task
+				item := query.(*EvidencePreserveTaskTxQuery)
+				if _, exist := d.txMap[item.txHash]; !exist {
+					errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "Transaction does not exist in Oracle")
+					item.SendResponse(errorResponse)
+					paradigm.RaiseError(paradigm.ValueError, "Transaction does not exist in Oracle", false)
+					continue
+				}
+				ref := d.txMap[item.txHash]
+				if ref.Rf == paradigm.EpochTx {
+					errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction")
+					item.SendResponse(errorResponse)
+					paradigm.RaiseError(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction", false)
+				} else {
+					// 如果是Slot或者initTask，那么都会有对应的TaskID
+					if ref.TaskID == "" {
+						errorResponse := paradigm.NewErrorResponse(paradigm.RuntimeError, "runtime error")
+						item.SendResponse(errorResponse)
+						paradigm.RaiseError(paradigm.RuntimeError, "Reference has not TaskID But is not a EpochTx Rf", false)
+						continue
+					}
+					item.SendResponse(item.GenerateResponse(d.tasks[ref.TaskID])) // 有ref一定有task
+				}
+
+			default:
+				panic("Unsupported Query Type!!!")
+			}
+		}
+	}
+	go processQuery()
 	updateOracle()
 }
 

@@ -23,6 +23,7 @@ type RappaChannel struct {
 
 	ToCollectorRequestChannel chan CollectRequest
 	SlotCollectChannel        chan RecoverConnection
+	QueryChannel              chan Query
 	// ============================== DEBUG用的Channel==========================
 	FakeCollectSignChannel chan [2]interface{} // 传递sign和size
 	//SlotRecoverChannel     chan RecoverResponse
@@ -46,6 +47,7 @@ func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 		ToCollectorSlotChannel:    make(chan CollectSlotItem, config.MaxCommitSlotItemPoolSize),      // todo
 		ToCollectorRequestChannel: make(chan CollectRequest, config.MaxCommitSlotItemPoolSize),       // todo
 		SlotCollectChannel:        make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),    // todo
+		QueryChannel:              make(chan Query, config.MaxCommitSlotItemPoolSize),                // todo
 		FakeCollectSignChannel:    make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),       // todo
 		//SlotRecoverChannel:     slotRecoverChannel,
 	}

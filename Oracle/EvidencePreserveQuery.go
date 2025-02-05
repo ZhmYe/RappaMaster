@@ -20,10 +20,11 @@ import (
 ***/
 // 传入Task生成response
 type EvidencePreserveTaskTxQuery struct {
-	txHash string // 交易哈希
+	txHash          string // 交易哈希
+	responseChannel chan paradigm.Response
 }
 
-func (q *EvidencePreserveTaskTxQuery) GenerateResponse(data interface{}) map[interface{}]interface{} {
+func (q *EvidencePreserveTaskTxQuery) GenerateResponse(data interface{}) paradigm.Response {
 	task := data.(*paradigm.Task)
 	// 要展示的内容
 	// 1.任务的基本信息
@@ -119,16 +120,29 @@ func (q *EvidencePreserveTaskTxQuery) GenerateResponse(data interface{}) map[int
 	response["epochData"] = epochSlotMap
 	response["epochProcessData"] = epochProcess
 	response["scheduleDistributionData"] = scheduleDistribution
-	return response
+	return paradigm.NewSuccessResponse(response)
 
 }
-func (q *EvidencePreserveTaskTxQuery) FromHttpJson(rawData map[interface{}]interface{}) bool {
+func (q *EvidencePreserveTaskTxQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
 	if txHash, ok := rawData["txHash"].(string); ok {
 		q.txHash = txHash
 		return true
 	}
 	return false
-
+}
+func (q *EvidencePreserveTaskTxQuery) SendResponse(response paradigm.Response) {
+	q.responseChannel <- response
+	close(q.responseChannel)
+}
+func (q *EvidencePreserveTaskTxQuery) ReceiveResponse() paradigm.Response {
+	return <-q.responseChannel
+}
+func NewEvidencePreserveTaskTxQuery(rawData map[interface{}]interface{}) *EvidencePreserveTaskTxQuery {
+	responseChannel := make(chan paradigm.Response, 1)
+	query := new(EvidencePreserveTaskTxQuery)
+	query.ParseRawDataFromHttpEngine(rawData)
+	query.responseChannel = responseChannel
+	return query
 }
 
 // EvidencePreserveTaskIDQuery 根据任务ID查询Task
