@@ -27,13 +27,11 @@ func main() {
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	taskManager := Task.NewTaskManager(rappaChannel)
-	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
+	// chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	dev := Dev.NewDev(rappaChannel)
 	collector := Collector.NewCollector(rappaChannel)
-	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
-	//if err != nil {
-	//	LogWriter.Log("ERROR", fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	//}
+	chainUpper, _ := ChainUpper.NewChainUpper(rappaChannel, config)
+	chainQuery, _ := ChainUpper.NewChainQuery(rappaChannel, config)
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(rappaChannel)
@@ -57,6 +55,7 @@ func main() {
 		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))
 		return
 	}
+	chainQuery.Start()
 
 	// 主程序保持运行，等待任务完成
 	LogWriter.Log("INFO", "Main program is running...")

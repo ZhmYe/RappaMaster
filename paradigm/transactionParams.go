@@ -15,7 +15,8 @@ type PackedParams interface {
 	GetParams() []interface{}
 	ParamsLen() int
 	IsEmpty() bool
-	ConvertParamsToKVPairs() ([32]byte, []byte) // 将参数转化为32字节的kv对数组
+	ConvertParamsToKVPairs() ([32]byte, []byte) // setItem
+	ParamsToKVPairs() ([][32]byte, [][]byte)    // batch setItem
 	BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction
 }
 
@@ -87,6 +88,23 @@ func (p *InitTaskTransactionParams) ConvertParamsToKVPairs() ([32]byte, []byte) 
 	key := utils.StringToBytes32(keyStr)
 	return key, value
 }
+func (p *InitTaskTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) {
+	n := len(p.signs)
+	keys := make([][32]byte, n)
+	values := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		keys[i] = p.signs[i] // 使用任务sign作为key
+		var composite []byte
+		// 直接拼接各个[32]byte字段
+		composite = append(composite, p.signs[i][:]...)
+		composite = append(composite, utils.BigIntToBytes32(p.sizes[i])...)
+		composite = append(composite, p.models[i][:]...)
+		composite = append(composite, p.isReliables[i][:]...)
+		composite = append(composite, p.paramsList[i][:]...)
+		values[i] = composite
+	}
+	return keys, values
+}
 func (p *InitTaskTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
 	receipt := receipts[0]
 	result := make([]*PackedTransaction, 0)
@@ -119,7 +137,7 @@ func (p *TaskProcessTransactionParams) UpdateFromTransaction(tx Transaction) {
 		calldata := tx.CallData()
 		p.txs = append(p.txs, tx.(*TaskProcessTransaction))
 		p.signs = append(p.signs, utils.StringToBytes32(calldata["Sign"].(string)))
-		p.hashs = append(p.signs, utils.StringToBytes32(calldata["Hash"].(string)))
+		p.hashs = append(p.hashs, utils.StringToBytes32(calldata["Hash"].(string)))
 		p.slotsBigInt = append(p.slotsBigInt, new(big.Int).SetUint64(uint64(calldata["Slot"].(int32))))
 		p.processesBigInt = append(p.processesBigInt, new(big.Int).SetUint64(uint64(calldata["Process"].(int32))))
 		// p.nidsBigInt = append(p.nidsBigInt, new(big.Int).SetUint64(uint64(calldata["ID"].(int32))))
@@ -158,6 +176,24 @@ func (p *TaskProcessTransactionParams) ConvertParamsToKVPairs() ([32]byte, []byt
 	// 将 key 字符串转换为 [32]byte
 	key := utils.StringToBytes32(keyStr)
 	return key, value
+}
+func (p *TaskProcessTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) {
+	n := len(p.signs)
+	keys := make([][32]byte, n)
+	values := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		keys[i] = p.hashs[i] // 使用hash作为key
+		var composite []byte
+		// 直接拼接各个[32]byte字段
+		composite = append(composite, p.signs[i][:]...)
+		composite = append(composite, p.hashs[i][:]...)
+		composite = append(composite, utils.BigIntToBytes32(p.slotsBigInt[i])...)
+		composite = append(composite, utils.BigIntToBytes32(p.processesBigInt[i])...)
+		composite = append(composite, utils.BigIntToBytes32(p.nidsBigInt[i])...)
+		composite = append(composite, utils.BigIntToBytes32(p.epochsBigInt[i])...)
+		values[i] = composite
+	}
+	return keys, values
 }
 
 func (p *TaskProcessTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
@@ -199,24 +235,23 @@ func (p *EpochRecordTransactionParams) UpdateFromTransaction(tx Transaction) {
 		p.txs = append(p.txs, tx.(*EpochRecordTransaction))
 		calldata := tx.CallData()
 		p.ids = append(p.ids, new(big.Int).SetUint64(uint64(calldata["id"].(int32))))
-
+		// 处理Justified (带类型安全检查和默认值)
 		var justifiedsArr [][32]byte
-		for _, s := range calldata["Justified"].([]SlotHash) {
-			justifiedsArr = append(justifiedsArr, utils.StringToBytes32(s))
+		if justified, ok := calldata["Justified"].([]SlotHash); ok {
+			for _, s := range justified {
+				justifiedsArr = append(justifiedsArr, utils.StringToBytes32(s))
+			}
 		}
-		p.commits = append(p.justifieds, justifiedsArr)
-
+		p.justifieds = append(p.justifieds, justifiedsArr)
+		// 处理Commits (同上)
 		var commitArr [][32]byte
-		for _, s := range calldata["Commits"].([]SlotHash) {
-			commitArr = append(commitArr, utils.StringToBytes32(s))
+		if commits, ok := calldata["Commits"].([]SlotHash); ok {
+			for _, s := range commits {
+				commitArr = append(commitArr, utils.StringToBytes32(s))
+			}
 		}
 		p.commits = append(p.commits, commitArr)
 		// 异常slot处理
-		// var invalidMap = make(map[[32]byte]interface{})
-		// for k, v := range calldata["invalids"].(map[SlotHash]InvalidCommitType) {
-		// 	invalidMap[utils.StringToBytes32(k)] = v
-		// }
-		// p.invalids = append(p.invalids, invalidMap)
 		var invalidMap = make(map[string]interface{})
 		for k, v := range calldata["invalids"].(map[SlotHash]InvalidCommitType) {
 			invalidMap[k] = v
@@ -251,64 +286,24 @@ func (p *EpochRecordTransactionParams) ConvertParamsToKVPairs() ([32]byte, []byt
 	key := utils.StringToBytes32(keyStr)
 	return key, value
 }
-
-// 使用 epoch id 作为 key，其他属性整合为 value，格式： "justified1,justified2,...|commit1,commit2,...|invalidKey1:invalidValue1,invalidKey2:invalidValue2,..."
-// func (p *EpochRecordTransactionParams) ConvertParamsToKVPairs() ([][32]byte, [][32]byte) {
-// 	n := len(p.ids)
-// 	keys := make([][32]byte, n)
-// 	values := make([][32]byte, n)
-// 	for i := 0; i < n; i++ {
-// 		// key：将 id 转换为字符串后转换为 [32]byte
-// 		keys[i] = utils.StringToBytes32(p.ids[i].String())
-
-// 		// 处理 justified 数组：如果 p.justifieds 未包含当前索引，则使用空数组
-// 		var justArr [][32]byte
-// 		if i < len(p.justifieds) {
-// 			justArr = p.justifieds[i]
-// 		} else {
-// 			justArr = make([][32]byte, 0)
-// 		}
-// 		justStr := ""
-// 		for j, b := range justArr {
-// 			if j > 0 {
-// 				justStr += ","
-// 			}
-// 			justStr += string(b[:])
-// 		}
-
-// 		// 处理 commits 数组：同上，确保不会越界
-// 		var commitArr [][32]byte
-// 		if i < len(p.commits) {
-// 			commitArr = p.commits[i]
-// 		} else {
-// 			commitArr = make([][32]byte, 0)
-// 		}
-// 		commitStr := ""
-// 		for j, b := range commitArr {
-// 			if j > 0 {
-// 				commitStr += ","
-// 			}
-// 			commitStr += string(b[:])
-// 		}
-
-// 		// 处理 invalids map：如果不存在，则使用空 map
-// 		var invMap map[[32]byte]interface{}
-// 		if i < len(p.invalids) {
-// 			invMap = p.invalids[i]
-// 		} else {
-// 			invMap = make(map[[32]byte]interface{})
-// 		}
-// 		invalidStr := ""
-// 		for k, v := range invMap {
-// 			invalidStr += fmt.Sprintf("%s:%v,", string(k[:]), v)
-// 		}
-
-//			// 将各部分拼接，采用 "|" 分隔
-//			valStr := fmt.Sprintf("%s|%s|%s", justStr, commitStr, invalidStr)
-//			values[i] = utils.StringToBytes32(valStr)
-//		}
-//		return keys, values
-//	}
+func (p *EpochRecordTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) {
+	n := len(p.ids)
+	// LogWriter.Log("DEBUG", fmt.Sprintf("EPOCH PARAMS: %s", p.GetParams()...))
+	// 会出现某个epoch没有任何新提交的情况，但是epoch仍需要上链
+	keys := make([][32]byte, n)
+	values := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		keys[i] = utils.StringToBytes32(fmt.Sprintf("EPOCH_%d", p.ids[i])) // 使用epochid作为key
+		var composite []byte
+		// 直接拼接各个[32]byte字段
+		composite = append(composite, utils.FlattenByte32Slice(p.justifieds[i])...)
+		composite = append(composite, utils.FlattenByte32Slice(p.commits[i])...)
+		invalids := utils.SerializeParams(p.invalids[i])
+		composite = append(composite, invalids[:]...)
+		values[i] = composite
+	}
+	return keys, values
+}
 func (p *EpochRecordTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
 	receipt := receipts[0]
 	result := make([]*PackedTransaction, 0)

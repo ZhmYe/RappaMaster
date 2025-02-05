@@ -72,10 +72,12 @@ func (w *UpChainWorker) consumer() {
 			// LogWriter.Log("DEBUG", fmt.Sprintf("TX_%d waiting for upchain: %s", tType, txs))
 			continue
 		}
-		key, value := packedParam.ConvertParamsToKVPairs()
-		// LogWriter.Log("DEBUG", fmt.Sprintf("TX_%d convert to:[key]%s [value]%s", tType, key, value))
+		// key, value := packedParam.ConvertParamsToKVPairs()
+		keys, values := packedParam.ParamsToKVPairs()
+		// LogWriter.Log("DEBUG", fmt.Sprintf("TX_%d convert to:[key]%s [value]%s", tType, keys, values))
 		storeSession := &Store.StoreSession{Contract: instance, CallOpts: *client.GetCallOpts(), TransactOpts: *client.GetTransactOpts()}
-		_, receipt, err := storeSession.SetItem(key, value)
+		// _, receipt, err := storeSession.SetItem(key, value)
+		_, receipt, err := storeSession.SetItems(keys, values)
 		if err != nil {
 			LogWriter.Log("ERROR", fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
 		} else {
@@ -86,6 +88,19 @@ func (w *UpChainWorker) consumer() {
 
 	}
 	w.params = paradigm.NewParamsMap()
+}
+
+func NewUpchainWorker(id int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *Store.Store, client *client.Client) *UpChainWorker {
+	return &UpChainWorker{
+		id:                   id,
+		queue:                queue,
+		devPackedTransaction: dev,
+		instance:             instance,
+		client:               client,
+		batchSize:            1, // todo @SD
+		params:               paradigm.NewParamsMap(),
+		count:                0,
+	}
 }
 
 // func (w *UpChainWorker) consumer() {
@@ -135,18 +150,6 @@ func (w *UpChainWorker) consumer() {
 // 	w.params = paradigm.NewParamsMap()
 
 // }
-func NewUpchainWorker(id int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *Store.Store, client *client.Client) *UpChainWorker {
-	return &UpChainWorker{
-		id:                   id,
-		queue:                queue,
-		devPackedTransaction: dev,
-		instance:             instance,
-		client:               client,
-		batchSize:            1, // todo @SD
-		params:               paradigm.NewParamsMap(),
-		count:                0,
-	}
-}
 
 //func Worker(id int, queue chan map[string]interface{}, instance *SlotCommit.SlotCommit, client *client.Client) {
 //	// 每次收集 batchsize 个transaction再一起上链，但是实际产生的数据很少 设置为1，收到后直接上链
