@@ -81,7 +81,7 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	for i := 0; i < len(nIDs); i++ {
 		nID, scheduleSize := nIDs[i], size[i]
 		nodeIDMap[nID] = i
-		slot := paradigm.NewSlot(computeSlotHash(nID), paradigm.ScheduleHash(scheduleIndex), scheduleSize)
+		slot := paradigm.NewSlot(computeSlotHash(nID), task.TaskID, paradigm.ScheduleHash(scheduleIndex), scheduleSize)
 		//slots = append(slots, slot)
 		slots = append(slots, slot)
 	}

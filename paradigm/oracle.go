@@ -30,82 +30,6 @@ type DevReference struct {
 	//ScheduleID ScheduleHash
 }
 
-// ================ 以下是task部分=================
-
-type DevTask struct {
-	Task      *Task
-	Slots     []*SlotRecord // 一个个的slot
-	TxID      int
-	TxReceipt *types.Receipt
-}
-
-func (t *DevTask) UpdateCommitSlot(slot *CommitRecord) {
-	index := slot.Slot
-	for int32(len(t.Slots)) <= index {
-		t.Slots = append(t.Slots, NewSlotRecord(len(t.Slots)))
-	}
-	t.Slots[index].Update(slot)
-
-}
-func (t *DevTask) Print() {
-	fmt.Println("DevTask:")
-	fmt.Printf("  Sign: %s\n", t.Task.Sign)
-	fmt.Printf("	Size: %d\n", t.Task.Size)
-	fmt.Printf("  TxID: %d\n", t.TxID)
-	fmt.Printf("	Process: %d\n", t.Task.Process)
-	fmt.Println("  Slots:")
-	for _, slot := range t.Slots {
-		slot.Print()
-	}
-}
-func (t *DevTask) IsFinished() bool {
-	return t.Task.IsFinish()
-}
-func NewDevTask(ptx *PackedTransaction) *DevTask {
-	switch ptx.Tx.(type) {
-	case *InitTaskTransaction:
-		return &DevTask{
-			Task:      ptx.Tx.Blob().(*Task),
-			Slots:     make([]*SlotRecord, 0),
-			TxID:      ptx.Id,
-			TxReceipt: ptx.Receipt,
-		}
-	default:
-		panic("A DevTask should be init from InitTaskTransaction!!!")
-	}
-}
-
-//func (t *DevTask) Consensus(ptx *PackedTransaction) {
-//	t.tID = ptx.Id
-//	t.receipt = ptx.Receipt
-//}
-
-// SlotRecord 代表一个task的某个slot,由若干个commitSlot组成，每个commitSlot对应一笔TaskProcessTransaction交易,包装成CommitRecord
-type SlotRecord struct {
-	Sid int // id
-	//commits []*CommitSlotItem
-	commits []*CommitRecord
-}
-
-func (r *SlotRecord) Update(commit *CommitRecord) {
-	r.commits = append(r.commits, commit)
-}
-func NewSlotRecord(slot int) *SlotRecord {
-	return &SlotRecord{
-		Sid:     slot,
-		commits: make([]*CommitRecord, 0),
-	}
-}
-func (r *SlotRecord) Print() {
-	fmt.Printf("	SlotID:%d\n", r.Sid)
-	fmt.Printf("	len(commits) = %d\n", len(r.commits))
-	fmt.Println("	CommitSlots:")
-	for _, commit := range r.commits {
-		commit.Print()
-	}
-
-}
-
 // CommitRecord 每个commitRecord对应一个完成finalize的commitSlotItem，对应一笔TaskProcessTransaction
 type CommitRecord struct {
 	*CommitSlotItem
@@ -138,24 +62,29 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 // =================== 以下是epoch部分=========================
 
 type DevEpoch struct {
-	//epochID int
-	*EpochRecord
-	TxReceipt *types.Receipt // 交易上链后会有一个对应的receipt
-	TxID      int            // 交易ID，用于在Dev中定位交易
+	EpochID    int32
+	Process    int32
+	Commits    []*Slot
+	Justifieds []*Slot
+	Finalizes  []*Slot
+	Invalids   []*Slot
+	InitTasks  []*Task
+	TxReceipt  *types.Receipt // 交易上链后会有一个对应的receipt
+	TxID       int            // 交易ID，用于在Dev中定位交易
 }
 
-func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
-	switch ptx.Tx.(type) {
-	case *EpochRecordTransaction:
-		return &DevEpoch{
-			EpochRecord: ptx.Tx.Blob().(*EpochRecord),
-			TxReceipt:   ptx.Receipt,
-			TxID:        ptx.Id,
-		}
-	default:
-		panic("A DevEpoch should be init from an EpochRecordTransaction!!!")
-	}
-}
+//func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
+//	switch ptx.Tx.(type) {
+//	case *EpochRecordTransaction:
+//		return &DevEpoch{
+//			EpochRecord: ptx.Tx.Blob().(*EpochRecord),
+//			TxReceipt:   ptx.Receipt,
+//			TxID:        ptx.Id,
+//		}
+//	default:
+//		panic("A DevEpoch should be init from an EpochRecordTransaction!!!")
+//	}
+//}
 
 /*** EpochRecord 用于记录一个epoch内情况，由TaskManager更新***/
 
@@ -169,6 +98,7 @@ type EpochRecord struct {
 	Finalizes  map[SlotHash]SlotCommitment    // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
 	Invalids   map[SlotHash]InvalidCommitType // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
 	Tasks      map[string]int32               // 新收到的任务sign, 对应的数据量
+	Process    int32                          // 一共处理了多少
 }
 
 func (r *EpochRecord) UpdateTask(task *Task) {
@@ -215,6 +145,7 @@ func (r *EpochRecord) Finalize(slot *CommitSlotItem) {
 		//slot.SetFinalize() // finalize
 		//r.finalizes = append(r.finalizes, slot.JustifiedSlot)
 		r.Finalizes[slot.SlotHash()] = slot.Commitment
+		r.Process += slot.Process
 	} else {
 		slot.SetInvalid(UNKNOWN) // 这里目前没用，甚至不会进入这里 todo
 
@@ -234,6 +165,7 @@ func (r *EpochRecord) Abort(slot *CommitSlotItem, reason InvalidCommitType) {
 }
 func (r *EpochRecord) Refresh() {
 	r.Id++
+	r.Process = 0
 	r.Commits = make(map[SlotHash]SlotCommitment)
 	r.Justifieds = make(map[SlotHash]SlotCommitment)
 	r.Finalizes = make(map[SlotHash]SlotCommitment)

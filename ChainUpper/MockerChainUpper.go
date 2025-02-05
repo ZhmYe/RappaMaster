@@ -76,6 +76,7 @@ func (c *MockerChainUpper) UpChain() {
 					return nil
 				case *paradigm.EpochRecordTransaction:
 					// todo
+					//fmt.Println(444, tx.Blob().(*paradigm.EpochRecord))
 					return nil
 				default:
 					return nil

@@ -10,6 +10,7 @@ const (
 
 // Slot 一个具体的节点合成任务实例
 type Slot struct {
+	TaskID       TaskHash
 	SlotID       SlotHash
 	ScheduleID   ScheduleHash
 	ScheduleSize int32           // 调度的数量，以KB为单位
@@ -48,10 +49,11 @@ func (s *Slot) Commit(commitSlot *CommitSlotItem) {
 	s.Status = Finished // 这里不区分是否全部做完，不允许多次提交 todo
 	s.SetEpoch(commitSlot.Epoch)
 }
-func (s *Slot) UpdateSchedule(scheduleID ScheduleHash, size int32) {
+func (s *Slot) UpdateSchedule(scheduleID ScheduleHash, taskID TaskHash, size int32) {
 	//s.SlotID = slotID
 	s.ScheduleID = scheduleID
 	s.ScheduleSize = size
+	s.TaskID = taskID
 }
 func NewSlotWithSlotID(slotID SlotHash) *Slot {
 	return &Slot{
@@ -61,10 +63,12 @@ func NewSlotWithSlotID(slotID SlotHash) *Slot {
 		Status:       Processing,
 		err:          "",
 		CommitSlot:   nil,
+		TaskID:       "",
 	}
 }
-func NewSlot(slotID SlotHash, scheduleID ScheduleHash, schedule int32) *Slot {
+func NewSlot(slotID SlotHash, taskID TaskHash, scheduleID ScheduleHash, schedule int32) *Slot {
 	return &Slot{
+		TaskID:       taskID,
 		SlotID:       slotID,
 		ScheduleID:   scheduleID,
 		ScheduleSize: schedule,

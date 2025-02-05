@@ -7,6 +7,7 @@ type Query interface {
 	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
 	SendResponse(response Response)
 	ReceiveResponse() Response
+	ToHttpJson() map[interface{}]interface{}
 }
 type Response interface {
 	ToHttpJson() map[interface{}]interface{}

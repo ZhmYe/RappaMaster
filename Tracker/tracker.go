@@ -75,9 +75,9 @@ func (t *Tracker) OutOfDate() ([]*paradigm.CommitSlotItem, []*paradigm.CommitSlo
 			if task.IsFinish() {
 				LogWriter.Log("TRACKER", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", taskID, task.Size, task.History))
 				continue
-			} else {
-				fmt.Println(task.IsFinish(), task.Size)
 			}
+			//fmt.Println(task.IsFinish(), task.Size)
+
 			//t.channel.UnprocessedTasks <- task.Next()
 			//validTaskMap[nextSlot.Sign] = int32(nextSlot.Slot)
 			//go func(task paradigm.SynthTaskTrackItem) {

@@ -2,6 +2,7 @@ package Oracle
 
 import (
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
 )
@@ -32,7 +33,7 @@ type Oracle struct {
 	tasks    map[string]*paradigm.Task // 所有的任务, 以sign为map
 	slotsMap map[paradigm.SlotHash]*paradigm.Slot
 	//slotsMap sync.Map
-	epochs map[int]*paradigm.DevEpoch // 所有的epoch,以epochID为ma
+	epochs map[int32]*paradigm.DevEpoch // 所有的epoch,以epochID为ma
 	tID    int
 	txMap  map[string]paradigm.DevReference // 这里以txHash作为key,交易最终会指向一个task或者epoch
 	//slotsMaoMutex sync.RWMutex
@@ -42,26 +43,27 @@ func (d *Oracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	if _, exist := d.slotsMap[slot.SlotID]; !exist {
 		d.slotsMap[slot.SlotID] = slot
 	} else {
-		d.slotsMap[slot.SlotID].UpdateSchedule(slot.ScheduleID, slot.ScheduleSize)
+		d.slotsMap[slot.SlotID].UpdateSchedule(slot.ScheduleID, slot.TaskID, slot.ScheduleSize)
 	}
 }
 func (d *Oracle) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
-	if _, exist := d.slotsMap[slotHash]; !exist {
-		d.slotsMap[slotHash] = paradigm.NewSlotWithSlotID(slotHash)
-	}
-	slot := d.slotsMap[slotHash]
+	slot := d.GetSlot(slotHash)
 	//slot.CommitSlot.SetEpoch(epoch)
 	slot.SetEpoch(epoch)
 	slot.SetError(paradigm.InvalidCommitTypeToString(e))
 }
 func (d *Oracle) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
+	slot := d.GetSlot(slotHash)
+	// 更新slot状态，这里应该是指针
+	slot.Commit(commitSlotItem) // 将slot提交
+
+}
+func (d *Oracle) GetSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
 	if _, exist := d.slotsMap[slotHash]; !exist {
 		d.slotsMap[slotHash] = paradigm.NewSlotWithSlotID(slotHash)
 	}
 	slot := d.slotsMap[slotHash]
-	// 更新slot状态，这里应该是指针
-	slot.Commit(commitSlotItem) // 将slot提交
-
+	return slot
 }
 func (d *Oracle) Start() {
 	updateOracle := func() {
@@ -88,25 +90,64 @@ func (d *Oracle) Start() {
 					case *paradigm.EpochRecordTransaction:
 						// 上链了一个epoch历史记录
 						// 那么需要新建一个epoch
-						epoch := paradigm.NewDevEpoch(ptx)
-						if _, exist := d.epochs[epoch.EpochRecord.Id]; exist {
-							panic("Error in epoch count!!!")
+						epochRecord := ptx.Tx.Blob().(*paradigm.EpochRecord)
+						//fmt.Println(222, epochRecord)
+						commits, justifieds, finalizeds := make([]*paradigm.Slot, 0), make([]*paradigm.Slot, 0), make([]*paradigm.Slot, 0)
+						invalids := make([]*paradigm.Slot, 0)
+						initTasks := make([]*paradigm.Task, 0)
+						for slotHash, _ := range epochRecord.Commits {
+							//slot := d.GetSlot(slotHash)
+							commits = append(commits, d.GetSlot(slotHash))
 						}
-						d.epochs[epoch.EpochRecord.Id] = epoch // 记录epoch
-						// 遍历epoch中的invalid，用于更新状态
-						for slotHash, e := range epoch.Invalids {
-							d.SetSlotError(slotHash, e, int32(epoch.EpochRecord.Id))
-							//slot, _ := d.slotsMap[slotHash]
-							//slot.CommitSlot.SetEpoch(int32(epoch.EpochRecord.Id))
-							//slot.SetError(paradigm.InvalidCommitTypeToString(e))
+						for slotHash, _ := range epochRecord.Justifieds {
+							justifieds = append(justifieds, d.GetSlot(slotHash))
 						}
+						for slotHash, _ := range epochRecord.Finalizes {
+							finalizeds = append(finalizeds, d.GetSlot(slotHash))
+						}
+						for slotHash, e := range epochRecord.Invalids {
+							d.SetSlotError(slotHash, e, int32(epochRecord.Id))
+							invalids = append(invalids, d.GetSlot(slotHash))
+						}
+						for taskID, _ := range epochRecord.Tasks {
+							if task, exist := d.tasks[taskID]; !exist {
+								paradigm.RaiseError(paradigm.RuntimeError, "Task has not been init", false)
+							} else {
+								initTasks = append(initTasks, task)
+								ref := d.txMap[task.TxReceipt.TransactionHash]
+								ref.EpochID = int32(epochRecord.Id)
+							}
+						}
+						epoch := &paradigm.DevEpoch{
+							EpochID:    int32(epochRecord.Id),
+							Process:    epochRecord.Process,
+							Commits:    commits,
+							Justifieds: justifieds,
+							Finalizes:  finalizeds,
+							Invalids:   invalids,
+							InitTasks:  initTasks,
+							TxReceipt:  ptx.Receipt,
+							TxID:       ptx.Id,
+						}
+						//epoch := paradigm.NewDevEpoch(ptx)
+						if _, exist := d.epochs[epoch.EpochID]; exist {
+							paradigm.RaiseError(paradigm.RuntimeError, "Error in EpochUpdate", false)
+						}
+						d.epochs[epoch.EpochID] = epoch // 记录epoch
+						//遍历epoch中的invalid，用于更新状态
+						//for slotHash, e := range epoch.Invalids {
+						//	d.SetSlotError(slotHash, e, int32(epoch.EpochRecord.Id))
+						//slot, _ := d.slotsMap[slotHash]
+						//slot.CommitSlot.SetEpoch(int32(epoch.EpochRecord.Id))
+						//slot.SetError(paradigm.InvalidCommitTypeToString(e))
+						//}
 						// 更新txMap,对应的rf是epochTx
 						reference := paradigm.DevReference{
 							TxHash:    ptx.Receipt.TransactionHash,
 							TxReceipt: *ptx.Receipt,
 							Rf:        paradigm.EpochTx,
 							TaskID:    "",
-							EpochID:   int32(epoch.EpochRecord.Id),
+							EpochID:   int32(epochRecord.Id),
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -127,7 +168,7 @@ func (d *Oracle) Start() {
 							TxReceipt: *ptx.Receipt,
 							Rf:        paradigm.InitTaskTx,
 							TaskID:    task.Sign,
-							EpochID:   -1, // 注意epoch是针对slot而言的,initTask没有epoch的概念
+							EpochID:   -1, // 这里的epochID需要等epoch更新才能拿到
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -149,11 +190,17 @@ func (d *Oracle) Start() {
 								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								LogWriter.Log("DEBUG", "Test Query Generation...")
-								query := NewEvidencePreserveTaskTxQuery(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
+								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})
+								//d.channel.QueryChannel <- query
+								//go func() {
+								//	response := query.ReceiveResponse()
+								//	fmt.Println(response.ToHttpJson(), response.Error())
+								//}()
+								query := Query.NewEvidencePreserveEpochIDQuery(map[interface{}]interface{}{"epochID": 8})
 								d.channel.QueryChannel <- query
 								go func() {
 									response := query.ReceiveResponse()
-									fmt.Println(response)
+									fmt.Println(response.ToHttpJson(), response.Error())
 								}()
 								//query := new(EvidencePreserveTaskTxQuery)
 								//query.ParseRawDataFromHttpEngine(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
@@ -197,43 +244,8 @@ func (d *Oracle) Start() {
 		}
 	}
 	// 处理Query
-	processQuery := func() {
-		// 来自Http的query,需要发回去，因此Query里需要有一个通道
-		// TODO 这里的txMap应该会有并发读写的问题，而且不能将这个协程合并，会影响性能
-		for query := range d.channel.QueryChannel {
-			LogWriter.Log("ORACLE", "Receive a Query")
-			switch query.(type) {
-			case *EvidencePreserveTaskTxQuery:
-				// 根据txHash查询Task
-				item := query.(*EvidencePreserveTaskTxQuery)
-				if _, exist := d.txMap[item.txHash]; !exist {
-					errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "Transaction does not exist in Oracle")
-					item.SendResponse(errorResponse)
-					paradigm.RaiseError(paradigm.ValueError, "Transaction does not exist in Oracle", false)
-					continue
-				}
-				ref := d.txMap[item.txHash]
-				if ref.Rf == paradigm.EpochTx {
-					errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction")
-					item.SendResponse(errorResponse)
-					paradigm.RaiseError(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction", false)
-				} else {
-					// 如果是Slot或者initTask，那么都会有对应的TaskID
-					if ref.TaskID == "" {
-						errorResponse := paradigm.NewErrorResponse(paradigm.RuntimeError, "runtime error")
-						item.SendResponse(errorResponse)
-						paradigm.RaiseError(paradigm.RuntimeError, "Reference has not TaskID But is not a EpochTx Rf", false)
-						continue
-					}
-					item.SendResponse(item.GenerateResponse(d.tasks[ref.TaskID])) // 有ref一定有task
-				}
 
-			default:
-				panic("Unsupported Query Type!!!")
-			}
-		}
-	}
-	go processQuery()
+	go d.processQuery()
 	updateOracle()
 }
 
@@ -242,7 +254,7 @@ func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 		channel:  channel,
 		tasks:    make(map[string]*paradigm.Task),
 		slotsMap: make(map[paradigm.SlotHash]*paradigm.Slot),
-		epochs:   make(map[int]*paradigm.DevEpoch),
+		epochs:   make(map[int32]*paradigm.DevEpoch),
 		txMap:    map[string]paradigm.DevReference{},
 		//tx:                     channel.OracleTransactionChannel,
 		//toCollectorSlotChannel: channel.ToCollectorSlotChannel,

@@ -209,7 +209,7 @@ func (t *EpochManager) UpdateEpoch() {
 	// 更新epoch的时候，构建心跳
 	heartbeat := t.buildHeartbeat()
 	t.channel.EpochHeartbeat <- heartbeat
-	//fmt.Println(t.epochRecord)
+	tmp := *t.epochRecord
 	go func(epochRecord EpochRecord) {
 		commits := make([]paradigm.SlotHash, 0)
 		justified := make([]paradigm.SlotHash, 0)
@@ -225,14 +225,15 @@ func (t *EpochManager) UpdateEpoch() {
 			finalized = append(finalized, hash)
 		}
 		// 上链epoch信息
+		// TODO @YZM
 		t.channel.PendingTransactions <- &paradigm.EpochRecordTransaction{
 			EpochRecord:   &epochRecord,
 			Id:            int32(t.currentEpoch),
-			CommitsHash:   justified,
+			CommitsHash:   commits,
 			JustifiedHash: finalized,
 			Invalids:      epochRecord.Invalids,
 		}
-	}(*t.epochRecord)
+	}(tmp)
 	// 下面的内容和心跳无关
 	t.epochRecord.Echo()
 	//for _, sign := range outOfDateTasks {
