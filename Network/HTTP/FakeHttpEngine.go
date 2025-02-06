@@ -91,7 +91,7 @@ func (e *FakeHttpEngine) generateFakeRequest() *paradigm.Task {
 		map[string]interface{}{
 			"condition_column": "native-country",
 			"condition_value":  "United-States",
-		}, 50)
+		}, 50, true)
 	//request := &paradigm.SynthTaskTrackItem{
 	//	UnprocessedTask: unprocessedTask,
 	//	Total:           unprocessedTask.Size,

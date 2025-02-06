@@ -3,6 +3,7 @@
   <component name="GoImports">
     <option name="excludedPackages">
       <array>
+        <option value="encoding/json" />
         <option value="github.com/FISCO-BCOS/go-sdk/v3/types" />
       </array>
     </option>

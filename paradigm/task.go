@@ -139,7 +139,7 @@ func (t *Task) IsFinish() bool {
 func (t *Task) SetCollected() {
 	t.HasbeenCollect = true
 }
-func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32) *Task {
+func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {
 	case CTGAN:
@@ -160,7 +160,7 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		Size:        total,
 		Process:     0,
 		//records:    make([]paradigm.SlotRecord, 0),
-		isReliable:     true, // todo 这里先统一写成true
+		isReliable:     isReliable,
 		HasbeenCollect: false,
 	}
 }

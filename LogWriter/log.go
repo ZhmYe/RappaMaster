@@ -66,6 +66,8 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["ERROR"] = func(msg string) { lw.log("ERROR", msg) }
 	lw.LogLevels["CRITICAL"] = func(msg string) { lw.log("CRITICAL", msg) }
 	lw.LogLevels["NETWORK"] = func(msg string) { lw.log("NETWORK", msg) }
+	lw.LogLevels["HTTP"] = func(msg string) { lw.log("HTTP", msg) }
+
 	lw.LogLevels["SCHEDULE"] = func(msg string) { lw.log("SCHEDULE", msg) }
 	lw.LogLevels["CHAINUP"] = func(msg string) { lw.log("CHAINUP", msg) }
 	lw.LogLevels["COORDINATOR"] = func(msg string) { lw.log("COORDINATOR", msg) }
