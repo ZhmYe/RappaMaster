@@ -20,8 +20,8 @@ type Slot struct {
 	Epoch        int32
 }
 
-func (s *Slot) Json() map[interface{}]interface{} {
-	json := make(map[interface{}]interface{})
+func (s *Slot) Json() map[string]interface{} {
+	json := make(map[string]interface{})
 	json["slotHash"] = s.SlotID
 	json["scheduleID"] = s.ScheduleID
 	json["scheduleSize"] = s.ScheduleSize

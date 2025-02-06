@@ -2,7 +2,6 @@ package Oracle
 
 import (
 	"BHLayer2Node/LogWriter"
-	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
 )
@@ -189,19 +188,20 @@ func (d *Oracle) Start() {
 								task.SetCollected()
 								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
-								LogWriter.Log("DEBUG", "Test Query Generation...")
+								//LogWriter.Log("DEBUG", "Test Query Generation...")
 								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})
 								//d.channel.QueryChannel <- query
 								//go func() {
 								//	response := query.ReceiveResponse()
 								//	fmt.Println(response.ToHttpJson(), response.Error())
 								//}()
-								query := Query.NewEvidencePreserveEpochIDQuery(map[interface{}]interface{}{"epochID": 3})
-								d.channel.QueryChannel <- query
-								go func() {
-									response := query.ReceiveResponse()
-									fmt.Println(response.ToHttpJson(), response.Error())
-								}()
+
+								//query := Query.NewEvidencePreserveEpochIDQuery(map[interface{}]interface{}{"epochID": 8})
+								//d.channel.QueryChannel <- query
+								//go func() {
+								//	response := query.ReceiveResponse()
+								//	fmt.Println(response.ToHttpJson(), response.Error())
+								//}()
 								//query := new(EvidencePreserveTaskTxQuery)
 								//query.ParseRawDataFromHttpEngine(map[interface{}]interface{}{"txHash": task.TxReceipt.TransactionHash})
 

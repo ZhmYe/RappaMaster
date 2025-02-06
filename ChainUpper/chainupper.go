@@ -140,7 +140,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 	if err != nil {
 		log.Fatal(err)
 	}
-	// config.ContractAddress = address.Hex()                                    // 在config里存储合约地址用于query调用
+
 	LogWriter.Log("INFO", fmt.Sprintf("contract address: %s", address.Hex())) // the address should be saved, will use in next example
 	LogWriter.Log("INFO", fmt.Sprintf("transaction hash: %s", receipt.TransactionHash))
 

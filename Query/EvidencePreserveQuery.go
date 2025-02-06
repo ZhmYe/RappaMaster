@@ -45,15 +45,15 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	epochs := make([]int32, 0)               // 这里是epoch的列表，因为会有一些epoch是空的，所以这里后面要排序，下面用一个map
 	epochSlotMap := make(map[int32][3]int32) // 这里映射某个epoch该任务的提交数量和invalid数量和合成总量
 	//4. Schedule 列表
-	schedules := make([]map[interface{}]interface{}, 0)
+	schedules := make([]map[string]interface{}, 0)
 	for _, schedule := range task.Schedules {
-		scheduleInfo := make(map[interface{}]interface{})
+		scheduleInfo := make(map[string]interface{})
 		scheduleInfo["scheduleID"] = schedule.ScheduleID         // 这里前端要加上“Schedule”
 		scheduleInfo["scheduleSize"] = schedule.Size             // 调度的总量
 		scheduleInfo["scheduleNumber"] = len(schedule.NodeIDMap) // 调度节点的数量
 		totalSlotNumber += len(schedule.Slots)
 		process, nbCommit, nbInvalid := int32(0), 0, 0
-		slots := make([]map[interface{}]interface{}, 0)
+		slots := make([]map[string]interface{}, 0)
 		// 所有的slot
 		for _, slot := range schedule.Slots {
 			epoch := slot.Epoch
@@ -102,7 +102,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 		timeline = append(timeline, [2]string{fmt.Sprintf("Epoch %d", epoch), fmt.Sprintf("提交单元数: %d, 检测异常单元数: %d, 合成数据: %d ", nbCommitInEpoch, nbInvalidInEpoch, synthData)}) // TODO
 		epochProcess = append(epochProcess, synthData)
 	}
-	response := make(map[interface{}]interface{})
+	response := make(map[string]interface{})
 	response["task_info"] = info
 	response["tx_info"] = tx
 	response["timeline"] = timeline
@@ -144,8 +144,8 @@ func (q *EvidencePreserveTaskTxQuery) ParseRawDataFromHttpEngine(rawData map[int
 	}
 	return false
 }
-func (q *EvidencePreserveTaskTxQuery) ToHttpJson() map[interface{}]interface{} {
-	return map[interface{}]interface{}{"query": "EvidencePreserveTaskTxQuery", "txHash": q.TxHash}
+func (q *EvidencePreserveTaskTxQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "EvidencePreserveTaskTxQuery", "txHash": q.TxHash}
 }
 
 // EvidencePreserveTaskIDQuery 根据任务ID查询Task
@@ -169,8 +169,8 @@ func (q *EvidencePreserveTaskIDQuery) ParseRawDataFromHttpEngine(rawData map[int
 	}
 	return false
 }
-func (q *EvidencePreserveTaskIDQuery) ToHttpJson() map[interface{}]interface{} {
-	return map[interface{}]interface{}{"query": "EvidencePreserveTaskIDQuery", "taskID": q.TaskID}
+func (q *EvidencePreserveTaskIDQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "EvidencePreserveTaskIDQuery", "taskID": q.TaskID}
 }
 
 // BasicEvidencePreserveEpochQuery 针对Epoch的Query，除了请求不同，其它一样，这是里通用的类
@@ -205,12 +205,12 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	// 4. slot信息, commit/finalized/invalid，前两个展示在过程查证，后者展示在异常溯源（左下角）
 	//slots := make(map[interface{}]interface{})
 	//commitInfo := make(map[interface{}]interface{})
-	commitInfo := make([]map[interface{}]interface{}, 0)
+	commitInfo := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Commits {
 		commitInfo = append(commitInfo, slot.Json())
 	}
 	taskProcessDistribution := make(map[paradigm.TaskHash]int32)
-	finalizedInfo := make([]map[interface{}]interface{}, 0)
+	finalizedInfo := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Finalizes {
 		finalizedInfo = append(finalizedInfo, slot.Json())
 		if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
@@ -218,13 +218,13 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 		}
 		taskProcessDistribution[slot.TaskID] += slot.ScheduleSize // TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
 	}
-	invalidSlot := make([]map[interface{}]interface{}, 0)
+	invalidSlot := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Invalids {
 		invalidSlot = append(invalidSlot, slot.Json())
 	}
-	initTaskInfo := make([]map[interface{}]interface{}, 0)
+	initTaskInfo := make([]map[string]interface{}, 0)
 	for _, task := range epoch.InitTasks {
-		taskInfo := make(map[interface{}]interface{})
+		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
 		taskInfo["TxHash"] = task.TxReceipt.TransactionHash
 		taskInfo["Total"] = task.Size
@@ -234,7 +234,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	}
 	// 5. 可视化图表1：各种slot的组成饼图，即上面的nbCommit, nbJustified, nbFinalized, nbInvalid
 	// 6. 不同任务的完成总量, 即taskDistribution
-	response := make(map[interface{}]interface{})
+	response := make(map[string]interface{})
 	response["epoch_info"] = info
 	response["tx_info"] = tx
 	response["heartbeat"] = heartbeat
@@ -267,8 +267,8 @@ func (q *EvidencePreserveEpochIDQuery) ParseRawDataFromHttpEngine(rawData map[in
 	}
 	return false
 }
-func (q *EvidencePreserveEpochIDQuery) ToHttpJson() map[interface{}]interface{} {
-	return map[interface{}]interface{}{"query": "EvidencePreserveEpochIDQuery", "epochID": q.EpochID}
+func (q *EvidencePreserveEpochIDQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "EvidencePreserveEpochIDQuery", "epochID": q.EpochID}
 }
 
 // EvidencePreserveEpochTxQuery 根据交易哈希查询Epoch
@@ -284,8 +284,8 @@ func (q *EvidencePreserveEpochTxQuery) ParseRawDataFromHttpEngine(rawData map[in
 	}
 	return false
 }
-func (q *EvidencePreserveEpochTxQuery) ToHttpJson() map[interface{}]interface{} {
-	return map[interface{}]interface{}{"query": "EvidencePreserveEpochTxQuery", "txHash": q.TxHash}
+func (q *EvidencePreserveEpochTxQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "EvidencePreserveEpochTxQuery", "txHash": q.TxHash}
 }
 
 // TODO 这里如果参数解析错误直接返回ValueError
