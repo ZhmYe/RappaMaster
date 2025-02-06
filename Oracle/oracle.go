@@ -195,6 +195,7 @@ func (d *Oracle) Start() {
 								//	response := query.ReceiveResponse()
 								//	fmt.Println(response.ToHttpJson(), response.Error())
 								//}()
+
 								//query := Query.NewEvidencePreserveEpochIDQuery(map[interface{}]interface{}{"epochID": 8})
 								//d.channel.QueryChannel <- query
 								//go func() {

@@ -17,7 +17,7 @@
   "TLSCertFile": "./ChainUpper/sdk.crt",
   "TLSKeyFile": "./ChainUpper/sdk.key",
   "QueueBufferSize": 100000,
-  "WorkerCount": 3,
+  "WorkerCount": 1,
   "BatchSize": 1,
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
