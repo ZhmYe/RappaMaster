@@ -7,24 +7,24 @@ type Query interface {
 	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
 	SendResponse(response Response)
 	ReceiveResponse() Response
-	ToHttpJson() map[interface{}]interface{}
+	ToHttpJson() map[string]interface{}
 }
 type Response interface {
-	ToHttpJson() map[interface{}]interface{}
+	ToHttpJson() map[string]interface{}
 	Error() string
 }
 
 type SuccessResponse struct {
-	rawData map[interface{}]interface{}
+	rawData map[string]interface{}
 }
 
-func NewSuccessResponse(data map[interface{}]interface{}) *SuccessResponse {
+func NewSuccessResponse(data map[string]interface{}) *SuccessResponse {
 	return &SuccessResponse{
 		rawData: data,
 	}
 }
 
-func (r *SuccessResponse) ToHttpJson() map[interface{}]interface{} {
+func (r *SuccessResponse) ToHttpJson() map[string]interface{} {
 	return r.rawData
 }
 func (r *SuccessResponse) Error() string {
@@ -36,8 +36,8 @@ type ErrorResponse struct {
 	errorMessage string
 }
 
-func (e *ErrorResponse) ToHttpJson() map[interface{}]interface{} {
-	return map[interface{}]interface{}{"error": ErrorToString(e.errorType), "errorMessage": e.errorMessage}
+func (e *ErrorResponse) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"error": ErrorToString(e.errorType), "errorMessage": e.errorMessage}
 }
 func (e *ErrorResponse) Error() string {
 	return fmt.Sprintf("%s: %s", ErrorToString(e.errorType), e.errorMessage)

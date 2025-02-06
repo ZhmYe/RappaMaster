@@ -2,6 +2,7 @@ package HTTP
 
 import (
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -23,10 +24,12 @@ type HttpServiceEnum int
 const (
 	INIT_TASK = iota
 	ORACLE_QUERY
+	COLLECT_TASK
+	BLOCKCHAIN_QUERY
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY}
 }
 func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, error) {
 	switch service {
@@ -36,13 +39,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/create",
 			Method: "POST",
 			Handler: func(c *gin.Context) {
-				var requestBody paradigm.HttpInitTaskRequest
+				var requestBody Query.HttpInitTaskRequest
 
 				// 解析请求体中的 JSON 数据
 				if err := c.ShouldBindJSON(&requestBody); err != nil {
 					// 如果解析失败，返回错误信息
 					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
-						Message: "Invalid JSON data",
+						Message: "Invalid Request data",
 						Code:    "ERROR",
 						Data:    nil,
 					})
@@ -60,20 +63,52 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				)
 				LogWriter.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
 				// 新建任务用于上链，然后直接返回response
-				//e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}
-				//// 返回response
-				//response := paradigm.HttpResponse{
-				//	Message: fmt.Sprintf("Create New SynthTask Successfully, taskID: %s", task.Sign),
-				//	Code:    "OK",
-				//	Data:    nil,
-				//}
-				//c.JSON(http.StatusOK, response)
+				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}
+				// 返回response
+				response := paradigm.HttpResponse{
+					Message: fmt.Sprintf("Create New SynthTask Successfully, taskID: %s", task.Sign),
+					Code:    "OK",
+					Data:    nil,
+				}
+				c.JSON(http.StatusOK, response)
 
 			},
 		}
 		return &httpService, nil
 	case ORACLE_QUERY:
+		httpService := HttpService{
+			Url:    "/oracle",
+			Method: "GET",
+			Handler: func(c *gin.Context) {
+				var requestBody Query.HttpOracleQueryRequest
+				// 解析请求体中的 JSON 数据
+
+				if success, query := requestBody.BuildQueryFromRequest(c); success {
+					fmt.Println(query.ToHttpJson())
+					e.channel.QueryChannel <- query
+					r := query.ReceiveResponse() // 这里会阻塞
+					fmt.Println(r.ToHttpJson(), r.Error())
+					response := paradigm.HttpResponse{
+						Message: fmt.Sprintf("Query Data Successfully, query type: %s, query: %v", requestBody.Query, requestBody.Data),
+						Code:    "OK",
+						Data:    r.ToHttpJson(),
+					}
+					c.JSON(http.StatusOK, response)
+				} else {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: "Invalid Request data",
+						Code:    "ERROR",
+						Data:    nil,
+					})
+				}
+
+			},
+		}
+		return &httpService, nil
+	case COLLECT_TASK:
 		// TODO
+		return nil, nil
+	case BLOCKCHAIN_QUERY:
 		return nil, nil
 	default:
 		paradigm.RaiseError(paradigm.NetworkError, "Unknown HTTP Service", false)
