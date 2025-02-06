@@ -44,12 +44,22 @@ const (
 	NONE
 )
 
-func (c *CommitSlotItem) Record() ScheduleItem {
-	return ScheduleItem{
-		Size:       c.Process,
-		NID:        int(c.Nid),
-		Commitment: c.Commitment,
-		Hash:       c.hash,
+func InvalidCommitTypeToString(i InvalidCommitType) string {
+	switch i {
+	case INVALID_SLOT:
+		return "INVALID_SLOT"
+	case EXPIRE_SLOT:
+		return "EXPIRE_SLOT"
+	case INVALID_COMMITMENT:
+		return "INVALID_COMMITMENT"
+	case VERIFIED_FAILED:
+		return "VERIFIED_FAILED"
+	case UNKNOWN:
+		return "UNKNOWN"
+	case NONE:
+		return "NONE"
+	default:
+		return "UNDEFINED"
 	}
 }
 

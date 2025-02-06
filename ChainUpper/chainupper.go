@@ -147,7 +147,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
 	for i := 0; i < config.WorkerCount; i++ {
-		worker := service.NewUpchainWorker(i, queue, channel.DevTransactionChannel, instance, client)
+		worker := service.NewUpchainWorker(i, config.BatchSize, queue, channel.DevTransactionChannel, instance, client)
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}

@@ -66,6 +66,8 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["ERROR"] = func(msg string) { lw.log("ERROR", msg) }
 	lw.LogLevels["CRITICAL"] = func(msg string) { lw.log("CRITICAL", msg) }
 	lw.LogLevels["NETWORK"] = func(msg string) { lw.log("NETWORK", msg) }
+	lw.LogLevels["HTTP"] = func(msg string) { lw.log("HTTP", msg) }
+
 	lw.LogLevels["SCHEDULE"] = func(msg string) { lw.log("SCHEDULE", msg) }
 	lw.LogLevels["CHAINUP"] = func(msg string) { lw.log("CHAINUP", msg) }
 	lw.LogLevels["COORDINATOR"] = func(msg string) { lw.log("COORDINATOR", msg) }
@@ -73,7 +75,8 @@ func (lw *LogWriter) setupLogLevels() {
 	lw.LogLevels["VOTE"] = func(msg string) { lw.log("VOTE", msg) }
 	lw.LogLevels["EPOCH"] = func(msg string) { lw.log("EPOCH", msg) }
 	lw.LogLevels["COLLECT"] = func(msg string) { lw.log("COLLECT", msg) }
-	lw.LogLevels["QUERY"] = func(msg string) { lw.log("QUERY", msg) }
+	lw.LogLevels["ORACLE"] = func(msg string) { lw.log("ORACLE", msg) }
+
 }
 
 // log logs a message with a specific level

@@ -43,16 +43,17 @@ type BHLayer2NodeConfig struct {
 	ErasureCodeParamK int
 
 	// ChainUpper 配置
-	FiscoBcosHost   string // FISCO-BCOS 节点地址
-	FiscoBcosPort   int    // FISCO-BCOS 节点端口
-	GroupID         string // FISCO-BCOS 群组 ID
-	PrivateKey      string // 用于签名的私钥
-	TLSCaFile       string // TLS CA 证书文件路径
-	TLSCertFile     string // TLS 客户端证书路径
-	TLSKeyFile      string // TLS 客户端密钥路径
-	ContractAddress string // 链上合约地址
-	QueueBufferSize int    // 上链队列缓冲区大小
-	WorkerCount     int    // Worker 的数量
+	FiscoBcosHost string // FISCO-BCOS 节点地址
+	FiscoBcosPort int    // FISCO-BCOS 节点端口
+	GroupID       string // FISCO-BCOS 群组 ID
+	PrivateKey    string // 用于签名的私钥
+	TLSCaFile     string // TLS CA 证书文件路径
+	TLSCertFile   string // TLS 客户端证书路径
+	TLSKeyFile    string // TLS 客户端密钥路径
+	// ContractAddress       string // 链上合约地址
+	QueueBufferSize int // 上链队列缓冲区大小
+	WorkerCount     int // Worker 的数量
+	BatchSize       int
 }
 
 // DefaultBHLayer2NodeConfig 定义默认的配置值
@@ -70,20 +71,21 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	BHNodeAddressMap:           make(map[int]*BHNodeAddress, 0),
 	DEBUG:                      false,
 
-	ErasureCodeParamN: 9, // TODO @SD 加到config里
+	ErasureCodeParamN: 9,
 	ErasureCodeParamK: 6, // 默认配置
 
 	// 默认 ChainUpper 配置
-	FiscoBcosHost:   "127.0.0.1",
-	FiscoBcosPort:   20200,
-	GroupID:         "group0",
-	PrivateKey:      "145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58",
-	TLSCaFile:       "./ChainUpper/ca.crt",
-	TLSCertFile:     "./ChainUpper/sdk.crt",
-	TLSKeyFile:      "./ChainUpper/sdk.key",
-	ContractAddress: "",
+	FiscoBcosHost: "127.0.0.1",
+	FiscoBcosPort: 20200,
+	GroupID:       "group0",
+	PrivateKey:    "145e247e170ba3afd6ae97e88f00dbc976c2345d511b0f6713355d19d8b80b58",
+	TLSCaFile:     "./ChainUpper/ca.crt",
+	TLSCertFile:   "./ChainUpper/sdk.crt",
+	TLSKeyFile:    "./ChainUpper/sdk.key",
+	// ContractAddress: "ChainUpper/contract_address.txt",
 	QueueBufferSize: 100000,
 	WorkerCount:     3, // 256
+	BatchSize:       1,
 }
 
 //var (

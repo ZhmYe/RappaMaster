@@ -34,6 +34,7 @@ func (i *CollectSlotInstance) Collect() {
 			k:           i.Channel.Config.ErasureCodeParamK,
 			outputType:  slot.OutputType,
 			paddingSize: slot.PaddingSize,
+			storeMethod: slot.StoreMethod,
 			//output:     make([]byte, 0),
 		}
 	}

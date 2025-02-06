@@ -19,6 +19,17 @@ func ModelTypeToString(t SupportModelType) string {
 	}
 }
 
+func NameToModelType(name string) SupportModelType {
+	switch name {
+	case "CTGAN":
+		return CTGAN
+	case "AGSS":
+		return AGSS
+	default:
+		panic("Unknown model type!!!")
+	}
+}
+
 type ModelOutputType int // 模型输出类型
 const (
 	DATAFRAME ModelOutputType = iota // 表格数据
