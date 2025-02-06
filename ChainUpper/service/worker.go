@@ -90,7 +90,7 @@ func (w *UpChainWorker) consumer() {
 	w.params = paradigm.NewParamsMap()
 }
 
-func NewUpchainWorker(id int, batchSize int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *SlotCommit.SlotCommit, client *client.Client) *UpChainWorker {
+func NewUpchainWorker(id int, batchSize int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction, instance *Store.Store, client *client.Client) *UpChainWorker {
 	return &UpChainWorker{
 		id:                   id,
 		queue:                queue,
