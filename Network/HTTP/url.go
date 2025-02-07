@@ -29,7 +29,30 @@ const (
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY}
+}
+func (e *HttpEngine) HandleGET(c *gin.Context) {
+	var requestBody Query.HttpOracleQueryRequest
+	// 解析请求体中的 JSON 数据
+
+	if success, query := requestBody.BuildQueryFromGETRequest(c); success {
+		fmt.Println(query.ToHttpJson())
+		e.channel.QueryChannel <- query
+		r := query.ReceiveResponse() // 这里会阻塞
+		fmt.Println(r.ToHttpJson(), r.Error())
+		response := paradigm.HttpResponse{
+			Message: fmt.Sprintf("Query Data Successfully, query type: %s, query: %v", requestBody.Query, requestBody.Data),
+			Code:    "OK",
+			Data:    r.ToHttpJson(),
+		}
+		c.JSON(http.StatusOK, response)
+	} else {
+		c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+			Message: "Invalid Request data",
+			Code:    "ERROR",
+			Data:    nil,
+		})
+	}
 }
 func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, error) {
 	switch service {
@@ -77,39 +100,21 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 		return &httpService, nil
 	case ORACLE_QUERY:
 		httpService := HttpService{
-			Url:    "/oracle",
-			Method: "GET",
-			Handler: func(c *gin.Context) {
-				var requestBody Query.HttpOracleQueryRequest
-				// 解析请求体中的 JSON 数据
-
-				if success, query := requestBody.BuildQueryFromRequest(c); success {
-					fmt.Println(query.ToHttpJson())
-					e.channel.QueryChannel <- query
-					r := query.ReceiveResponse() // 这里会阻塞
-					fmt.Println(r.ToHttpJson(), r.Error())
-					response := paradigm.HttpResponse{
-						Message: fmt.Sprintf("Query Data Successfully, query type: %s, query: %v", requestBody.Query, requestBody.Data),
-						Code:    "OK",
-						Data:    r.ToHttpJson(),
-					}
-					c.JSON(http.StatusOK, response)
-				} else {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
-						Message: "Invalid Request data",
-						Code:    "ERROR",
-						Data:    nil,
-					})
-				}
-
-			},
+			Url:     "/oracle",
+			Method:  "GET",
+			Handler: e.HandleGET,
 		}
 		return &httpService, nil
 	case COLLECT_TASK:
 		// TODO
 		return nil, nil
 	case BLOCKCHAIN_QUERY:
-		return nil, nil
+		httpService := HttpService{
+			Url:     "/blockchain",
+			Method:  "GET",
+			Handler: e.HandleGET,
+		}
+		return &httpService, nil
 	default:
 		paradigm.RaiseError(paradigm.NetworkError, "Unknown HTTP Service", false)
 		//LogWriter.Log("ERROR", fmt.Sprintf("%s: %s", paradigm.ErrorToString(paradigm.NetworkError), "Unknown Http Service"))

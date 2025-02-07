@@ -1,6 +1,8 @@
 package paradigm
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Query interface {
 	GenerateResponse(data interface{}) Response
@@ -9,6 +11,23 @@ type Query interface {
 	ReceiveResponse() Response
 	ToHttpJson() map[string]interface{}
 }
+
+type BasicChannelQuery struct {
+	responseChannel chan Response
+	// 这里没有别的参数
+}
+
+func (q *BasicChannelQuery) SendResponse(response Response) {
+	q.responseChannel <- response
+	close(q.responseChannel)
+}
+func (q *BasicChannelQuery) ReceiveResponse() Response {
+	return <-q.responseChannel
+}
+func NewBasicChannelQuery() BasicChannelQuery {
+	return BasicChannelQuery{responseChannel: make(chan Response, 1)}
+}
+
 type Response interface {
 	ToHttpJson() map[string]interface{}
 	Error() string
@@ -47,4 +66,14 @@ func NewErrorResponse(errorType ErrorEnum, errorMessage string) *ErrorResponse {
 		errorType:    errorType,
 		errorMessage: errorMessage,
 	}
+}
+
+type LatestBlockchainInfo struct {
+	LatestTxs     []*PackedTransaction
+	LatestEpoch   []*DevEpoch
+	NbFinalized   int32
+	SynthData     int32
+	NbEpoch       int32
+	NbBlock       int32
+	NbTransaction int32
 }

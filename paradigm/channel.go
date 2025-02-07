@@ -13,13 +13,15 @@ type RappaChannel struct {
 	PendingSchedules chan SynthTaskSchedule
 	OracleSchedules  chan *SynthTaskSchedule
 	//PendingSchedule        chan TaskSchedule
-	ScheduledTasks         chan SynthTaskSchedule
-	CommitSlots            chan CommitSlotItem
-	EpochHeartbeat         chan *pb.HeartbeatRequest
-	PendingTransactions    chan Transaction
-	EpochEvent             chan bool
-	DevTransactionChannel  chan []*PackedTransaction
-	ToCollectorSlotChannel chan CollectSlotItem
+	ScheduledTasks              chan SynthTaskSchedule
+	CommitSlots                 chan CommitSlotItem
+	EpochHeartbeat              chan *pb.HeartbeatRequest
+	PendingTransactions         chan Transaction
+	EpochEvent                  chan bool
+	DevTransactionChannel       chan []*PackedTransaction
+	ToCollectorSlotChannel      chan CollectSlotItem
+	BlockchainQueryChannel      chan Query // 传递给queryHandler的链上信息查询
+	BlockchainInfoUpdateChannel chan bool  // TODO queryHandler定时获取最新的区块数量
 
 	ToCollectorRequestChannel chan CollectRequest
 	SlotCollectChannel        chan RecoverConnection
@@ -38,17 +40,19 @@ func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 		PendingSchedules: make(chan SynthTaskSchedule, config.MaxPendingSchedulePoolSize),
 		OracleSchedules:  make(chan *SynthTaskSchedule, config.MaxPendingSchedulePoolSize),
 		//PendingSchedule:           make(chan TaskSchedule, config.MaxPendingSchedulePoolSize),
-		ScheduledTasks:            make(chan SynthTaskSchedule, config.MaxScheduledTasksPoolSize),
-		CommitSlots:               make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize),
-		EpochHeartbeat:            make(chan *pb.HeartbeatRequest, 1),
-		PendingTransactions:       make(chan Transaction, config.MaxCommitSlotItemPoolSize), // todo,
-		EpochEvent:                make(chan bool, 1),
-		DevTransactionChannel:     make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize), // todo
-		ToCollectorSlotChannel:    make(chan CollectSlotItem, config.MaxCommitSlotItemPoolSize),      // todo
-		ToCollectorRequestChannel: make(chan CollectRequest, config.MaxCommitSlotItemPoolSize),       // todo
-		SlotCollectChannel:        make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),    // todo
-		QueryChannel:              make(chan Query, config.MaxCommitSlotItemPoolSize),                // todo
-		FakeCollectSignChannel:    make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),       // todo
+		ScheduledTasks:              make(chan SynthTaskSchedule, config.MaxScheduledTasksPoolSize),
+		CommitSlots:                 make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize),
+		EpochHeartbeat:              make(chan *pb.HeartbeatRequest, 1),
+		PendingTransactions:         make(chan Transaction, config.MaxCommitSlotItemPoolSize), // todo,
+		EpochEvent:                  make(chan bool, 1),
+		DevTransactionChannel:       make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize), // todo
+		ToCollectorSlotChannel:      make(chan CollectSlotItem, config.MaxCommitSlotItemPoolSize),      // todo
+		ToCollectorRequestChannel:   make(chan CollectRequest, config.MaxCommitSlotItemPoolSize),       // todo
+		BlockchainQueryChannel:      make(chan Query, config.MaxCommitSlotItemPoolSize),                // todo
+		BlockchainInfoUpdateChannel: make(chan bool, 1),
+		SlotCollectChannel:          make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize), // todo
+		QueryChannel:                make(chan Query, config.MaxCommitSlotItemPoolSize),             // todo
+		FakeCollectSignChannel:      make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),    // todo
 		//SlotRecoverChannel:     slotRecoverChannel,
 	}
 }

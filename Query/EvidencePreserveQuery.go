@@ -12,7 +12,7 @@ import (
 
 // BasicEvidencePreserveTaskQuery 针对Task的Query，除了请求不同，其它一样，这是里通用的类
 type BasicEvidencePreserveTaskQuery struct {
-	responseChannel chan paradigm.Response
+	paradigm.BasicChannelQuery
 }
 
 func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
@@ -114,13 +114,6 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	return paradigm.NewSuccessResponse(response)
 
 }
-func (q *BasicEvidencePreserveTaskQuery) SendResponse(response paradigm.Response) {
-	q.responseChannel <- response
-	close(q.responseChannel)
-}
-func (q *BasicEvidencePreserveTaskQuery) ReceiveResponse() paradigm.Response {
-	return <-q.responseChannel
-}
 
 // EvidencePreserveTaskTxQuery 根据交易哈希查询Task
 // 查询Http Json格式:
@@ -175,7 +168,8 @@ func (q *EvidencePreserveTaskIDQuery) ToHttpJson() map[string]interface{} {
 
 // BasicEvidencePreserveEpochQuery 针对Epoch的Query，除了请求不同，其它一样，这是里通用的类
 type BasicEvidencePreserveEpochQuery struct {
-	responseChannel chan paradigm.Response
+	//responseChannel chan paradigm.Response
+	paradigm.BasicChannelQuery
 }
 
 func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) paradigm.Response {
@@ -244,13 +238,6 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	response["taskProcessDistributionData"] = taskProcessDistribution
 	return paradigm.NewSuccessResponse(response)
 }
-func (q *BasicEvidencePreserveEpochQuery) SendResponse(response paradigm.Response) {
-	q.responseChannel <- response
-}
-
-func (q *BasicEvidencePreserveEpochQuery) ReceiveResponse() paradigm.Response {
-	return <-q.responseChannel
-}
 
 // EvidencePreserveEpochIDQuery 根据EpochID查询Epoch
 type EvidencePreserveEpochIDQuery struct {
@@ -291,30 +278,34 @@ func (q *EvidencePreserveEpochTxQuery) ToHttpJson() map[string]interface{} {
 // TODO 这里如果参数解析错误直接返回ValueError
 
 func NewEvidencePreserveTaskTxQuery(rawData map[interface{}]interface{}) *EvidencePreserveTaskTxQuery {
-	responseChannel := make(chan paradigm.Response, 1)
+	//responseChannel := make(chan paradigm.Response, 1)
 	query := new(EvidencePreserveTaskTxQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
-	query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query
 }
 func NewEvidencePreserveTaskIDQuery(rawData map[interface{}]interface{}) *EvidencePreserveTaskIDQuery {
-	responseChannel := make(chan paradigm.Response, 1)
+	//responseChannel := make(chan paradigm.Response, 1)
 	query := new(EvidencePreserveTaskIDQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
-	query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query
 }
 func NewEvidencePreserveEpochTxQuery(rawData map[interface{}]interface{}) *EvidencePreserveEpochTxQuery {
-	responseChannel := make(chan paradigm.Response, 1)
+	//responseChannel := make(chan paradigm.Response, 1)
 	query := new(EvidencePreserveEpochTxQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
-	query.responseChannel = responseChannel
+	//query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+
 	return query
 }
 func NewEvidencePreserveEpochIDQuery(rawData map[interface{}]interface{}) *EvidencePreserveEpochIDQuery {
-	responseChannel := make(chan paradigm.Response, 1)
+	//responseChannel := make(chan paradigm.Response, 1)
 	query := new(EvidencePreserveEpochIDQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
-	query.responseChannel = responseChannel
+	//query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+
 	return query
 }

@@ -32,9 +32,14 @@ type Oracle struct {
 	tasks    map[string]*paradigm.Task // 所有的任务, 以sign为map
 	slotsMap map[paradigm.SlotHash]*paradigm.Slot
 	//slotsMap sync.Map
-	epochs map[int32]*paradigm.DevEpoch // 所有的epoch,以epochID为ma
-	tID    int
-	txMap  map[string]paradigm.DevReference // 这里以txHash作为key,交易最终会指向一个task或者epoch
+	epochs       map[int32]*paradigm.DevEpoch // 所有的epoch,以epochID为ma
+	tID          int
+	txMap        map[string]paradigm.DevReference // 这里以txHash作为key,交易最终会指向一个task或者epoch
+	latestTxs    []*paradigm.PackedTransaction    // 展示最新的20笔交易
+	latestEpochs []*paradigm.DevEpoch             // 展示最新的20个epoch的信息：commit, justified, finalized,txHash, data
+	synthData    int32                            // 合成总量
+	nbFinalized  int32                            //提交总量，这里指Finalized
+	//latestEpoch int32                            // 最新的epoch，这里要保证Epoch一定是连续的合法 TODO
 	//slotsMaoMutex sync.RWMutex
 }
 
@@ -133,6 +138,13 @@ func (d *Oracle) Start() {
 							paradigm.RaiseError(paradigm.RuntimeError, "Error in EpochUpdate", false)
 						}
 						d.epochs[epoch.EpochID] = epoch // 记录epoch
+						// 更新latest
+						d.latestEpochs = append(d.latestEpochs, epoch)
+						// TODO @SD 这个20可以考虑设置成参数，也可以不设置
+						if len(d.latestEpochs) > 20 {
+							d.latestEpochs = d.latestEpochs[len(d.latestEpochs)-20:]
+						}
+
 						//遍历epoch中的invalid，用于更新状态
 						//for slotHash, e := range epoch.Invalids {
 						//	d.SetSlotError(slotHash, e, int32(epoch.EpochRecord.Id))
@@ -208,6 +220,9 @@ func (d *Oracle) Start() {
 								//response := query.GenerateResponse(task)
 								//fmt.Println(response)
 							}
+							// 这里更新oracle的全局信息
+							d.nbFinalized++                     // 又完成了一个finalized
+							d.synthData += commitRecord.Process // 合成数据
 							// 这里更新了task的slot，那么可以将这里的Slot传递给collector
 							commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
 							collectSlotItem := paradigm.CollectSlotItem{
@@ -238,6 +253,13 @@ func (d *Oracle) Start() {
 						panic("Unknown Transaction!!!")
 					}
 					d.tID++
+
+				}
+				// 更新latest
+				d.latestTxs = append(d.latestTxs, ptxs...)
+				// TODO @SD 这个20可以考虑设置成参数，也可以不设置
+				if len(d.latestTxs) > 20 {
+					d.latestTxs = d.latestTxs[len(d.latestTxs)-20:]
 				}
 			}
 
@@ -251,11 +273,16 @@ func (d *Oracle) Start() {
 
 func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 	return &Oracle{
-		channel:  channel,
-		tasks:    make(map[string]*paradigm.Task),
-		slotsMap: make(map[paradigm.SlotHash]*paradigm.Slot),
-		epochs:   make(map[int32]*paradigm.DevEpoch),
-		txMap:    map[string]paradigm.DevReference{},
+		channel:      channel,
+		tasks:        make(map[string]*paradigm.Task),
+		slotsMap:     make(map[paradigm.SlotHash]*paradigm.Slot),
+		epochs:       make(map[int32]*paradigm.DevEpoch),
+		txMap:        map[string]paradigm.DevReference{},
+		latestEpochs: make([]*paradigm.DevEpoch, 0),
+		latestTxs:    make([]*paradigm.PackedTransaction, 0),
+		synthData:    0,
+		nbFinalized:  0,
+
 		//tx:                     channel.OracleTransactionChannel,
 		//toCollectorSlotChannel: channel.ToCollectorSlotChannel,
 		//taskFinishSignChannel:  channel.FakeCollectSignChannel,

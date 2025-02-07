@@ -20,13 +20,14 @@ type HttpOracleQueryRequest struct {
 	Data  map[interface{}]interface{} // 查询内容rawData
 }
 
-func (r *HttpOracleQueryRequest) BuildQueryFromRequest(c *gin.Context) (bool, paradigm.Query) {
+func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool, paradigm.Query) {
 	query := c.DefaultQuery("query", "")
 	if query == "" {
 		//fmt.Println(222)
 		return false, nil
 	}
 	//fmt.Println(111, query)
+	r.Query = query
 	switch query {
 	case "EvidencePreserveTaskTxQuery":
 		txHash := c.DefaultQuery("txHash", "")
@@ -69,6 +70,37 @@ func (r *HttpOracleQueryRequest) BuildQueryFromRequest(c *gin.Context) (bool, pa
 		return true, NewEvidencePreserveEpochIDQuery(map[interface{}]interface{}{
 			"epochID": e,
 		})
+	case "BlockchainLatestInfoQuery":
+		return true, NewBlockchainLatestInfoQuery()
+	case "BlockchainBlockHashQuery":
+		blockHash := c.DefaultQuery("blockHash", "")
+		if blockHash == "" {
+			return false, nil
+		}
+		return true, NewBlockchainBlockHashQuery(map[interface{}]interface{}{
+			"blockHash": blockHash,
+		})
+	case "BlockchainBlockNumberQuery":
+		blockNumber := c.DefaultQuery("blockNumber", "")
+		if blockNumber == "" {
+			return false, nil
+		}
+		b, err := strconv.Atoi(blockNumber)
+		if err != nil {
+			return false, nil
+		}
+		return true, NewBlockchainBlockNumberQuery(map[interface{}]interface{}{
+			"blockNumber": b,
+		})
+	case "BlockchainTransactionQuery":
+		txHash := c.DefaultQuery("txHash", "")
+		if txHash == "" {
+			return false, nil
+		}
+		return true, NewBlockchainTransactionQuery(map[interface{}]interface{}{
+			"txHash": txHash,
+		})
+
 	default:
 		return false, nil
 	}

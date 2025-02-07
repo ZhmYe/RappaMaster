@@ -31,6 +31,7 @@ type ChainUpper struct {
 }
 
 func (c *ChainUpper) Start() {
+	go c.handleQuery()
 	timeStart := time.Now()
 	go func() {
 		for {

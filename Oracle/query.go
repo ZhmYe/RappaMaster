@@ -7,6 +7,7 @@ import (
 	"fmt"
 )
 
+// TODO 这里会有很多并发读写的问题，后面要用TryLock,如果发现被锁住了，那么直接返回还未更新
 func (d *Oracle) processQuery() {
 	// 来自Http的query,需要发回去，因此Query里需要有一个通道
 	// TODO 这里的txMap应该会有并发读写的问题，而且不能将这个协程合并，会影响性能
@@ -82,6 +83,39 @@ func (d *Oracle) processQuery() {
 			} else {
 				item.SendResponse(item.GenerateResponse(epoch))
 			}
+		case *Query.BlockchainLatestInfoQuery:
+			item := query.(*Query.BlockchainLatestInfoQuery)
+			info := paradigm.LatestBlockchainInfo{
+				LatestTxs:     d.latestTxs,
+				LatestEpoch:   d.latestEpochs,
+				NbFinalized:   d.nbFinalized,
+				SynthData:     d.synthData,
+				NbEpoch:       int32(len(d.epochs)),
+				NbBlock:       0,                   // TODO
+				NbTransaction: int32(len(d.txMap)), // TODO
+			}
+			item.SendResponse(item.GenerateResponse(info))
+		case *Query.BlockchainBlockNumberQuery:
+			item := query.(*Query.BlockchainBlockNumberQuery)
+			d.channel.BlockchainQueryChannel <- item
+			block := item.ReceiveBlockchainInfo()
+			item.SendResponse(item.GenerateResponse(block))
+		case *Query.BlockchainBlockHashQuery:
+			item := query.(*Query.BlockchainBlockHashQuery)
+			d.channel.BlockchainQueryChannel <- item
+			block := item.ReceiveBlockchainInfo()
+			item.SendResponse(item.GenerateResponse(block))
+		case *Query.BlockchainTransactionQuery:
+			item := query.(*Query.BlockchainTransactionQuery)
+			if _, exist := d.txMap[item.TxHash]; !exist {
+				errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "Transaction does not exist in Oracle")
+				item.SendResponse(errorResponse)
+				paradigm.RaiseError(paradigm.ValueError, "Transaction does not exist in Oracle", false)
+				continue
+			}
+			ref := d.txMap[item.TxHash]
+			item.SendResponse(item.GenerateResponse(ref))
+
 		default:
 			panic("Unsupported Query Type!!!")
 		}

@@ -3,6 +3,7 @@ package ChainUpper
 import (
 	"BHLayer2Node/ChainUpper/service"
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
@@ -23,6 +24,7 @@ type MockerChainUpper struct {
 }
 
 func (c *MockerChainUpper) Start() {
+	go c.handleQuery()
 	timeStart := time.Now()
 	go func() {
 		for {
@@ -105,37 +107,39 @@ func (c *MockerChainUpper) UpChain() {
 		LogWriter.Log("WARNING", "Nothing to up to Blockchain..., len(transactionPool) = 0")
 	}
 }
+
+func (c *MockerChainUpper) handleQuery() {
+	for query := range c.channel.BlockchainQueryChannel {
+		c.handle(query)
+	}
+}
+
+func (c *MockerChainUpper) handle(query paradigm.Query) {
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
+	switch query.(type) {
+	// 交易和最新信息的query都在oracle处理了,TODO @XQ 判断一下在oracle里的信息是否完整/正确
+	case *Query.BlockchainBlockHashQuery:
+		// 通过client获取到block
+		item := query.(*Query.BlockchainBlockHashQuery)
+		blockHash := item.BlockHash
+		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockHashQuery, blockHash: %s", blockHash))
+		//blockInfo := c.getBlockInfo(*block)
+		item.SendBlockchainInfo(paradigm.NewMockerBlockInfo())
+
+	case *Query.BlockchainBlockNumberQuery:
+		// 通过client获取到block
+		item := query.(*Query.BlockchainBlockNumberQuery)
+		blockNumber := item.BlockNumber
+		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockNumberQuery, blockNumber: %d", blockNumber))
+		//blockInfo := c.getBlockInfo(*block)
+		item.SendBlockchainInfo(paradigm.NewMockerBlockInfo())
+	default:
+		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
+	}
+}
+
 func NewMockerChainUpper(channel *paradigm.RappaChannel) (*MockerChainUpper, error) {
-	// 初始化 FISCO-BCOS 客户端
-	//privateKey, _ := hex.DecodeString(config.PrivateKey)
-	//client, err := client.DialContext(context.Background(), &client.Config{
-	//	IsSMCrypto:  false,
-	//	GroupID:     config.GroupID,
-	//	PrivateKey:  privateKey,
-	//	Host:        config.FiscoBcosHost,
-	//	Port:        config.FiscoBcosPort,
-	//	TLSCaFile:   config.TLSCaFile,
-	//	TLSCertFile: config.TLSCertFile,
-	//	TLSKeyFile:  config.TLSKeyFile,
-	//})
-	//if err != nil {
-	//	LogWriter.Log("ERROR", fmt.Sprintf("failed to initialize FISCO-BCOS client: %v", err))
-	//	return nil, fmt.Errorf("failed to initialize FISCO-BCOS client: %v", err)
-	//}
-
-	// 部署或加载合约
-	// instance, err := Store.NewStore(common.HexToAddress(config.ContractAddress), client)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to load contract: %v", err)
-	// }
-	//address, receipt, instance, err := SlotCommit.DeploySlotCommit(client.GetTransactOpts(), client)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//LogWriter.Log("INFO", fmt.Sprintf("contract address: ", address.Hex())) // the address should be saved, will use in next example
-	//LogWriter.Log("INFO", fmt.Sprintf("transaction hash: ", receipt.TransactionHash))
-
-	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, 10000)
 	for i := 0; i < 1; i++ {
 		worker := service.NewMockerUpChainWorker(i, queue, channel.DevTransactionChannel)
@@ -143,7 +147,6 @@ func NewMockerChainUpper(channel *paradigm.RappaChannel) (*MockerChainUpper, err
 		//go service. (i, queue, instance, client)
 	}
 	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
-
 	return &MockerChainUpper{
 		channel: channel,
 		//pendingTransactions: channel.PendingTransactions,
