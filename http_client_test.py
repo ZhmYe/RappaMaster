@@ -59,6 +59,12 @@ def oracle_query_tx():
     }
     url = "http://127.0.0.1:8080/blockchain"
     send_GET_request(url, request_data)
+def oracle_query_nodes():
+    request_data = {
+        "query": "DataSynthMonitorQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
 
@@ -106,6 +112,8 @@ def main():
             oracle_query_block()
         elif command == "tx":
             oracle_query_tx()
+        elif command == "node":
+            oracle_query_nodes()
         elif command == 'exit':
             print("Exiting the client...")
             break

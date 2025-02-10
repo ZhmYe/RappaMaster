@@ -26,10 +26,11 @@ const (
 	ORACLE_QUERY
 	COLLECT_TASK
 	BLOCKCHAIN_QUERY
+	DATASYNTH_QUERY
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -111,6 +112,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 	case BLOCKCHAIN_QUERY:
 		httpService := HttpService{
 			Url:     "/blockchain",
+			Method:  "GET",
+			Handler: e.HandleGET,
+		}
+		return &httpService, nil
+	case DATASYNTH_QUERY:
+		httpService := HttpService{
+			Url:     "/dataSynth",
 			Method:  "GET",
 			Handler: e.HandleGET,
 		}

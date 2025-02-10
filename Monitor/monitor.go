@@ -2,6 +2,7 @@ package Monitor
 
 import (
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"strconv"
@@ -92,6 +93,21 @@ func (m *Monitor) processAdviceRequest() {
 
 }
 
+// processQuery 处理查询，这里针对monitor的查询就是所有的节点
+func (m *Monitor) processQuery() {
+	for query := range m.channel.MonitorQueryChannel {
+		// 就是全部返回
+		switch query.(type) {
+		case *Query.DataSynthMonitorQuery:
+			item := query.(*Query.DataSynthMonitorQuery)
+			item.SendInfo(m.nodeStatus)
+		default:
+			paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In Monitor", false)
+
+		}
+	}
+}
+
 // advice
 func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	// TODO 调度方式，目前就写成所有节点，均分
@@ -118,6 +134,7 @@ func (m *Monitor) Start() {
 	go m.processHeartbeatResponse()
 	go m.processOracleInfo()
 	go m.processAdviceRequest()
+	go m.processQuery()
 }
 
 func NewMonitor(channel *paradigm.RappaChannel) *Monitor {

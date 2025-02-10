@@ -98,12 +98,12 @@ func (d *Oracle) processQuery() {
 		case *Query.BlockchainBlockNumberQuery:
 			item := query.(*Query.BlockchainBlockNumberQuery)
 			d.channel.BlockchainQueryChannel <- item
-			block := item.ReceiveBlockchainInfo()
+			block := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(block))
 		case *Query.BlockchainBlockHashQuery:
 			item := query.(*Query.BlockchainBlockHashQuery)
 			d.channel.BlockchainQueryChannel <- item
-			block := item.ReceiveBlockchainInfo()
+			block := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(block))
 		case *Query.BlockchainTransactionQuery:
 			item := query.(*Query.BlockchainTransactionQuery)
@@ -115,6 +115,11 @@ func (d *Oracle) processQuery() {
 			}
 			ref := d.txMap[item.TxHash]
 			item.SendResponse(item.GenerateResponse(ref))
+		case *Query.DataSynthMonitorQuery:
+			item := query.(*Query.DataSynthMonitorQuery)
+			d.channel.MonitorQueryChannel <- item
+			status := item.ReceiveInfo()
+			item.SendResponse(item.GenerateResponse(status))
 
 		default:
 			panic("Unsupported Query Type!!!")

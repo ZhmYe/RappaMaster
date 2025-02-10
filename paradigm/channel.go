@@ -25,6 +25,7 @@ type RappaChannel struct {
 	MonitorHeartbeatChannel     chan *pb.HeartbeatResponse
 	MonitorAdviceChannel        chan *AdviceRequest // todo
 	MonitorOracleChannel        chan interface{}    // todo
+	MonitorQueryChannel         chan Query
 
 	ToCollectorRequestChannel chan CollectRequest
 	SlotCollectChannel        chan RecoverConnection
@@ -56,6 +57,7 @@ func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
 		MonitorAdviceChannel:        make(chan *AdviceRequest, config.MaxCommitSlotItemPoolSize),        // todo
 		MonitorHeartbeatChannel:     make(chan *pb.HeartbeatResponse, config.MaxCommitSlotItemPoolSize), // todo
 		MonitorOracleChannel:        make(chan interface{}, config.MaxCommitSlotItemPoolSize),           // todo
+		MonitorQueryChannel:         make(chan Query, config.MaxCommitSlotItemPoolSize),                 // todo
 		SlotCollectChannel:          make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),     // todo
 		QueryChannel:                make(chan Query, config.MaxCommitSlotItemPoolSize),                 // todo
 		FakeCollectSignChannel:      make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),        // todo

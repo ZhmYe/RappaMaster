@@ -28,6 +28,26 @@ func NewBasicChannelQuery() BasicChannelQuery {
 	return BasicChannelQuery{responseChannel: make(chan Response, 1)}
 }
 
+// DoubleChannelQuery 需要和链交互，因此有一个给client传递消息的channel
+type DoubleChannelQuery struct {
+	BasicChannelQuery
+	infoChannel chan interface{}
+}
+
+func (q *DoubleChannelQuery) SendInfo(info interface{}) {
+	q.infoChannel <- info
+	close(q.infoChannel)
+}
+func (q *DoubleChannelQuery) ReceiveInfo() interface{} {
+	return <-q.infoChannel
+}
+func NewDoubleChannelQuery() DoubleChannelQuery {
+	return DoubleChannelQuery{
+		BasicChannelQuery: NewBasicChannelQuery(),
+		infoChannel:       make(chan interface{}),
+	}
+}
+
 type Response interface {
 	ToHttpJson() map[string]interface{}
 	Error() string

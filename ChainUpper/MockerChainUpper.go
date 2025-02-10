@@ -125,7 +125,7 @@ func (c *MockerChainUpper) handle(query paradigm.Query) {
 		blockHash := item.BlockHash
 		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockHashQuery, blockHash: %s", blockHash))
 		//blockInfo := c.getBlockInfo(*block)
-		item.SendBlockchainInfo(paradigm.NewMockerBlockInfo())
+		item.SendInfo(paradigm.NewMockerBlockInfo())
 
 	case *Query.BlockchainBlockNumberQuery:
 		// 通过client获取到block
@@ -133,7 +133,7 @@ func (c *MockerChainUpper) handle(query paradigm.Query) {
 		blockNumber := item.BlockNumber
 		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockNumberQuery, blockNumber: %d", blockNumber))
 		//blockInfo := c.getBlockInfo(*block)
-		item.SendBlockchainInfo(paradigm.NewMockerBlockInfo())
+		item.SendInfo(paradigm.NewMockerBlockInfo())
 	default:
 		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
 	}

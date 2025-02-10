@@ -9,26 +9,6 @@ import (
 	区块链信息界面
 ***/
 
-// BlockchainQuery 需要和链交互，因此有一个给client传递消息的channel
-type BlockchainQuery struct {
-	paradigm.BasicChannelQuery
-	sdkChannel chan interface{}
-}
-
-func (q *BlockchainQuery) SendBlockchainInfo(info interface{}) {
-	q.sdkChannel <- info
-	close(q.sdkChannel)
-}
-func (q *BlockchainQuery) ReceiveBlockchainInfo() interface{} {
-	return <-q.sdkChannel
-}
-func NewBlockchainQuery() BlockchainQuery {
-	return BlockchainQuery{
-		BasicChannelQuery: paradigm.NewBasicChannelQuery(),
-		sdkChannel:        make(chan interface{}),
-	}
-}
-
 // BlockchainLatestInfoQuery 获取最新的区块链信息
 // 1. 左上角的信息
 // 2. 最新纪元
@@ -90,7 +70,7 @@ func (q *BlockchainLatestInfoQuery) ToHttpJson() map[string]interface{} {
 
 // BlockchainBlockInfoQuery 查询某个区块，允许块高或区块哈希
 type BlockchainBlockInfoQuery struct {
-	BlockchainQuery
+	paradigm.DoubleChannelQuery
 }
 
 func (q *BlockchainBlockInfoQuery) GenerateResponse(data interface{}) paradigm.Response {
@@ -185,14 +165,14 @@ func NewBlockchainBlockHashQuery(rawData map[interface{}]interface{}) *Blockchai
 	query := new(BlockchainBlockHashQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
 	//query.responseChannel = responseChannel
-	query.BlockchainQuery = NewBlockchainQuery()
+	query.DoubleChannelQuery = paradigm.NewDoubleChannelQuery()
 	return query
 }
 func NewBlockchainBlockNumberQuery(rawData map[interface{}]interface{}) *BlockchainBlockNumberQuery {
 	query := new(BlockchainBlockNumberQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
 	//query.responseChannel = responseChannel
-	query.BlockchainQuery = NewBlockchainQuery()
+	query.DoubleChannelQuery = paradigm.NewDoubleChannelQuery()
 	return query
 }
 func NewBlockchainTransactionQuery(rawData map[interface{}]interface{}) *BlockchainTransactionQuery {
