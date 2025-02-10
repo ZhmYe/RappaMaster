@@ -85,6 +85,7 @@ func (d *Oracle) Start() {
 					d.UpdateSlotFromSchedule(slot)
 					//d.slotsMap[slot.SlotID] = slot // 这里记录所有的slot，todo 其实只要记录processing的
 				}
+				d.channel.MonitorOracleChannel <- schedule // 传递给monitor，更新节点未完成的任务
 
 			case ptxs := <-d.channel.DevTransactionChannel:
 				for _, ptx := range ptxs {
@@ -195,6 +196,8 @@ func (d *Oracle) Start() {
 							if err != nil {
 								panic(err)
 							}
+							// 传递给monitor更新完成的任务
+							d.channel.MonitorOracleChannel <- transaction
 							if task.IsFinish() && !task.HasbeenCollect {
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()

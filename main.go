@@ -8,6 +8,7 @@ import (
 	"BHLayer2Node/Epoch"
 	"BHLayer2Node/Event"
 	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Monitor"
 	"BHLayer2Node/Network/HTTP"
 	"BHLayer2Node/Oracle"
 	"BHLayer2Node/Schedule"
@@ -30,6 +31,7 @@ func main() {
 	epochManager := Epoch.NewEpochManager(rappaChannel)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewOracle(rappaChannel)
+	monitir := Monitor.NewMonitor(rappaChannel)
 	collector := Collector.NewCollector(rappaChannel)
 	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	//if err != nil {
@@ -50,7 +52,7 @@ func main() {
 	go coordinator.Start()
 	//定时，如果大于10s,EpochEvent队列里放置一个true
 	go event.Start()
-
+	go monitir.Start()
 	go chainUpper.Start()
 	go collector.Start()
 	// 启动 Scheduler

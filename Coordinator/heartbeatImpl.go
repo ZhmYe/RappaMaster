@@ -44,7 +44,8 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 				disconnected <- nodeID // 暂定为当作失联
 				return
 			}
-			response <- resp // 交给voteHandler处理
+			response <- resp                          // 交给voteHandler处理
+			c.channel.MonitorHeartbeatChannel <- resp // 传递给monitor，更新节点状态
 
 		}(nodeID, address.GetAddrStr(), heartbeat)
 	}

@@ -34,7 +34,7 @@ type BHLayer2NodeConfig struct {
 	MaxGrpcRequestPoolSize     int                    // gRPC 请求池的最大大小
 	DefaultSlotSize            int                    // 默认的slot大小
 	LogPath                    string                 // 日志路径
-	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress
+	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress todo 这里是不是可以改成数组
 	DEBUG                      bool
 
 	// 纠删码配置

@@ -2,7 +2,6 @@ package Schedule
 
 import (
 	"BHLayer2Node/LogWriter"
-	"BHLayer2Node/Monitor"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
@@ -11,8 +10,8 @@ import (
 // Scheduler 用于调度任务，产生Slot
 // 接收UnprocessedTask，1. 新建的合成任务(上链后); 2. 未完成的任务(由Tracker发现过期，重新进入调度)
 type Scheduler struct {
-	channel   *paradigm.RappaChannel    // channel
-	monitor   *Monitor.Monitor          // 监控节点状态，用于进行调度
+	channel *paradigm.RappaChannel // channel
+	//monitor   *Monitor.Monitor          // 监控节点状态，用于进行调度
 	schedules map[paradigm.TaskHash]int // 记录每个Task最新的调度index
 	mu        sync.Mutex                // 保护 unprocessedTasks 的读写
 }
@@ -40,25 +39,29 @@ func (s *Scheduler) process(task paradigm.UnprocessedTask) {
 
 	// 获取节点列表
 	// 这里测试分配到所有节点
-	nIDs := make([]int, 0, len(s.channel.Config.BHNodeAddressMap))
-	for key := range s.channel.Config.BHNodeAddressMap {
-		nIDs = append(nIDs, key)
-	}
-
-	if len(nIDs) == 0 {
-		LogWriter.Log("ERROR", "No connected nodes available for scheduling")
-		return
-	}
-	allocSizes := s.monitor.Advice(nIDs, task.Size) // todo
-	if len(allocSizes) != len(nIDs) {
+	//nIDs := make([]int, 0, len(s.channel.Config.BHNodeAddressMap))
+	//for key := range s.channel.Config.BHNodeAddressMap {
+	//	nIDs = append(nIDs, key)
+	//}
+	//
+	//if len(nIDs) == 0 {
+	//	LogWriter.Log("ERROR", "No connected nodes available for scheduling")
+	//	return
+	//}
+	adviceRequest := paradigm.NewAdviceRequest(task.Size)
+	s.channel.MonitorAdviceChannel <- adviceRequest
+	resp := adviceRequest.ReceiveResponse()
+	//allocSizes := s.monitor.Advice(nIDs, task.Size) // todo
+	//allocSizes := resp.ScheduleSize
+	if len(resp.ScheduleSize) != len(resp.NodeIDs) {
 		panic("Error in Monitor Advice(), len(nIDs) != len(allocSizes)")
 	}
 	// 构建分配计划
-	schedule := s.generateSynthSchedule(task, nIDs, allocSizes)
+	schedule := s.generateSynthSchedule(task, resp.NodeIDs, resp.ScheduleSize)
 	LogWriter.Log("SCHEDULE", fmt.Sprintf("New Schedule for Task %s, Schedule: %d, Size: %d", task.TaskID, schedule.ScheduleID, schedule.Size))
 	s.channel.PendingSchedules <- schedule
 }
-func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []int, size []int32) paradigm.SynthTaskSchedule {
+func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []int32, size []int32) paradigm.SynthTaskSchedule {
 	scheduleIndex := s.schedules[task.TaskID]
 	if _, exist := s.schedules[task.TaskID]; !exist {
 		s.schedules[task.TaskID] = -1
@@ -80,8 +83,8 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	nodeIDMap := make(map[int]int)
 	for i := 0; i < len(nIDs); i++ {
 		nID, scheduleSize := nIDs[i], size[i]
-		nodeIDMap[nID] = i
-		slot := paradigm.NewSlot(computeSlotHash(nID), task.TaskID, paradigm.ScheduleHash(scheduleIndex), scheduleSize)
+		nodeIDMap[int(nID)] = i
+		slot := paradigm.NewSlot(computeSlotHash(int(nID)), task.TaskID, paradigm.ScheduleHash(scheduleIndex), scheduleSize)
 		//slots = append(slots, slot)
 		slots = append(slots, slot)
 	}
