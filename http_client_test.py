@@ -4,7 +4,7 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
-        "model": "CTGAN",
+        "model": "FINKAN",
         "params": {
             "condition_column": "native-country",
             "condition_value": "United-States"

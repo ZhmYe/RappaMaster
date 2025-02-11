@@ -5,6 +5,7 @@ type SupportModelType int
 const (
 	CTGAN SupportModelType = iota
 	AGSS
+	FINKAN
 	// TODO 后续有支持的新模型在这里加上
 )
 
@@ -14,6 +15,9 @@ func ModelTypeToString(t SupportModelType) string {
 		return "CTGAN"
 	case AGSS:
 		return "AGSS"
+	case FINKAN:
+		return "FINKAN"
+
 	default:
 		panic("Unknown model type!!!")
 	}
@@ -25,6 +29,9 @@ func NameToModelType(name string) SupportModelType {
 		return CTGAN
 	case "AGSS":
 		return AGSS
+	case "FINKAN":
+		return FINKAN
+
 	default:
 		panic("Unknown model type!!!")
 	}

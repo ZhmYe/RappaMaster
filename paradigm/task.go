@@ -146,6 +146,8 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		outputType = DATAFRAME
 	case AGSS:
 		outputType = NETWORK
+	case FINKAN:
+		outputType = DATAFRAME
 	default:
 		panic("Unsupported Model Type!!!")
 	}
