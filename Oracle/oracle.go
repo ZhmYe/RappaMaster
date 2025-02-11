@@ -1,9 +1,11 @@
 package Oracle
 
 import (
+	"BHLayer2Node/Date"
 	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
+	"time"
 )
 
 // Oracle 提供前端页面的直接查询
@@ -24,6 +26,7 @@ import (
 
 
 ***/
+
 type Oracle struct {
 	// 这里记录所有的历史记录
 	// 链上无需维护复杂的可追溯结构
@@ -39,6 +42,7 @@ type Oracle struct {
 	latestEpochs []*paradigm.DevEpoch             // 展示最新的20个epoch的信息：commit, justified, finalized,txHash, data
 	synthData    int32                            // 合成总量
 	nbFinalized  int32                            //提交总量，这里指Finalized
+	dates        []*Date.DateRecord               // 日期记录
 	//latestEpoch int32                            // 最新的epoch，这里要保证Epoch一定是连续的合法 TODO
 	//slotsMaoMutex sync.RWMutex
 }
@@ -89,7 +93,9 @@ func (d *Oracle) Start() {
 
 			case ptxs := <-d.channel.DevTransactionChannel:
 				for _, ptx := range ptxs {
-					ptx.SetID(d.tID)      // 在这里统一设置交易id
+					ptx.SetID(d.tID)               // 在这里统一设置交易id
+					ptx.SetUpchainTime(time.Now()) // 在这里统一设置上链时间
+					dateRecord := d.GetDateRecord(ptx.UpchainTime)
 					transaction := ptx.Tx // 一笔交易，根据交易类型判断更新什么
 					switch transaction.(type) {
 					case *paradigm.EpochRecordTransaction:
@@ -155,11 +161,12 @@ func (d *Oracle) Start() {
 						//}
 						// 更新txMap,对应的rf是epochTx
 						reference := paradigm.DevReference{
-							TxHash:    ptx.Receipt.TransactionHash,
-							TxReceipt: *ptx.Receipt,
-							Rf:        paradigm.EpochTx,
-							TaskID:    "",
-							EpochID:   int32(epochRecord.Id),
+							TxHash:      ptx.Receipt.TransactionHash,
+							TxReceipt:   *ptx.Receipt,
+							Rf:          paradigm.EpochTx,
+							TaskID:      "",
+							EpochID:     int32(epochRecord.Id),
+							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -176,15 +183,17 @@ func (d *Oracle) Start() {
 						d.channel.InitTasks <- task.InitTrack() // 上链后，发起新的任务，这样scheduler能接受到
 						// 更新txMap，对应的rf是InitTaskTx
 						reference := paradigm.DevReference{
-							TxHash:    ptx.Receipt.TransactionHash,
-							TxReceipt: *ptx.Receipt,
-							Rf:        paradigm.InitTaskTx,
-							TaskID:    task.Sign,
-							EpochID:   -1, // 这里的epochID需要等epoch更新才能拿到
+							TxHash:      ptx.Receipt.TransactionHash,
+							TxReceipt:   *ptx.Receipt,
+							Rf:          paradigm.InitTaskTx,
+							TaskID:      task.Sign,
+							EpochID:     -1, // 这里的epochID需要等epoch更新才能拿到
+							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
-
+						// 更新date
+						dateRecord.UpdateInitTasks(1)
 					case *paradigm.TaskProcessTransaction:
 						// 上链了一笔任务推进交易
 						commitRecord := paradigm.NewCommitRecord(ptx)
@@ -199,6 +208,8 @@ func (d *Oracle) Start() {
 							// 传递给monitor更新完成的任务
 							d.channel.MonitorOracleChannel <- transaction
 							if task.IsFinish() && !task.HasbeenCollect {
+								// 更新date
+								dateRecord.UpdateFinishTasks(1)
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
 								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
@@ -239,14 +250,17 @@ func (d *Oracle) Start() {
 							d.channel.ToCollectorSlotChannel <- collectSlotItem
 							// 更新reference
 							reference := paradigm.DevReference{
-								TxHash:    ptx.Receipt.TransactionHash,
-								TxReceipt: *ptx.Receipt,
-								Rf:        paradigm.SlotTX,
-								TaskID:    commitRecord.Sign,
-								EpochID:   commitRecord.Epoch,
+								TxHash:      ptx.Receipt.TransactionHash,
+								TxReceipt:   *ptx.Receipt,
+								Rf:          paradigm.SlotTX,
+								TaskID:      commitRecord.Sign,
+								EpochID:     commitRecord.Epoch,
+								UpchainTime: ptx.UpchainTime,
 								//ScheduleID: slot.ScheduleID,
 							}
 							d.txMap[ptx.Receipt.TransactionHash] = reference
+							dateRecord.UpdateFinalized(1)
+							dateRecord.UpdateProcess(commitRecord.Process)
 							//task.Print()
 						} else {
 							panic("Error in Process Epoch!!!")
@@ -256,6 +270,8 @@ func (d *Oracle) Start() {
 						panic("Unknown Transaction!!!")
 					}
 					d.tID++
+					// 更新Date
+					dateRecord.UpdateTransactions(1)
 
 				}
 				// 更新latest
@@ -273,7 +289,13 @@ func (d *Oracle) Start() {
 	go d.processQuery()
 	updateOracle()
 }
-
+func (o *Oracle) GetDateRecord(date time.Time) *Date.DateRecord {
+	duration := paradigm.GetDateDuration(date)
+	for duration >= len(o.dates) {
+		o.dates = append(o.dates, Date.NewDateRecord(paradigm.GetGenesisDate().Add(time.Duration(24*len(o.dates))*time.Hour)))
+	}
+	return o.dates[duration]
+}
 func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 	return &Oracle{
 		channel:      channel,
@@ -285,7 +307,7 @@ func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 		latestTxs:    make([]*paradigm.PackedTransaction, 0),
 		synthData:    0,
 		nbFinalized:  0,
-
+		dates:        make([]*Date.DateRecord, 0),
 		//tx:                     channel.OracleTransactionChannel,
 		//toCollectorSlotChannel: channel.ToCollectorSlotChannel,
 		//taskFinishSignChannel:  channel.FakeCollectSignChannel,

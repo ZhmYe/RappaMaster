@@ -115,12 +115,19 @@ func (d *Oracle) processQuery() {
 			}
 			ref := d.txMap[item.TxHash]
 			item.SendResponse(item.GenerateResponse(ref))
-		case *Query.DataSynthMonitorQuery:
-			item := query.(*Query.DataSynthMonitorQuery)
+		case *Query.NodesStatusQuery:
+			item := query.(*Query.NodesStatusQuery)
 			d.channel.MonitorQueryChannel <- item
 			status := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(status))
-
+		case *Query.DateSynthDataQuery:
+			item := query.(*Query.DateSynthDataQuery)
+			records := d.dates
+			item.SendResponse(item.GenerateResponse(records))
+		case *Query.DateTransactionQuery:
+			item := query.(*Query.DateTransactionQuery)
+			records := d.dates
+			item.SendResponse(item.GenerateResponse(records))
 		default:
 			panic("Unsupported Query Type!!!")
 		}

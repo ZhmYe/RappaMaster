@@ -1,8 +1,8 @@
 package Query
 
 import (
+	"BHLayer2Node/Date"
 	"BHLayer2Node/paradigm"
-	"time"
 )
 
 /***
@@ -55,7 +55,7 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 			"txType":      txType,
 			"blockHash":   tx.Receipt.BlockNumber, // TODO @XQ 这里能否有区块哈希，如果没有，就改成blockHeight
 			"contract":    tx.Receipt.ContractAddress,
-			"upchainTime": time.Now(), // TODO
+			"upchainTime": paradigm.TimeFormat(tx.UpchainTime),
 		})
 	}
 	response["LatestTx"] = lt
@@ -137,6 +137,7 @@ func (q *BlockchainTransactionQuery) GenerateResponse(data interface{}) paradigm
 	response["txHash"] = ref.TxReceipt.TransactionHash // TODO 这个hash和details的Hash是一样的吗
 	response["blockNumber"] = ref.TxReceipt.BlockNumber
 	response["contract"] = ref.TxReceipt.ContractAddress
+	response["upchainTime"] = paradigm.TimeFormat(ref.UpchainTime)
 	// TODO 区块哈希，考虑要不要加上，这个好像和另外某个地方的todo是一样的，最终会加在ref里
 	// 如果不好加就不要了
 	return paradigm.NewSuccessResponse(response)
@@ -153,6 +154,40 @@ func (q *BlockchainTransactionQuery) ToHttpJson() map[string]interface{} {
 	return map[string]interface{}{"query": "BlockchainTransactionQuery", "txHash": q.TxHash}
 }
 
+// DateTransactionQuery 区块链数据界面关于交易数据的展示
+type DateTransactionQuery struct {
+	paradigm.BasicChannelQuery
+}
+
+func (q *DateTransactionQuery) GenerateResponse(data interface{}) paradigm.Response {
+	// 传入的数据是dateRecords
+	records := data.([]*Date.DateRecord)
+	response := make(map[string]interface{})
+	dates := make([]string, 0) // 按序存储时间，便于前端排序,go的map无序
+	txs := make([]int32, 0)    // 交易数据
+	for _, record := range records {
+		dates = append(dates, paradigm.DateFormat(record.Date()))
+		txs = append(txs, record.NbTransactions)
+	}
+	response["date"] = dates
+	response["txs"] = txs
+	return paradigm.NewSuccessResponse(response)
+
+}
+
+func (q *DateTransactionQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
+	return true
+}
+func (q *DateTransactionQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "DateTransactionQuery"}
+}
+func NewDateTransactionQuery() *DateTransactionQuery {
+	query := new(DateTransactionQuery)
+	//query.ParseRawDataFromHttpEngine(rawData)
+	//query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+	return query
+}
 func NewBlockchainLatestInfoQuery() *BlockchainLatestInfoQuery {
 	query := new(BlockchainLatestInfoQuery)
 	//query.ParseRawDataFromHttpEngine(rawData)

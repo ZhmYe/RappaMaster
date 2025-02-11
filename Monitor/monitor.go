@@ -98,8 +98,8 @@ func (m *Monitor) processQuery() {
 	for query := range m.channel.MonitorQueryChannel {
 		// 就是全部返回
 		switch query.(type) {
-		case *Query.DataSynthMonitorQuery:
-			item := query.(*Query.DataSynthMonitorQuery)
+		case *Query.NodesStatusQuery:
+			item := query.(*Query.NodesStatusQuery)
 			item.SendInfo(m.nodeStatus)
 		default:
 			paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In Monitor", false)

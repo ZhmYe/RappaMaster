@@ -100,9 +100,12 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewBlockchainTransactionQuery(map[interface{}]interface{}{
 			"txHash": txHash,
 		})
-	case "DataSynthMonitorQuery":
+	case "NodesStatusQuery":
 		return true, NewDataSynthMonitorQuery()
-
+	case "DateSynthDataQuery":
+		return true, NewDateSynthDataQuery()
+	case "DateTransactionQuery":
+		return true, NewDateTransactionQuery()
 	default:
 		return false, nil
 	}

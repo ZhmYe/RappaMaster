@@ -61,7 +61,19 @@ def oracle_query_tx():
     send_GET_request(url, request_data)
 def oracle_query_nodes():
     request_data = {
-        "query": "DataSynthMonitorQuery"
+        "query": "NodesStatusQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
+def oracle_query_date_synth():
+    request_data = {
+        "query": "DateSynthDataQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
+def oracle_query_date_tx():
+    request_data = {
+        "query": "DateTransactionQuery"
     }
     url = "http://127.0.0.1:8080/dataSynth"
     send_GET_request(url, request_data)
@@ -99,22 +111,26 @@ def main():
 
     while True:
         command = input("> ").strip().lower()  # 获取用户输入并转换为小写
-
+        print(command)
         if command == 'create':
             create_task()
         if command == 'epoch':
             oracle_query_epoch()
         if command == 'task':
             oracle_query_task()
-        elif command == "bc_latest":
+        if command == "bc_latest":
             oracle_query_blockchain_latest()
-        elif command == "block":
+        if command == "block":
             oracle_query_block()
-        elif command == "tx":
+        if command == "tx":
             oracle_query_tx()
-        elif command == "node":
+        if command == "node":
             oracle_query_nodes()
-        elif command == 'exit':
+        if command == "date_synth":
+            oracle_query_date_synth()
+        if command == "date_tx":
+            oracle_query_date_tx()
+        if command == 'exit':
             print("Exiting the client...")
             break
 

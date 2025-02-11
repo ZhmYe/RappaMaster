@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/LogWriter"
 	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"time"
 )
 
 // =============== 以下是Reference部分==============
@@ -25,8 +26,9 @@ type DevReference struct {
 	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
 	// 如是果SlotTx, 那么需要包含两类信息
 	// 1. Slot所在epoch; 2. Slot所在Task
-	TaskID  TaskHash
-	EpochID int32
+	TaskID      TaskHash
+	EpochID     int32
+	UpchainTime time.Time
 	//ScheduleID ScheduleHash
 }
 
