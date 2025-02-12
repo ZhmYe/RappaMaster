@@ -144,9 +144,11 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 	switch model {
 	case CTGAN:
 		outputType = DATAFRAME
-	case AGSS:
+	case BAED:
 		outputType = NETWORK
 	case FINKAN:
+		outputType = DATAFRAME
+	case ABM:
 		outputType = DATAFRAME
 	default:
 		panic("Unsupported Model Type!!!")
