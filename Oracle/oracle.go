@@ -53,6 +53,9 @@ func (d *Oracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	} else {
 		d.slotsMap[slot.SlotID].UpdateSchedule(slot.ScheduleID, slot.TaskID, slot.ScheduleSize)
 	}
+	if slot.Status == paradigm.Failed {
+		d.slotsMap[slot.SlotID].SetError(slot.ErrorMessage())
+	}
 }
 func (d *Oracle) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
 	slot := d.GetSlot(slotHash)
