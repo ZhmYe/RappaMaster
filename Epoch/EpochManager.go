@@ -59,7 +59,24 @@ func (t *EpochManager) Start() {
 					//	t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
 					//}
 					//t.epochRecord.Justified(commitSlotItem)
-					t.tracker.WonVote(commitSlotItem)
+					t.tracker.WonVote(commitSlotItem.SlotHash())
+				case paradigm.FINALIZE:
+					commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
+					commitSlotItem.SetFinalize()
+					err := t.tracker.Commit(&commitSlotItem) // 正式更新任务
+					if err != nil {
+						LogWriter.Log("ERROR", err.Error())
+						continue
+					}
+					t.epochRecord.Finalize(&commitSlotItem)
+					// 上链任务推进情况
+					go func(transaction *paradigm.TaskProcessTransaction) {
+						t.channel.PendingTransactions <- transaction
+					}(&paradigm.TaskProcessTransaction{
+						CommitSlotItem: &commitSlotItem,
+						Proof:          nil,
+						Signatures:     nil,
+					})
 				case paradigm.INVALID:
 					t.epochRecord.Abort(&commitSlotItem, commitSlotItem.InvalidType) // 如果在外面就判断出来不对，直接加入到invalid即可
 				default:
@@ -152,60 +169,31 @@ func (t *EpochManager) Start() {
 func (t *EpochManager) UpdateEpoch() {
 	t.currentEpoch++
 	LogWriter.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
-	finalizedSlots, abortSlots := t.tracker.OutOfDate()
+	//finalizedSlots, abortSlots := t.tracker.OutOfDate()
 	//validTaskMap := make(map[string]int32)
-	for _, commitSlotItem := range finalizedSlots {
-		commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
-		commitSlotItem.SetFinalize()
-		err := t.tracker.Commit(commitSlotItem) // 正式更新任务
-		if err != nil {
-			LogWriter.Log("ERROR", err.Error())
-			continue
-		}
-		t.epochRecord.Finalize(commitSlotItem)
-		// 上链任务推进情况
-		go func(transaction *paradigm.TaskProcessTransaction) {
-			t.channel.PendingTransactions <- transaction
-		}(&paradigm.TaskProcessTransaction{
-			CommitSlotItem: commitSlotItem,
-			Proof:          nil,
-			Signatures:     nil,
-		})
-	}
-	for _, slot := range abortSlots {
-		//slot.SetEpoch(t.currentEpoch)
-		t.epochRecord.Abort(slot, paradigm.VERIFIED_FAILED)
-	}
-	//for _, h := range outOfDateCommitSlot {
-	//	pendingSlot := t.pendingCommitSlot[h]
-	//	if pendingSlot.Check() {
-	//		// 这个commitSlot在指定时间内完成了存储任务(vote)和可信任务(zkp)
-	//		commitSlotItem := pendingSlot.CommitSlotItem
-	//		commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
-	//		commitSlotItem.SetFinalize()
-	//		err := t.Commit(commitSlotItem) // 正式更新任务
-	//		if err != nil {
-	//			LogWriter.Log("ERROR", err.Error())
-	//			continue
-	//		}
-	//		t.epochRecord.Finalize(commitSlotItem)
-	//		// 上链任务推进情况
-	//		go func(transaction *paradigm.TaskProcessTransaction) {
-	//			t.channel.PendingTransactions <- transaction
-	//		}(&paradigm.TaskProcessTransaction{
-	//			CommitSlotItem: commitSlotItem,
-	//			Proof:          nil,
-	//			Signatures:     nil,
-	//		})
-	//	} else {
-	//		// 未在指定时间内完成，那么直接丢弃
-	//		//slot.SetInvalid(paradigm.VERIFIED_FAILED)
-	//		t.epochRecord.Abort(pendingSlot.CommitSlotItem, paradigm.VERIFIED_FAILED)
-	//		// 这里会出现节点后面才额外提交zkp，但已经失效了，直接无视，也就是commitzkp(还没写)的时候发现没有这个任务，那么要么没有通过justified(这是commitSlot的前置，得到hash和seed)
-	//		// 要么就是已经失效了，直接无视
+	//for _, commitSlotItem := range finalizedSlots {
+	//	commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
+	//	commitSlotItem.SetFinalize()
+	//	err := t.tracker.Commit(commitSlotItem) // 正式更新任务
+	//	if err != nil {
+	//		LogWriter.Log("ERROR", err.Error())
+	//		continue
 	//	}
-	//	delete(t.pendingCommitSlot, h) // 标记为已完成，不需要记录了
+	//	t.epochRecord.Finalize(commitSlotItem)
+	//	// 上链任务推进情况
+	//	go func(transaction *paradigm.TaskProcessTransaction) {
+	//		t.channel.PendingTransactions <- transaction
+	//	}(&paradigm.TaskProcessTransaction{
+	//		CommitSlotItem: commitSlotItem,
+	//		Proof:          nil,
+	//		Signatures:     nil,
+	//	})
 	//}
+	//for _, slot := range abortSlots {
+	//	//slot.SetEpoch(t.currentEpoch)
+	//	t.epochRecord.Abort(slot, paradigm.VERIFIED_FAILED)
+	//}
+
 	// 更新epoch的时候，构建心跳
 	heartbeat := t.buildHeartbeat()
 	t.channel.EpochHeartbeat <- heartbeat
