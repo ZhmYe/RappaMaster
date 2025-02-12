@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"strings"
+	"time"
 )
 
 // Task 描述一个合成任务
@@ -23,6 +24,8 @@ type Task struct {
 	TxReceipt   *types.Receipt
 	// 以下是测试字段
 	HasbeenCollect bool
+	StartTime      time.Time
+	EndTime        time.Time
 	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
 }
 
@@ -139,6 +142,9 @@ func (t *Task) IsFinish() bool {
 func (t *Task) SetCollected() {
 	t.HasbeenCollect = true
 }
+func (t *Task) SetEndTime() {
+	t.EndTime = time.Now()
+}
 func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {
@@ -166,5 +172,6 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		//records:    make([]paradigm.SlotRecord, 0),
 		isReliable:     isReliable,
 		HasbeenCollect: false,
+		StartTime:      time.Now(), // 包括上链时间
 	}
 }

@@ -77,6 +77,12 @@ def oracle_query_date_tx():
     }
     url = "http://127.0.0.1:8080/dataSynth"
     send_GET_request(url, request_data)
+def oracle_query_tasks():
+    request_data = {
+        "query": "SynthTaskQuery"
+    }
+    url = "http://127.0.0.1:8080/oracle"
+    send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
 
@@ -130,6 +136,8 @@ def main():
             oracle_query_date_synth()
         if command == "date_tx":
             oracle_query_date_tx()
+        if command == "tasks":
+            oracle_query_tasks()
         if command == 'exit':
             print("Exiting the client...")
             break

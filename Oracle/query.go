@@ -128,6 +128,11 @@ func (d *Oracle) processQuery() {
 			item := query.(*Query.DateTransactionQuery)
 			records := d.dates
 			item.SendResponse(item.GenerateResponse(records))
+		case *Query.SynthTaskQuery:
+			item := query.(*Query.SynthTaskQuery)
+			tasks := d.tasks
+			item.SendResponse(item.GenerateResponse(tasks))
+
 		default:
 			panic("Unsupported Query Type!!!")
 		}

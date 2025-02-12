@@ -213,6 +213,7 @@ func (d *Oracle) Start() {
 							if task.IsFinish() && !task.HasbeenCollect {
 								// 更新date
 								dateRecord.UpdateFinishTasks(1)
+								task.SetEndTime()
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
 								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
