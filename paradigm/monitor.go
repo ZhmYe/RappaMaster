@@ -19,31 +19,31 @@ func NewNodeHeartbeatReportFromHeartbeat(heartbeat *service.HeartbeatResponse) N
 	status := heartbeat.NodeStatus
 	nodeID := heartbeat.NodeId
 	if _, exist := status["cpu"]; !exist {
-		e := Error(ExecutorError, "Error status key: cpu")
+		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: cpu")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	if _, exist := status["disk"]; !exist {
-		e := Error(ExecutorError, "Error status key: disk")
+		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: disk")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	if _, exist := status["total"]; !exist {
-		e := Error(ExecutorError, "Error status key: total")
+		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: total")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	c, d, t := status["cpu"], status["disk"], status["total"]
 	cpuUsage, ok := strconv.Atoi(c)
 	if ok != nil {
-		e := Error(ExecutorError, fmt.Sprintf("Error cpu status value: %s", c))
+		e := Error(ExecutorError, fmt.Sprintf("Invalid Heartbeat Node Status, Error cpu status value: %s", c))
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	diskUsage, ok := strconv.Atoi(d)
 	if ok != nil {
-		e := Error(ExecutorError, fmt.Sprintf("Error disk usage value: %s", d))
+		e := Error(ExecutorError, fmt.Sprintf("Invalid Heartbeat Node Status, Error disk usage value: %s", d))
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	diskStorage, ok := strconv.Atoi(t)
 	if ok != nil {
-		e := Error(ExecutorError, fmt.Sprintf("Error disk storage value: %s", t))
+		e := Error(ExecutorError, fmt.Sprintf("Invalid Heartbeat Node Status, Error disk storage value: %s", t))
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
 	Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, CPU Usage: %d %%, Disk Usage: %d, Total Disk Space: %d", heartbeat.NodeId, cpuUsage, diskUsage, diskStorage))
