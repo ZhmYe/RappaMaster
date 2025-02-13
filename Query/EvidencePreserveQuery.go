@@ -28,13 +28,20 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["params"] = task.Params           // 任务的一些参数，包括模型、输入、数据集等，待定 todo
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
-	tx["txHash"] = task.TxReceipt.TransactionHash          // 交易哈希
-	tx["blockHash"] = task.TxReceipt.BlockNumber           // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
-	tx["blockHeight"] = task.TxReceipt.BlockNumber         // 区块高度
-	tx["contractAddress"] = task.TxReceipt.ContractAddress // 合约地址
-	tx["abi"] = "InitTask"                                 // todo @XQ 根据你的合约修改，这里因为是查询Task，所以就是Task初始化的那个交易接口
-	tx["MerkleRoot"] = task.TxReceipt.ReceiptProof         // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
-	tx["MerkleProof"] = task.TxReceipt.ReceiptProof        // todo @XQ 这里就是正常的proof
+	tx["txHash"] = task.TxReceipt.TransactionHash                   // 交易哈希
+	tx["blockHash"] = task.TxBlockHash                              // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
+	tx["blockHeight"] = task.TxReceipt.BlockNumber                  // 区块高度
+	tx["contractAddress"] = task.TxReceipt.To                       // 合约地址
+	tx["abi"] = "InitTask"                                          // todo @XQ 根据你的合约修改，这里因为是查询Task，所以就是Task初始化的那个交易接口
+	tx["MerkleRoot"] = paradigm.CalculateMerkleRoot(task.TxReceipt) // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
+	tx["MerkleProof"] = task.TxReceipt.ReceiptProof                 // todo @XQ 这里就是正常的proof
+	// 验证merkleRoot
+	// if !paradigm.VerifyMerkleRoot(task.TxReceipt, task.TxBlock) {
+	// 	LogWriter.Log("ERROR", "Merkle proof verification FAILED ❌")
+	// 	return paradigm.NewErrorResponse(paradigm.ValueError, "MerkleRoot Verify Failed")
+	// } else {
+	// 	LogWriter.Log("DEBUG", "Merkle proof verification PASSED ✅")
+	// }
 	// 3. 时间轴 展示于前端左下角，即该Task在不同epoch里的具体情况
 	// 根据epoch得到时间轴，就是一些字符串 TODO 看一下具体的格式
 	timeline := make([][2]string, 0) // 这里暂时就先写成这样
@@ -185,14 +192,20 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	info["nbTasks"] = len(epoch.InitTasks)
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
-	tx["txHash"] = epoch.TxReceipt.TransactionHash          // 交易哈希
-	tx["blockHash"] = epoch.TxReceipt.BlockNumber           // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
-	tx["blockHeight"] = epoch.TxReceipt.BlockNumber         // 区块高度
-	tx["contractAddress"] = epoch.TxReceipt.ContractAddress // 合约地址
-	tx["abi"] = "EpochRecord"                               // todo @XQ 根据你的合约修改，这里因为是查询Epoch，所以就是更新Epoch的那个交易接口
-	tx["MerkleRoot"] = epoch.TxReceipt.ReceiptProof         // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
-	tx["MerkleProof"] = epoch.TxReceipt.ReceiptProof        // todo @XQ 这里就是正常的proof
-
+	tx["txHash"] = epoch.TxReceipt.TransactionHash                   // 交易哈希
+	tx["blockHash"] = epoch.TxBlockHash                              // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
+	tx["blockHeight"] = epoch.TxReceipt.BlockNumber                  // 区块高度
+	tx["contractAddress"] = epoch.TxReceipt.To                       // 合约地址
+	tx["abi"] = "EpochRecord"                                        // todo @XQ 根据你的合约修改，这里因为是查询Epoch，所以就是更新Epoch的那个交易接口
+	tx["MerkleRoot"] = paradigm.CalculateMerkleRoot(epoch.TxReceipt) // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
+	tx["MerkleProof"] = epoch.TxReceipt.ReceiptProof                 // todo @XQ 这里就是正常的proof
+	// 验证merkleRoot
+	// if !paradigm.VerifyMerkleRoot(epoch.TxReceipt, epoch.TxBlock) {
+	// 	LogWriter.Log("ERROR", "Merkle proof verification FAILED ❌")
+	// 	return paradigm.NewErrorResponse(paradigm.ValueError, "MerkleRoot Verify Failed")
+	// } else {
+	// 	LogWriter.Log("DEBUG", "Merkle proof verification PASSED ✅")
+	// }
 	// 3. Heartbeat信息，这里就是指节点状态情况, 展示在左下角
 	// TODO 这个部分等待Monitor部分更新完再加
 	heartbeat := make([]int, 0) // 就是异常的节点信息，如果没有展示empty页面

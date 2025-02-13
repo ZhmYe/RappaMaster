@@ -132,6 +132,8 @@ func (d *Oracle) Start() {
 							InitTasks:  initTasks,
 							TxReceipt:  ptx.Receipt,
 							TxID:       ptx.Id,
+							// TxBlock:    ptx.Block,
+							TxBlockHash: ptx.BlockHash,
 						}
 						//epoch := paradigm.NewDevEpoch(ptx)
 						if _, exist := d.epochs[epoch.EpochID]; exist {
@@ -154,11 +156,12 @@ func (d *Oracle) Start() {
 						//}
 						// 更新txMap,对应的rf是epochTx
 						reference := paradigm.DevReference{
-							TxHash:    ptx.Receipt.TransactionHash,
-							TxReceipt: *ptx.Receipt,
-							Rf:        paradigm.EpochTx,
-							TaskID:    "",
-							EpochID:   int32(epochRecord.Id),
+							TxHash:      ptx.Receipt.TransactionHash,
+							TxReceipt:   *ptx.Receipt,
+							TxBlockHash: ptx.BlockHash,
+							Rf:          paradigm.EpochTx,
+							TaskID:      "",
+							EpochID:     int32(epochRecord.Id),
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -175,11 +178,12 @@ func (d *Oracle) Start() {
 						d.channel.InitTasks <- task.InitTrack() // 上链后，发起新的任务，这样scheduler能接受到
 						// 更新txMap，对应的rf是InitTaskTx
 						reference := paradigm.DevReference{
-							TxHash:    ptx.Receipt.TransactionHash,
-							TxReceipt: *ptx.Receipt,
-							Rf:        paradigm.InitTaskTx,
-							TaskID:    task.Sign,
-							EpochID:   -1, // 这里的epochID需要等epoch更新才能拿到
+							TxHash:      ptx.Receipt.TransactionHash,
+							TxReceipt:   *ptx.Receipt,
+							TxBlockHash: ptx.BlockHash,
+							Rf:          paradigm.InitTaskTx,
+							TaskID:      task.Sign,
+							EpochID:     -1, // 这里的epochID需要等epoch更新才能拿到
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -236,11 +240,12 @@ func (d *Oracle) Start() {
 							d.channel.ToCollectorSlotChannel <- collectSlotItem
 							// 更新reference
 							reference := paradigm.DevReference{
-								TxHash:    ptx.Receipt.TransactionHash,
-								TxReceipt: *ptx.Receipt,
-								Rf:        paradigm.SlotTX,
-								TaskID:    commitRecord.Sign,
-								EpochID:   commitRecord.Epoch,
+								TxHash:      ptx.Receipt.TransactionHash,
+								TxReceipt:   *ptx.Receipt,
+								TxBlockHash: ptx.BlockHash,
+								Rf:          paradigm.SlotTX,
+								TaskID:      commitRecord.Sign,
+								EpochID:     commitRecord.Epoch,
 								//ScheduleID: slot.ScheduleID,
 							}
 							d.txMap[ptx.Receipt.TransactionHash] = reference

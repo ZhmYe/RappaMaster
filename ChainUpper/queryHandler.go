@@ -5,9 +5,10 @@ import (
 	"BHLayer2Node/paradigm"
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"github.com/ethereum/go-ethereum/common"
-	"time"
 )
 
 func (c *ChainUpper) handleQuery() {
@@ -51,6 +52,33 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		}
 		blockInfo := c.getBlockInfo(*block)
 		item.SendBlockchainInfo(blockInfo)
+
+	case *Query.BlockchainTransactionQuery:
+		item := query.(*Query.BlockchainTransactionQuery)
+		txHash := common.HexToHash(item.TxHash)
+		tx, err := c.client.GetTransactionByHash(ctx, txHash, false)
+		if err != nil {
+			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
+			return
+		}
+		abi := tx.Abi
+		// // 通过tx查询获得receipt -> receipt.blockNumber -> blockhash
+		// receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
+		// blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+		// txInfo := c.getTransactionInfo(*tx, blockHash.Hex())
+		receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
+		if err != nil {
+			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
+			return
+		}
+		blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+		if err != nil {
+			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction blockHash: %v", err)))
+			return
+		}
+		txInfo := c.getTransactionInfo(receipt, blockHash.Hex(), abi)
+		item.SendBlockchainInfo(txInfo)
+
 	default:
 		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
 	}
@@ -67,14 +95,15 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 
 	//var txDetails []TxDetail
 	txs := make([]paradigm.TransactionInfo, 0) // 只要txHash，剩余在Oracle里获取
+	// LogWriter.Log("DEBUG", fmt.Sprintf("Block.GetTransactions() return %s", block.GetTransactions()...))
 	for _, tx := range block.Transactions {
-		// 首先尝试将 tx 转换为 *types.Transaction
+		// 首先尝试将 tx 转换为 *types.TransactionDetail
 		//var txHash string
-		if txObj, ok := tx.(*types.Transaction); ok {
+		if txObj, ok := tx.(*types.TransactionDetail); ok {
 			txs = append(txs, paradigm.TransactionInfo{
-				TxHash:       txObj.Hash().String(),
-				Contract:     txObj.To().String(),
-				Abi:          txObj.ABI(),
+				TxHash:       txObj.GetHash(),
+				Contract:     txObj.GetTo(),
+				Abi:          txObj.GetAbi(),
 				BlockHash:    block.Hash,
 				Invalid:      true,
 				ErrorMessage: "",
@@ -91,13 +120,14 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 			if txMap, ok := tx.(map[string]interface{}); ok {
 				// TODO @XQ 这里修正一下，包括exist的判断
 				txs = append(txs, paradigm.TransactionInfo{
-					TxHash:       txMap["DataHash"].(string),
-					Contract:     txMap["To"].(string),
-					Abi:          txMap["ABI"].(string),
+					TxHash:       txMap["hash"].(string),
+					Contract:     txMap["to"].(string),
+					Abi:          txMap["abi"].(string),
 					BlockHash:    block.Hash,
 					Invalid:      true,
 					ErrorMessage: "",
 				})
+
 				//txHash, _ := txMap["DataHash"].(string)
 				//txs = append(txs, txHash)
 				//			contract, _ := txMap["to"].(string)
@@ -122,5 +152,15 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 		Txs:             txs,
 		Invalid:         true,
 		ErrorMessage:    "",
+	}
+}
+
+func (c *ChainUpper) getTransactionInfo(receipt *types.Receipt, blockHash string, abi string) paradigm.TransactionInfo {
+	return paradigm.TransactionInfo{
+		TxHash:   receipt.TransactionHash,
+		Contract: receipt.To,
+		// Abi:       "processTask", // todo
+		Abi:       abi, // 检查是否有值
+		BlockHash: blockHash,
 	}
 }

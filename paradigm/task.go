@@ -3,8 +3,9 @@ package paradigm
 import (
 	"BHLayer2Node/LogWriter"
 	"fmt"
-	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"strings"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 // Task 描述一个合成任务
@@ -21,6 +22,8 @@ type Task struct {
 	scheduleMap map[ScheduleHash]int // 为了防止乱序
 	TxID        int
 	TxReceipt   *types.Receipt
+	// TxBlock     *types.Block
+	TxBlockHash string
 	// 以下是测试字段
 	HasbeenCollect bool
 	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
@@ -51,6 +54,7 @@ func (t *Task) Print() {
 	}
 	sb.WriteString(fmt.Sprintf("TxID: %d\n", t.TxID))
 	sb.WriteString(fmt.Sprintf("TxReceipt: %v\n", t.TxReceipt))
+	sb.WriteString(fmt.Sprintf("TxBlockHash: %v\n", t.TxBlockHash))
 	//sb.WriteString(fmt.Sprintf("Has Been Collected: %t\n", t.HasbeenCollect))
 
 	fmt.Println(sb.String())
@@ -60,6 +64,7 @@ func (t *Task) UpdateTxInfo(ptx *PackedTransaction) {
 	case *InitTaskTransaction:
 		t.TxReceipt = ptx.Receipt
 		t.TxID = ptx.Id
+		t.TxBlockHash = ptx.BlockHash
 		//return &DevTask{
 		//	Task:      ptx.Tx.Blob().(*Task),
 		//	Slots:     make([]*SlotRecord, 0),

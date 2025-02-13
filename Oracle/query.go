@@ -91,8 +91,8 @@ func (d *Oracle) processQuery() {
 				NbFinalized:   d.nbFinalized,
 				SynthData:     d.synthData,
 				NbEpoch:       int32(len(d.epochs)),
-				NbBlock:       0,                   // TODO
-				NbTransaction: int32(len(d.txMap)), // TODO
+				NbBlock:       int32(d.latestTxs[len(d.latestTxs)-1].Receipt.BlockNumber), // TODO
+				NbTransaction: int32(len(d.txMap)),                                        // TODO
 			}
 			item.SendResponse(item.GenerateResponse(info))
 		case *Query.BlockchainBlockNumberQuery:
@@ -105,16 +105,19 @@ func (d *Oracle) processQuery() {
 			d.channel.BlockchainQueryChannel <- item
 			block := item.ReceiveBlockchainInfo()
 			item.SendResponse(item.GenerateResponse(block))
-		case *Query.BlockchainTransactionQuery:
+		case *Query.BlockchainTransactionQuery: // TODO: @XQ 改为链上查询
 			item := query.(*Query.BlockchainTransactionQuery)
-			if _, exist := d.txMap[item.TxHash]; !exist {
-				errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "Transaction does not exist in Oracle")
-				item.SendResponse(errorResponse)
-				paradigm.RaiseError(paradigm.ValueError, "Transaction does not exist in Oracle", false)
-				continue
-			}
-			ref := d.txMap[item.TxHash]
-			item.SendResponse(item.GenerateResponse(ref))
+			// if _, exist := d.txMap[item.TxHash]; !exist {
+			// 	errorResponse := paradigm.NewErrorResponse(paradigm.ValueError, "Transaction does not exist in Oracle")
+			// 	item.SendResponse(errorResponse)
+			// 	paradigm.RaiseError(paradigm.ValueError, "Transaction does not exist in Oracle", false)
+			// 	continue
+			// }
+			// ref := d.txMap[item.TxHash]
+			// item.SendResponse(item.GenerateResponse(ref))
+			d.channel.BlockchainQueryChannel <- item
+			tx := item.ReceiveBlockchainInfo()
+			item.SendResponse(item.GenerateResponse(tx))
 
 		default:
 			panic("Unsupported Query Type!!!")
