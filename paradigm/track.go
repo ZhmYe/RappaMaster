@@ -1,7 +1,6 @@
 package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"fmt"
 )
 
@@ -19,7 +18,7 @@ func (t *SynthTaskTrackItem) Commit(item CommitSlotItem) error {
 	//t.records[slot.Slot] = slotRecord
 	t.UnprocessedTask.Process(item.Process)
 	t.History += item.Process
-	LogWriter.Log("TRACKER", fmt.Sprintf("Task %s process %d by node %d, total: %d, history: %d, unprocessedSize: %d", item.Sign, item.Process, item.Nid, t.Total, t.History, t.Size))
+	Log("TRACKER", fmt.Sprintf("Task Track %s process %d by node %d, total: %d, history: %d, unprocessedSize: %d", item.Sign, item.Process, item.Nid, t.Total, t.History, t.Size))
 	return nil
 }
 func (t *SynthTaskTrackItem) IsFinish() bool {

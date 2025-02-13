@@ -1,7 +1,6 @@
 package Mocker
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/pb/service"
 	"context"
@@ -21,7 +20,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	LogWriter.Log("DEBUG", fmt.Sprintf("Node %d received ScheduleRequest: %+v", m.nodeID, req))
+	paradigm.Log("DEBUG", fmt.Sprintf("Node %d received ScheduleRequest: %+v", m.nodeID, req))
 
 	// 模拟随机接受或拒绝任务
 	accept := m.nodeID != 0 || rand.Intn(4) == 0
@@ -38,7 +37,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 	// 如果接受任务，将其存储到 slotData
 	m.slotData[req.Sign] = req.Slot
 
-	LogWriter.Log("DEBUG", fmt.Sprintf("Node %d accepted task %s for slot %s", m.nodeID, req.Sign, req.Slot))
+	paradigm.Log("DEBUG", fmt.Sprintf("Node %d accepted task %s for slot %s", m.nodeID, req.Sign, req.Slot))
 	for idStr, sizeStr := range req.Schedule {
 		id, _ := strconv.Atoi(idStr)
 		size := sizeStr
@@ -50,7 +49,7 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 				if process <= 0 {
 					process = 1
 				}
-				LogWriter.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Epoch %s Slot %d", id, size-1, req.Sign, slot))
+				paradigm.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Epoch %s Slot %d", id, size-1, req.Sign, slot))
 				// todo 这里现在是直接提交的，没有走grpc
 				m.commitSlot <- paradigm.NewCommitSlotItem(&service.JustifiedSlot{
 					Nid:     int32(id),

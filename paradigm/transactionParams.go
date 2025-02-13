@@ -53,7 +53,8 @@ func (p *InitTaskTransactionParams) UpdateFromTransaction(tx Transaction) {
 		p.paramsList = append(p.paramsList, utils.SerializeParams(calldata["Params"].(map[string]interface{})))
 
 	default:
-		panic("TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		e := Error(RuntimeError, "TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		panic(e.Error())
 
 	}
 }
@@ -79,7 +80,8 @@ func (p *InitTaskTransactionParams) ConvertParamsToKVPairs() ([32]byte, []byte) 
 	// 序列化为 JSON 字符串
 	value, err := json.Marshal(params)
 	if err != nil {
-		panic(fmt.Sprintf("JSON marshal error: %v", err))
+		e := Error(RuntimeError, fmt.Sprintf("JSON marshal error: %v", err))
+		panic(e.Error())
 	}
 	// 获取当前时间戳，并生成 key 字符串
 	timestamp := time.Now().Unix()
@@ -148,7 +150,8 @@ func (p *TaskProcessTransactionParams) UpdateFromTransaction(tx Transaction) {
 		p.nidsBigInt = append(p.nidsBigInt, new(big.Int).SetUint64(uint64(idValue)))
 		p.epochsBigInt = append(p.epochsBigInt, new(big.Int).SetUint64(uint64(calldata["Epoch"].(int32))))
 	default:
-		panic("TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		e := Error(RuntimeError, "TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		panic(e.Error())
 
 	}
 }
@@ -168,7 +171,8 @@ func (p *TaskProcessTransactionParams) ConvertParamsToKVPairs() ([32]byte, []byt
 	// 序列化为 JSON 字符串
 	value, err := json.Marshal(params)
 	if err != nil {
-		panic(fmt.Sprintf("JSON marshal error: %v", err))
+		e := Error(RuntimeError, fmt.Sprintf("JSON marshal error: %v", err))
+		panic(e.Error())
 	}
 	// 获取当前时间戳，并生成 key 字符串
 	timestamp := time.Now().Unix()
@@ -259,7 +263,8 @@ func (p *EpochRecordTransactionParams) UpdateFromTransaction(tx Transaction) {
 		p.invalids = append(p.invalids, invalidMap)
 
 	default:
-		panic("TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		e := Error(RuntimeError, "TaskProcessTransactionParams should be updated from TaskProcessTransaction!!!")
+		panic(e.Error())
 
 	}
 }

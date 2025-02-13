@@ -2,7 +2,6 @@ package service
 
 import (
 	Store "BHLayer2Node/ChainUpper/contract/store"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"context"
 	"fmt"
@@ -37,7 +36,7 @@ func (w *UpChainWorker) Process() {
 		case tx := <-w.queue: // 尝试从通道中接收数据
 			if tx != nil { // 判断是否接收到有效值
 				// log.Printf("Worker %d Received result: %v", id, result)
-				LogWriter.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
+				//paradigm.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
 
 				switch tx.(type) {
 				case *paradigm.InitTaskTransaction:
@@ -57,7 +56,7 @@ func (w *UpChainWorker) Process() {
 
 				}
 			} else {
-				LogWriter.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
+				paradigm.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
 				return
 			}
 		}
@@ -82,7 +81,7 @@ func (w *UpChainWorker) consumer() {
 		// _, receipt, err := storeSession.SetItem(key, value)
 		_, receipt, err := storeSession.SetItems(keys, values)
 		if err != nil {
-			LogWriter.Log("ERROR", fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err)) 
 		}
 		// 获得有merkleProof的receipt
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

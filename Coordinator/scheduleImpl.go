@@ -1,7 +1,6 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
@@ -19,8 +18,10 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	// 将 params 转换为 *struct pb.Struct
 	convertedParams, err := structpb.NewStruct(schedule.Params)
 	if err != nil {
-		LogWriter.Log("ERROR", fmt.Sprintf("Failed to convert params: %v", err))
-		panic(err)
+		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to convert Schedule params: %v", err))
+		//paradigm.Log("ERROR", fmt.Sprintf("Failed to convert params: %v", err))
+		//panic(e.Error())
+		return
 	}
 
 	var wg sync.WaitGroup
@@ -51,10 +52,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			// 建立grpc连接
 			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
-				errorMessage := fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err)
-				LogWriter.Log("ERROR", errorMessage)
-				slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, errorMessage}
+				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				slot.SetError(e.Error())
+				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
 			client := pb.NewRappaExecutorClient(conn)
@@ -64,28 +64,25 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			// 发送调度请求
 			resp, err := client.Schedule(ctx, request, grpc.WaitForReady(true))
 			if err != nil {
-				errorMessage := fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err)
-				LogWriter.Log("ERROR", errorMessage)
+				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to send schedule to node %d: %v", nodeID, err))
 				//slot.Status = paradigm.Failed
 				//slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, errorMessage}
+				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
 
 			// 校验任务标识
 			if resp.Sign != schedule.TaskID {
-				errorMessage := fmt.Sprintf("Epoch Sign does not match: %s != %s", resp.Sign, schedule.TaskID)
-				LogWriter.Log("ERROR", errorMessage)
+				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Epoch Sign does not match: %s != %s", resp.Sign, schedule.TaskID))
 				//slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, errorMessage}
+				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
 			nID, _ := strconv.Atoi(resp.NodeId)
 			if nID != nodeID {
-				errorMessage := fmt.Sprintf("NodeID does not match: %s != %d", resp.NodeId, nodeID)
-				LogWriter.Log("ERROR", errorMessage)
+				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("NodeID does not match: %s != %d", resp.NodeId, nodeID))
 				//slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, errorMessage}
+				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
 
@@ -93,14 +90,14 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			//assignedSize := request.Size
 			//nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
-				LogWriter.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
+				//paradigm.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
 				successChannel <- slot
 
 			} else {
-				errorMessage := fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage)
-				LogWriter.Log("ERROR", errorMessage)
+				//errorMessage := fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage)
+				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Node %s rejected schedule: %v, reason: %s", resp.NodeId, resp.Sign, resp.ErrorMessage))
 				//slot.SetError(errorMessage)
-				rejectChannel <- [2]interface{}{nodeID, errorMessage}
+				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				//rejectedChannel <- assignedSize
 			}
 		}(nID, address.GetAddrStr(), &request)
@@ -131,8 +128,8 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 		remainingSize = 0
 	}
 	//输出统计结果
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted", schedule.TaskID, remainingSize))
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", schedule.TaskID, acceptedSize))
+	paradigm.Print("COORDINATOR", fmt.Sprintf("Schedule '%s' has %d size remaining unaccepted, total accept size: %d", schedule.TaskID, remainingSize, acceptedSize))
+	//paradigm.Print("COORDINATOR", fmt.Sprintf("Schedule '%s' total accepted size: %d", schedule.TaskID, acceptedSize))
 	// 然后这里把数据放到scheduler重新来
 	//newSlot := slot
 	if remainingSize == schedule.Size {
@@ -143,12 +140,12 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			Model:  schedule.Model,
 			Params: schedule.Params,
 		}
-		LogWriter.Log("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s scheduling...", schedule.TaskID))
+		paradigm.Print("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s scheduling...", schedule.TaskID))
 	} else {
 		// 如果有节点接受，那么如果节点有反馈，那么在反馈处更新unprocessedTask
 		// 如果没有反馈，那么有额外处理 todo
 		// 认为这是一个合法的slot
-		LogWriter.Log("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s, Waiting for result...", schedule.TaskID))
+		paradigm.Print("COORDINATOR", fmt.Sprintf("Successfully schedule the task %s", schedule.TaskID))
 		// 这是最后真正的schedule,由tracker获取
 		//schedule.Print()
 		//for nodeID, slot := range schedule.Slots {

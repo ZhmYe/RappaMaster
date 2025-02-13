@@ -27,19 +27,19 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		item := query.(*Query.BlockchainBlockHashQuery)
 		blockHash := item.BlockHash
 		if blockHash == "" {
-			item.SendBlockchainInfo(paradigm.NewInvalidBlockInfo("blockHash parameter missing or invalid"))
+			item.SendInfo(paradigm.NewInvalidBlockInfo("blockHash parameter missing or invalid"))
 			return
 			//return *paradigm.NewErrorResponse(-1, "blockHash parameter missing or invalid", int(req.QueryType))
 		}
 		hash := common.HexToHash(blockHash)
 		block, err := c.client.GetBlockByHash(ctx, hash, false, false)
 		if err != nil {
-			item.SendBlockchainInfo(paradigm.NewInvalidBlockInfo(fmt.Sprintf("Failed to get block: %v", err)))
+			item.SendInfo(paradigm.NewInvalidBlockInfo(fmt.Sprintf("Failed to get block: %v", err)))
 			//return *paradigm.NewErrorResponse(-1, fmt.Sprintf("Failed to get block: %v", err), int(req.QueryType))
 			return
 		}
 		blockInfo := c.getBlockInfo(*block)
-		item.SendBlockchainInfo(blockInfo)
+		item.SendInfo(blockInfo)
 
 	case *Query.BlockchainBlockNumberQuery:
 		// 通过client获取到block
@@ -47,7 +47,7 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		blockNumber := item.BlockNumber
 		block, err := c.client.GetBlockByNumber(ctx, int64(blockNumber), false, false)
 		if err != nil {
-			item.SendBlockchainInfo(paradigm.NewInvalidBlockInfo(fmt.Sprintf("Failed to get block: %v", err)))
+			item.SendInfo(paradigm.NewInvalidBlockInfo(fmt.Sprintf("Failed to get block: %v", err)))
 			return
 		}
 		blockInfo := c.getBlockInfo(*block)
@@ -79,8 +79,9 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 	// 	txInfo := c.getTransactionInfo(receipt, blockHash.Hex(), abi)
 	// 	item.SendBlockchainInfo(txInfo)
 
+		item.SendInfo(blockInfo)
 	default:
-		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
+		paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper")
 	}
 }
 

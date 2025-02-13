@@ -1,7 +1,6 @@
-package Config
+package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"encoding/json"
 	"os"
 	"strconv"
@@ -34,7 +33,7 @@ type BHLayer2NodeConfig struct {
 	MaxGrpcRequestPoolSize     int                    // gRPC 请求池的最大大小
 	DefaultSlotSize            int                    // 默认的slot大小
 	LogPath                    string                 // 日志路径
-	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress
+	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress todo 这里是不是可以改成数组
 	DEBUG                      bool
 
 	// 纠删码配置
@@ -99,7 +98,7 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 	//once.Do(func() {
 	config := DefaultBHLayer2NodeConfig
-	LogWriter.InitGlobalLogWriter(config.LogPath, config.DEBUG)
+	InitGlobalLogWriter(config.LogPath, config.DEBUG)
 
 	// 尝试从配置文件加载
 	if path != "" {
@@ -110,6 +109,7 @@ func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 			err = decoder.Decode(&config)
 			if err != nil {
 				// 配置文件解析失败时保留默认值
+
 				println("Failed to parse config file, using default values:", err.Error())
 			}
 		} else {

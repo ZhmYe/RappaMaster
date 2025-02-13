@@ -1,9 +1,5 @@
 package paradigm
 
-import (
-	"fmt"
-)
-
 type Query interface {
 	GenerateResponse(data interface{}) Response
 	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
@@ -26,6 +22,26 @@ func (q *BasicChannelQuery) ReceiveResponse() Response {
 }
 func NewBasicChannelQuery() BasicChannelQuery {
 	return BasicChannelQuery{responseChannel: make(chan Response, 1)}
+}
+
+// DoubleChannelQuery 需要和链交互，因此有一个给client传递消息的channel
+type DoubleChannelQuery struct {
+	BasicChannelQuery
+	infoChannel chan interface{}
+}
+
+func (q *DoubleChannelQuery) SendInfo(info interface{}) {
+	q.infoChannel <- info
+	close(q.infoChannel)
+}
+func (q *DoubleChannelQuery) ReceiveInfo() interface{} {
+	return <-q.infoChannel
+}
+func NewDoubleChannelQuery() DoubleChannelQuery {
+	return DoubleChannelQuery{
+		BasicChannelQuery: NewBasicChannelQuery(),
+		infoChannel:       make(chan interface{}),
+	}
 }
 
 type Response interface {
@@ -51,20 +67,18 @@ func (r *SuccessResponse) Error() string {
 }
 
 type ErrorResponse struct {
-	errorType    ErrorEnum
-	errorMessage string
+	error RappaError
 }
 
 func (e *ErrorResponse) ToHttpJson() map[string]interface{} {
-	return map[string]interface{}{"error": ErrorToString(e.errorType), "errorMessage": e.errorMessage}
+	return map[string]interface{}{"error": e.error.Error()}
 }
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("%s: %s", ErrorToString(e.errorType), e.errorMessage)
+	return e.error.Error()
 }
-func NewErrorResponse(errorType ErrorEnum, errorMessage string) *ErrorResponse {
+func NewErrorResponse(err RappaError) *ErrorResponse {
 	return &ErrorResponse{
-		errorType:    errorType,
-		errorMessage: errorMessage,
+		error: err,
 	}
 }
 

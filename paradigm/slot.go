@@ -42,6 +42,9 @@ func (s *Slot) SetError(errorMessage string) {
 func (s *Slot) SetEpoch(epoch int32) {
 	s.Epoch = epoch
 }
+func (s *Slot) ErrorMessage() string {
+	return s.err
+}
 
 // Commit 将节点提交的结果commit，这里不做完整性等校验，在外面校验完才放到这里
 func (s *Slot) Commit(commitSlot *CommitSlotItem) {

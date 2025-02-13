@@ -89,6 +89,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 			}
 			slots = append(slots, slot.Json())
 		}
+		scheduleInfo["slots"] = slots
 		scheduleInfo["process"] = process
 		scheduleInfo["commitNumber"] = nbCommit
 		scheduleInfo["invalidNumber"] = nbInvalid

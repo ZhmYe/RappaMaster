@@ -2,6 +2,7 @@ package paradigm
 
 import (
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"time"
 )
 
 /*** Transaction相关内容 ***/
@@ -14,17 +15,13 @@ const (
 	EPOCH_RECORD_TRANSACTION
 )
 
+// TODO @YZM 这里的CallData可以改成遍历结构体中的所有成员变量，然后结合reflect变成map里的内容,这样新定义的transaction无需写CallData()
+
 type Transaction interface {
 	Call() string                     // 调用合约哪个函数
 	CallData() map[string]interface{} // 调用合约函数时候的参数
 	Blob() interface{}                // 提供额外的附属内容
 }
-
-// TODO @YZM 这里的CallData可以改成遍历结构体中的所有成员变量，然后结合reflect变成map里的内容,这样新定义的transaction无需写CallData()
-
-// TODO @XQ 这里定义了几个我初步想的具体交易实例，修改相应的合约和sdk client
-// 下面的所有的合约函数名、参数等可以根据solidity实况进行调整，如果有大调整比如类型无法支持啥的可以提issues
-// 写了一些对前端的想象，可以理解一下，有问题可以提
 
 // InitTaskTransaction 表示RappaMaster新收到了一个合成任务，将任务的一些相关参数传上去，同时在合约里其他一些和任务相关的地方准备新建这个相关的字段
 /* 交易类型一: 新建任务交易 */
@@ -126,12 +123,15 @@ type PackedTransaction struct {
 	Id        int
 	Receipt   *types.Receipt
 	BlockHash string
-	// MerkleRoot string // 用于验证MerkleRoot
-	// Block   *types.Block
+	UpchainTime time.Time
 }
 
 func (t *PackedTransaction) SetID(id int) {
 	t.Id = id
+}
+
+func (t *PackedTransaction) SetUpchainTime(time time.Time) {
+	t.UpchainTime = time
 }
 func NewPackedTransaction(tx Transaction, receipt *types.Receipt, blockHash string) *PackedTransaction {
 	return &PackedTransaction{

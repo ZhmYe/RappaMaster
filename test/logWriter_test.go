@@ -1,7 +1,7 @@
 package test
 
 import (
-	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/paradigm"
 	"BHLayer2Node/utils"
 	"os"
 	"path/filepath"
@@ -23,7 +23,7 @@ func TestLogWriter(t *testing.T) {
 	}
 
 	// Create and initialize LogWriter
-	logWriter := LogWriter.NewLogWriter(logPath, debug)
+	logWriter := paradigm.NewLogWriter(logPath, debug)
 	if err := logWriter.Init(); err != nil {
 		t.Fatalf("Failed to initialize LogWriter: %v", err)
 	}

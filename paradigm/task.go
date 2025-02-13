@@ -1,11 +1,10 @@
 package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"fmt"
 	"strings"
-
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"time"
 )
 
 // Task 描述一个合成任务
@@ -26,6 +25,8 @@ type Task struct {
 	TxBlockHash string
 	// 以下是测试字段
 	HasbeenCollect bool
+	StartTime      time.Time
+	EndTime        time.Time
 	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
 }
 
@@ -108,7 +109,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	//slotRecord := t.records[slot.Slot]
 	//slotRecord.Process = append(slotRecord.Process, slot.Record())
 	t.Process += slot.Process
-	LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
+	Print("INFO", fmt.Sprintf("Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
 	//LogWriter.Log("DEBUG", fmt.Sprintf("Epoch %s process %d by node %d", slot.Sign, slot.Process, slot.Nid))
 	//t.records[slot.Slot] = slotRecord
 	return nil
@@ -144,15 +145,23 @@ func (t *Task) IsFinish() bool {
 func (t *Task) SetCollected() {
 	t.HasbeenCollect = true
 }
+func (t *Task) SetEndTime() {
+	t.EndTime = time.Now()
+}
 func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {
 	case CTGAN:
 		outputType = DATAFRAME
-	case AGSS:
+	case BAED:
 		outputType = NETWORK
+	case FINKAN:
+		outputType = DATAFRAME
+	case ABM:
+		outputType = DATAFRAME
 	default:
-		panic("Unsupported Model Type!!!")
+		e := Error(RuntimeError, "Unsupported Model Type!!!")
+		panic(e.Error())
 	}
 	return &Task{
 		Sign:        sign,
@@ -167,5 +176,6 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		//records:    make([]paradigm.SlotRecord, 0),
 		isReliable:     isReliable,
 		HasbeenCollect: false,
+		StartTime:      time.Now(), // 包括上链时间
 	}
 }

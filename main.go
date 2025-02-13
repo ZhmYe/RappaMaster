@@ -3,11 +3,10 @@ package main
 import (
 	"BHLayer2Node/ChainUpper"
 	"BHLayer2Node/Collector"
-	"BHLayer2Node/Config"
 	"BHLayer2Node/Coordinator"
 	"BHLayer2Node/Epoch"
 	"BHLayer2Node/Event"
-	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Monitor"
 	"BHLayer2Node/Network/HTTP"
 	"BHLayer2Node/Oracle"
 	"BHLayer2Node/Schedule"
@@ -16,7 +15,7 @@ import (
 )
 
 func main() {
-	config := Config.LoadBHLayer2NodeConfig("config.json")
+	config := paradigm.LoadBHLayer2NodeConfig("config.json")
 
 	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
@@ -30,6 +29,7 @@ func main() {
 	epochManager := Epoch.NewEpochManager(rappaChannel)
 	// chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewOracle(rappaChannel)
+	monitir := Monitor.NewMonitor(rappaChannel)
 	collector := Collector.NewCollector(rappaChannel)
 	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	if err != nil {
@@ -50,17 +50,17 @@ func main() {
 	go coordinator.Start()
 	//定时，如果大于10s,EpochEvent队列里放置一个true
 	go event.Start()
-
+	go monitir.Start()
 	go chainUpper.Start()
 	go collector.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
-		LogWriter.Log("ERROR", fmt.Sprintf("Failed to start scheduler: %v", err))
+		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to start scheduler: %v", err))
 		return
 	}
 
 	// 主程序保持运行，等待任务完成
-	LogWriter.Log("INFO", "Main program is running...")
+	//paradigm.Log("INFO", "Main program is running...")
 	//time.Sleep(200 * time.Second)
 	oracle.Start()
 }

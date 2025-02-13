@@ -4,7 +4,7 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
-        "model": "CTGAN",
+        "model": "FINKAN",
         "params": {
             "condition_column": "native-country",
             "condition_value": "United-States"
@@ -30,7 +30,7 @@ def oracle_query_epoch():
 def oracle_query_task():
     request_data = {
         "query": "EvidencePreserveTaskIDQuery",
-        "taskID": "SynthTask-0-1738935976",
+        "taskID": "SynthTask-0-1739346636",
     }
 
     # 发送 POST 请求
@@ -58,6 +58,30 @@ def oracle_query_tx():
         "txHash": "0x111"
     }
     url = "http://127.0.0.1:8080/blockchain"
+    send_GET_request(url, request_data)
+def oracle_query_nodes():
+    request_data = {
+        "query": "NodesStatusQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
+def oracle_query_date_synth():
+    request_data = {
+        "query": "DateSynthDataQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
+def oracle_query_date_tx():
+    request_data = {
+        "query": "DateTransactionQuery"
+    }
+    url = "http://127.0.0.1:8080/dataSynth"
+    send_GET_request(url, request_data)
+def oracle_query_tasks():
+    request_data = {
+        "query": "SynthTaskQuery"
+    }
+    url = "http://127.0.0.1:8080/oracle"
     send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
@@ -93,20 +117,28 @@ def main():
 
     while True:
         command = input("> ").strip().lower()  # 获取用户输入并转换为小写
-
+        print(command)
         if command == 'create':
             create_task()
         if command == 'epoch':
             oracle_query_epoch()
         if command == 'task':
             oracle_query_task()
-        elif command == "bc_latest":
+        if command == "bc_latest":
             oracle_query_blockchain_latest()
-        elif command == "block":
+        if command == "block":
             oracle_query_block()
-        elif command == "tx":
+        if command == "tx":
             oracle_query_tx()
-        elif command == 'exit':
+        if command == "node":
+            oracle_query_nodes()
+        if command == "date_synth":
+            oracle_query_date_synth()
+        if command == "date_tx":
+            oracle_query_date_tx()
+        if command == "tasks":
+            oracle_query_tasks()
+        if command == 'exit':
             print("Exiting the client...")
             break
 

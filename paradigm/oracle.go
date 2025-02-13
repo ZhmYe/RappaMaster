@@ -1,10 +1,10 @@
 package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"fmt"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"time"
 )
 
 // =============== 以下是Reference部分==============
@@ -27,8 +27,9 @@ type DevReference struct {
 	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
 	// 如是果SlotTx, 那么需要包含两类信息
 	// 1. Slot所在epoch; 2. Slot所在Task
-	TaskID  TaskHash
-	EpochID int32
+	TaskID      TaskHash
+	EpochID     int32
+	UpchainTime time.Time
 	//ScheduleID ScheduleHash
 }
 
@@ -57,7 +58,8 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 			TxID:           ptx.Id,
 		}
 	default:
-		panic("A CommitRecord should be init from an TaskProcessTransaction!!!")
+		e := Error(RuntimeError, "A CommitRecord should be init from an TaskProcessTransaction!!!")
+		panic(e.Error())
 	}
 }
 
@@ -106,7 +108,8 @@ type EpochRecord struct {
 
 func (r *EpochRecord) UpdateTask(task *Task) {
 	if _, exist := r.Tasks[task.Sign]; exist {
-		panic("Repeat Epoch Sign!!!")
+		e := Error(RuntimeError, "Repeat Epoch Sign!!!")
+		panic(e.Error())
 	}
 	r.Tasks[task.Sign] = task.Size
 }
@@ -175,11 +178,11 @@ func (r *EpochRecord) Refresh() {
 	r.Invalids = make(map[SlotHash]InvalidCommitType)
 }
 func (r *EpochRecord) Echo() {
-	LogWriter.Log("EPOCH", fmt.Sprintf("Epoch %d Record: ", r.Id))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Commits: %v", r.Commits))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Justifieds: %v", r.Justifieds))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
+	Print("EPOCH", fmt.Sprintf("Epoch %d Record, Commits: %d, Justified: %d, Finalized: %d, Invalid: %d", r.Id, len(r.Commits), len(r.Justifieds), len(r.Finalizes), len(r.Invalids)))
+	//Print("EPOCH", fmt.Sprintf("	Commits: %v", r.Commits))
+	//Print("EPOCH", fmt.Sprintf("	Justifieds: %v", r.Justifieds))
+	//Print("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
+	//Print("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
 }
 func NewEpochRecord() *EpochRecord {
 	return &EpochRecord{

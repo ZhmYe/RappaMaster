@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
@@ -31,7 +30,7 @@ func (handler *VoteHandler) Process() {
 				}
 			} else {
 				// 这里暂时先不报错
-				LogWriter.Log("ERROR", "Vote Instance does not exist")
+				paradigm.Error(paradigm.RuntimeError, "Vote Instance does not exist")
 				continue
 			}
 
@@ -44,11 +43,11 @@ func (handler *VoteHandler) Process() {
 			// 如果通过投票了，那么就finalize TODO @YZM
 			//slot := instance.Slot
 			//slot.SetFinalize()
-			LogWriter.Log("VOTE", fmt.Sprintf("%s CommitSlot pass the Vote...", instance.Hash))
+			paradigm.Log("VOTE", fmt.Sprintf("%s CommitSlot pass the Vote...", instance.Hash))
 			// TODO @YZM 这里简单构造了一个假的commitSlot，因为taskManager只需要hash，可以分成两个channel
 			handler.accepts <- paradigm.NewFakeCommitSlotItem(instance.Hash)
 		} else {
-			LogWriter.Log("VOTE", fmt.Sprintf("%s CommitSlot does not pass the Vote!!!", instance.Hash))
+			paradigm.Error(paradigm.SlotLifeError, fmt.Sprintf("%s CommitSlot does not pass the Vote", instance.Hash))
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package HTTP
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
@@ -26,10 +25,11 @@ const (
 	ORACLE_QUERY
 	COLLECT_TASK
 	BLOCKCHAIN_QUERY
+	DATASYNTH_QUERY
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -39,7 +39,7 @@ func (e *HttpEngine) HandleGET(c *gin.Context) {
 		fmt.Println(query.ToHttpJson())
 		e.channel.QueryChannel <- query
 		r := query.ReceiveResponse() // 这里会阻塞
-		fmt.Println(r.ToHttpJson(), r.Error())
+		//fmt.Println(r.ToHttpJson(), r.Error())
 		response := paradigm.HttpResponse{
 			Message: fmt.Sprintf("Query Data Successfully, query type: %s, query: %v", requestBody.Query, requestBody.Data),
 			Code:    "OK",
@@ -84,7 +84,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					requestBody.Size,
 					requestBody.IsReliable,
 				)
-				LogWriter.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
+				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
 				// 新建任务用于上链，然后直接返回response
 				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}
 				// 返回response
@@ -115,8 +115,15 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Handler: e.HandleGET,
 		}
 		return &httpService, nil
+	case DATASYNTH_QUERY:
+		httpService := HttpService{
+			Url:     "/dataSynth",
+			Method:  "GET",
+			Handler: e.HandleGET,
+		}
+		return &httpService, nil
 	default:
-		paradigm.RaiseError(paradigm.NetworkError, "Unknown HTTP Service", false)
+		paradigm.Error(paradigm.NetworkError, "Unknown HTTP Service")
 		//LogWriter.Log("ERROR", fmt.Sprintf("%s: %s", paradigm.ErrorToString(paradigm.NetworkError), "Unknown Http Service"))
 		return nil, fmt.Errorf("unknown Http Service")
 	}

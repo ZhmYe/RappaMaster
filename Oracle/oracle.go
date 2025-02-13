@@ -1,9 +1,10 @@
 package Oracle
 
 import (
-	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/Date"
 	"BHLayer2Node/paradigm"
 	"fmt"
+	"time"
 )
 
 // Oracle 提供前端页面的直接查询
@@ -24,6 +25,7 @@ import (
 
 
 ***/
+
 type Oracle struct {
 	// 这里记录所有的历史记录
 	// 链上无需维护复杂的可追溯结构
@@ -39,6 +41,7 @@ type Oracle struct {
 	latestEpochs []*paradigm.DevEpoch             // 展示最新的20个epoch的信息：commit, justified, finalized,txHash, data
 	synthData    int32                            // 合成总量
 	nbFinalized  int32                            //提交总量，这里指Finalized
+	dates        []*Date.DateRecord               // 日期记录
 	//latestEpoch int32                            // 最新的epoch，这里要保证Epoch一定是连续的合法 TODO
 	//slotsMaoMutex sync.RWMutex
 }
@@ -48,6 +51,9 @@ func (d *Oracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 		d.slotsMap[slot.SlotID] = slot
 	} else {
 		d.slotsMap[slot.SlotID].UpdateSchedule(slot.ScheduleID, slot.TaskID, slot.ScheduleSize)
+	}
+	if slot.Status == paradigm.Failed {
+		d.slotsMap[slot.SlotID].SetError(slot.ErrorMessage())
 	}
 }
 func (d *Oracle) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
@@ -85,10 +91,13 @@ func (d *Oracle) Start() {
 					d.UpdateSlotFromSchedule(slot)
 					//d.slotsMap[slot.SlotID] = slot // 这里记录所有的slot，todo 其实只要记录processing的
 				}
+				d.channel.MonitorOracleChannel <- schedule // 传递给monitor，更新节点未完成的任务
 
 			case ptxs := <-d.channel.DevTransactionChannel:
 				for _, ptx := range ptxs {
-					ptx.SetID(d.tID)      // 在这里统一设置交易id
+					ptx.SetID(d.tID)               // 在这里统一设置交易id
+					ptx.SetUpchainTime(time.Now()) // 在这里统一设置上链时间
+					dateRecord := d.GetDateRecord(ptx.UpchainTime)
 					transaction := ptx.Tx // 一笔交易，根据交易类型判断更新什么
 					switch transaction.(type) {
 					case *paradigm.EpochRecordTransaction:
@@ -115,7 +124,7 @@ func (d *Oracle) Start() {
 						}
 						for taskID, _ := range epochRecord.Tasks {
 							if task, exist := d.tasks[taskID]; !exist {
-								paradigm.RaiseError(paradigm.RuntimeError, "Task has not been init", false)
+								paradigm.Error(paradigm.RuntimeError, "Task has not been init")
 							} else {
 								initTasks = append(initTasks, task)
 								ref := d.txMap[task.TxReceipt.TransactionHash]
@@ -137,7 +146,7 @@ func (d *Oracle) Start() {
 						}
 						//epoch := paradigm.NewDevEpoch(ptx)
 						if _, exist := d.epochs[epoch.EpochID]; exist {
-							paradigm.RaiseError(paradigm.RuntimeError, "Error in EpochUpdate", false)
+							paradigm.Error(paradigm.RuntimeError, "Error in EpochUpdate")
 						}
 						d.epochs[epoch.EpochID] = epoch // 记录epoch
 						// 更新latest
@@ -162,6 +171,7 @@ func (d *Oracle) Start() {
 							Rf:          paradigm.EpochTx,
 							TaskID:      "",
 							EpochID:     int32(epochRecord.Id),
+							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
@@ -184,10 +194,12 @@ func (d *Oracle) Start() {
 							Rf:          paradigm.InitTaskTx,
 							TaskID:      task.Sign,
 							EpochID:     -1, // 这里的epochID需要等epoch更新才能拿到
+							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
 						d.txMap[ptx.Receipt.TransactionHash] = reference
-
+						// 更新date
+						dateRecord.UpdateInitTasks(1)
 					case *paradigm.TaskProcessTransaction:
 						// 上链了一笔任务推进交易
 						commitRecord := paradigm.NewCommitRecord(ptx)
@@ -197,12 +209,18 @@ func (d *Oracle) Start() {
 							d.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
 							err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
 							if err != nil {
-								panic(err)
+								e := paradigm.Error(paradigm.RuntimeError, err.Error())
+								panic(e.Error())
 							}
+							// 传递给monitor更新完成的任务
+							d.channel.MonitorOracleChannel <- transaction
 							if task.IsFinish() && !task.HasbeenCollect {
+								// 更新date
+								dateRecord.UpdateFinishTasks(1)
+								task.SetEndTime()
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
-								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
+								paradigm.Log("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								//LogWriter.Log("DEBUG", "Test Query Generation...")
 								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})
@@ -246,18 +264,25 @@ func (d *Oracle) Start() {
 								Rf:          paradigm.SlotTX,
 								TaskID:      commitRecord.Sign,
 								EpochID:     commitRecord.Epoch,
+								UpchainTime: ptx.UpchainTime,
 								//ScheduleID: slot.ScheduleID,
 							}
 							d.txMap[ptx.Receipt.TransactionHash] = reference
+							dateRecord.UpdateFinalized(1)
+							dateRecord.UpdateProcess(commitRecord.Process)
 							//task.Print()
 						} else {
-							panic("Error in Process Epoch!!!")
+							e := paradigm.Error(paradigm.RuntimeError, "Task not in Oracle")
+							panic(e.Error())
 						}
 
 					default:
-						panic("Unknown Transaction!!!")
+						e := paradigm.Error(paradigm.RuntimeError, "Unknown Transaction!!!")
+						panic(e.Error())
 					}
 					d.tID++
+					// 更新Date
+					dateRecord.UpdateTransactions(1)
 
 				}
 				// 更新latest
@@ -275,7 +300,13 @@ func (d *Oracle) Start() {
 	go d.processQuery()
 	updateOracle()
 }
-
+func (o *Oracle) GetDateRecord(date time.Time) *Date.DateRecord {
+	duration := paradigm.GetDateDuration(date)
+	for duration >= len(o.dates) {
+		o.dates = append(o.dates, Date.NewDateRecord(paradigm.GetGenesisDate().Add(time.Duration(24*len(o.dates))*time.Hour)))
+	}
+	return o.dates[duration]
+}
 func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 	return &Oracle{
 		channel:      channel,
@@ -287,7 +318,7 @@ func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 		latestTxs:    make([]*paradigm.PackedTransaction, 0),
 		synthData:    0,
 		nbFinalized:  0,
-
+		dates:        make([]*Date.DateRecord, 0),
 		//tx:                     channel.OracleTransactionChannel,
 		//toCollectorSlotChannel: channel.ToCollectorSlotChannel,
 		//taskFinishSignChannel:  channel.FakeCollectSignChannel,
