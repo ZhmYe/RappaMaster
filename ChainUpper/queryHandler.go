@@ -53,31 +53,31 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		blockInfo := c.getBlockInfo(*block)
 		item.SendBlockchainInfo(blockInfo)
 
-	case *Query.BlockchainTransactionQuery:
-		item := query.(*Query.BlockchainTransactionQuery)
-		txHash := common.HexToHash(item.TxHash)
-		tx, err := c.client.GetTransactionByHash(ctx, txHash, false)
-		if err != nil {
-			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
-			return
-		}
-		abi := tx.Abi
-		// // 通过tx查询获得receipt -> receipt.blockNumber -> blockhash
-		// receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
-		// blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
-		// txInfo := c.getTransactionInfo(*tx, blockHash.Hex())
-		receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
-		if err != nil {
-			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
-			return
-		}
-		blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
-		if err != nil {
-			item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction blockHash: %v", err)))
-			return
-		}
-		txInfo := c.getTransactionInfo(receipt, blockHash.Hex(), abi)
-		item.SendBlockchainInfo(txInfo)
+	// case *Query.BlockchainTransactionQuery:
+	// 	item := query.(*Query.BlockchainTransactionQuery)
+	// 	txHash := common.HexToHash(item.TxHash)
+	// 	tx, err := c.client.GetTransactionByHash(ctx, txHash, false)
+	// 	if err != nil {
+	// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
+	// 		return
+	// 	}
+	// 	abi := tx.Abi
+	// 	// // 通过tx查询获得receipt -> receipt.blockNumber -> blockhash
+	// 	// receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
+	// 	// blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+	// 	// txInfo := c.getTransactionInfo(*tx, blockHash.Hex())
+	// 	receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
+	// 	if err != nil {
+	// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
+	// 		return
+	// 	}
+	// 	blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+	// 	if err != nil {
+	// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction blockHash: %v", err)))
+	// 		return
+	// 	}
+	// 	txInfo := c.getTransactionInfo(receipt, blockHash.Hex(), abi)
+	// 	item.SendBlockchainInfo(txInfo)
 
 	default:
 		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
