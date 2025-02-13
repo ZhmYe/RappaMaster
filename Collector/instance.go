@@ -1,7 +1,6 @@
 package Collector
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
@@ -50,7 +49,7 @@ func (i *CollectSlotInstance) Collect() {
 	for response := range i.ResponseChannel {
 		//这里收到的是某个节点的关于slotHash的chunk todo 这里的data还要改，要包含row_index, col_index等，恢复过程也要改
 		//更新对应的recover
-		LogWriter.Log("COLLECT", fmt.Sprintf("Receive Recover Response, Len(Chunks) = %d", len(response.Chunks)))
+		paradigm.Log("COLLECT", fmt.Sprintf("Receive Recover Response, Len(Chunks) = %d", len(response.Chunks)))
 		for _, chunk := range response.Chunks {
 			if _, exist := recovers[chunk.Hash]; !exist {
 				panic("No such Recover...Channel Transfer Error or Runtime Error!!!")

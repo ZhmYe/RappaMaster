@@ -1,7 +1,6 @@
 package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"strings"
@@ -106,7 +105,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	//slotRecord := t.records[slot.Slot]
 	//slotRecord.Process = append(slotRecord.Process, slot.Record())
 	t.Process += slot.Process
-	LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
+	Print("INFO", fmt.Sprintf("Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
 	//LogWriter.Log("DEBUG", fmt.Sprintf("Epoch %s process %d by node %d", slot.Sign, slot.Process, slot.Nid))
 	//t.records[slot.Slot] = slotRecord
 	return nil
@@ -157,7 +156,8 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 	case ABM:
 		outputType = DATAFRAME
 	default:
-		panic("Unsupported Model Type!!!")
+		e := Error(RuntimeError, "Unsupported Model Type!!!")
+		panic(e.Error())
 	}
 	return &Task{
 		Sign:        sign,

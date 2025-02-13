@@ -1,8 +1,6 @@
 package Collector
 
 import (
-	"BHLayer2Node/Config"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/pb/service"
 	"fmt"
@@ -60,7 +58,7 @@ func (c *Collector) processSlotUpdate(slot paradigm.CollectSlotItem) {
 	}
 
 	c.taskSlots[slot.Sign] = taskSlotsList
-	LogWriter.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Epoch %s", slot.Hash, slot.Sign))
+	paradigm.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Epoch %s", slot.Hash, slot.Sign))
 	//}
 }
 
@@ -82,14 +80,14 @@ func (c *Collector) processCollect(collectRequest paradigm.CollectRequest) {
 			break
 		}
 	}
-	LogWriter.Log("COLLECT", fmt.Sprintf("Start Collect Epoch %s, Size: %d, Slot to Collect: %v", sign, total, slotList))
+	paradigm.Log("COLLECT", fmt.Sprintf("Start Collect Epoch %s, Size: %d, Slot to Collect: %v", sign, total, slotList))
 	// 得到如果要收齐这个collect要求，可以对slotHashList里的slot进行collect
 	// 这里为了不妨碍slot的更新，通过go func开始异步
 	collectInstance := CollectSlotInstance{
 		Mission:         mission,
 		Slots:           slotList,
 		Transfer:        collectRequest.TransferChannel,
-		ResponseChannel: make(chan service.RecoverResponse, Config.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
+		ResponseChannel: make(chan service.RecoverResponse, paradigm.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
 		//Connection:      c.channel.SlotCollectChannel,
 		Channel: c.channel,
 	}

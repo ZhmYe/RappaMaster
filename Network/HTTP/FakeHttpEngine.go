@@ -1,8 +1,6 @@
 package HTTP
 
 import (
-	"BHLayer2Node/Config"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
@@ -13,7 +11,7 @@ import (
 // FakeHttpEngine 定义模拟的 HTTP 引擎
 type FakeHttpEngine struct {
 	channel *paradigm.RappaChannel
-	config  Config.BHLayer2NodeConfig
+	config  paradigm.BHLayer2NodeConfig
 	ip      string // IP 地址
 	port    int    // 端口
 }
@@ -57,7 +55,7 @@ func (e *FakeHttpEngine) HandleCollect() {
 				result = append(result, slotRecoverData)
 			}
 			// 等待channel关闭
-			LogWriter.Log("DEBUG", fmt.Sprintf("Mission %s Collect Finish, Size: %d", mission, size))
+			paradigm.Log("DEBUG", fmt.Sprintf("Mission %s Collect Finish, Size: %d", mission, size))
 			fmt.Println(result, len(result))
 		}(request.TransferChannel)
 	}
@@ -66,7 +64,7 @@ func (e *FakeHttpEngine) HandleCollect() {
 // Start 启动 HTTP 引擎
 func (e *FakeHttpEngine) Start() {
 	address := fmt.Sprintf("%s:%d", e.ip, e.port) // 格式化 HTTP 地址
-	LogWriter.Log("INFO", fmt.Sprintf("FakeHttpEngine Starting at %s...", address))
+	paradigm.Log("INFO", fmt.Sprintf("FakeHttpEngine Starting at %s...", address))
 
 	// 启动请求处理 Goroutine
 	go e.HandleRequest()
@@ -106,7 +104,7 @@ func (e *FakeHttpEngine) generateFakeRequest() *paradigm.Task {
 	//	"condition_value":  "United-States",
 	//},
 
-	LogWriter.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", task))
+	paradigm.Log("DEBUG", fmt.Sprintf("Generated Fake HTTP Request: %+v", task))
 	return task
 }
 func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32, mission string) paradigm.CollectRequest {
@@ -116,12 +114,12 @@ func (e *FakeHttpEngine) generateFakeCollectRequest(sign string, size int32, mis
 		Size:            size,
 		TransferChannel: make(chan interface{}),
 	}
-	LogWriter.Log("DEBUG", fmt.Sprintf("Generate Fake Collect Request: %+v", request))
+	paradigm.Log("DEBUG", fmt.Sprintf("Generate Fake Collect Request: %+v", request))
 	return request
 }
 
 // Setup 配置 HTTP 引擎
-func (e *FakeHttpEngine) Setup(config Config.BHLayer2NodeConfig) {
+func (e *FakeHttpEngine) Setup(config paradigm.BHLayer2NodeConfig) {
 	e.config = config
 	e.port = config.HttpPort
 	e.ip = "127.0.0.1" // 默认绑定到本地地址

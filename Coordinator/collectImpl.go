@@ -1,7 +1,6 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
@@ -25,7 +24,8 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 			// 建立grpc连接
 			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				//paradigm.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				//wg.Done()
 				return
 			}
@@ -37,7 +37,8 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 			// 发送调度请求
 			resp, err := client.Collect(ctx, request, grpc.WaitForReady(true))
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
+				paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
+				//paradigm.Log("ERROR", fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
 				//rejectedChannel <- 0 // 默认统计为未接受
 				//wg.Done()
 				return

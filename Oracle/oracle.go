@@ -2,7 +2,6 @@ package Oracle
 
 import (
 	"BHLayer2Node/Date"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
@@ -125,7 +124,7 @@ func (d *Oracle) Start() {
 						}
 						for taskID, _ := range epochRecord.Tasks {
 							if task, exist := d.tasks[taskID]; !exist {
-								paradigm.RaiseError(paradigm.RuntimeError, "Task has not been init", false)
+								paradigm.Error(paradigm.RuntimeError, "Task has not been init")
 							} else {
 								initTasks = append(initTasks, task)
 								ref := d.txMap[task.TxReceipt.TransactionHash]
@@ -145,7 +144,7 @@ func (d *Oracle) Start() {
 						}
 						//epoch := paradigm.NewDevEpoch(ptx)
 						if _, exist := d.epochs[epoch.EpochID]; exist {
-							paradigm.RaiseError(paradigm.RuntimeError, "Error in EpochUpdate", false)
+							paradigm.Error(paradigm.RuntimeError, "Error in EpochUpdate")
 						}
 						d.epochs[epoch.EpochID] = epoch // 记录epoch
 						// 更新latest
@@ -206,7 +205,8 @@ func (d *Oracle) Start() {
 							d.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
 							err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
 							if err != nil {
-								panic(err)
+								e := paradigm.Error(paradigm.RuntimeError, err.Error())
+								panic(e.Error())
 							}
 							// 传递给monitor更新完成的任务
 							d.channel.MonitorOracleChannel <- transaction
@@ -216,7 +216,7 @@ func (d *Oracle) Start() {
 								task.SetEndTime()
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
-								LogWriter.Log("DEBUG", fmt.Sprintf("In Oracle, Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
+								paradigm.Log("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								//LogWriter.Log("DEBUG", "Test Query Generation...")
 								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})
@@ -267,11 +267,13 @@ func (d *Oracle) Start() {
 							dateRecord.UpdateProcess(commitRecord.Process)
 							//task.Print()
 						} else {
-							panic("Error in Process Epoch!!!")
+							e := paradigm.Error(paradigm.RuntimeError, "Task not in Oracle")
+							panic(e.Error())
 						}
 
 					default:
-						panic("Unknown Transaction!!!")
+						e := paradigm.Error(paradigm.RuntimeError, "Unknown Transaction!!!")
+						panic(e.Error())
 					}
 					d.tID++
 					// 更新Date

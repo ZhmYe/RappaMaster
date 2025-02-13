@@ -1,8 +1,7 @@
 package Grpc
 
 import (
-	"BHLayer2Node/Config"
-	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -11,12 +10,12 @@ import (
 
 // NodeGrpcManager gRPC 连接管理
 type NodeGrpcManager struct {
-	nodeAddresses map[int]*Config.BHNodeAddress // 节点地址映射，节点ID -> 地址
-	connPool      map[int]*grpc.ClientConn      // 按nodeId分组的连接池
-	mu            sync.RWMutex                  // 使用读写锁保护 connPool
+	nodeAddresses map[int]*paradigm.BHNodeAddress // 节点地址映射，节点ID -> 地址
+	connPool      map[int]*grpc.ClientConn        // 按nodeId分组的连接池
+	mu            sync.RWMutex                    // 使用读写锁保护 connPool
 }
 
-func NewNodeGrpcManager(nodeAddresses map[int]*Config.BHNodeAddress) *NodeGrpcManager {
+func NewNodeGrpcManager(nodeAddresses map[int]*paradigm.BHNodeAddress) *NodeGrpcManager {
 	p := &NodeGrpcManager{
 		connPool:      make(map[int]*grpc.ClientConn),
 		nodeAddresses: nodeAddresses,
@@ -56,7 +55,7 @@ func (p *NodeGrpcManager) GetConn(nodeId int) (*grpc.ClientConn, error) {
 }
 
 // GetNodeAddresses 获取节点的地址列表
-func (p *NodeGrpcManager) GetNodeAddresses() map[int]*Config.BHNodeAddress {
+func (p *NodeGrpcManager) GetNodeAddresses() map[int]*paradigm.BHNodeAddress {
 	return p.nodeAddresses
 }
 
@@ -64,6 +63,6 @@ func (p *NodeGrpcManager) GetNodeAddresses() map[int]*Config.BHNodeAddress {
 func (p *NodeGrpcManager) CloseAll() {
 	for nodeId, conn := range p.connPool {
 		conn.Close()
-		LogWriter.Log("GrpcPort", fmt.Sprintf("Closed all connections for %d\n", nodeId))
+		paradigm.Log("GrpcPort", fmt.Sprintf("Closed all connections for %d\n", nodeId))
 	}
 }

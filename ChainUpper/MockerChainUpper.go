@@ -2,7 +2,6 @@ package ChainUpper
 
 import (
 	"BHLayer2Node/ChainUpper/service"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
@@ -59,7 +58,7 @@ func (c *MockerChainUpper) UpChain() {
 	}
 	packedTransactions := pack()
 	if len(packedTransactions) > 0 {
-		LogWriter.Log("DEBUG", fmt.Sprintf("Pending %d transactions, prepare to up chain...", len(packedTransactions)))
+		paradigm.Log("DEBUG", fmt.Sprintf("Pending %d transactions, prepare to up chain...", len(packedTransactions)))
 		// 将交易打包为链上合约的参数
 		for _, tx := range packedTransactions {
 			// modify by zhmye
@@ -86,7 +85,7 @@ func (c *MockerChainUpper) UpChain() {
 			}
 			if err := check(tx); err != nil {
 				//panic(err)
-				LogWriter.Log("ERROR", err.Error())
+				paradigm.Log("ERROR", err.Error())
 				continue
 			} else {
 				c.queue <- tx
@@ -101,10 +100,10 @@ func (c *MockerChainUpper) UpChain() {
 			//}
 		}
 		// LogWriter.Log("CHAINUP", fmt.Sprintf("%d Transactions pushed to queue for async processing", len(packedTransactions)))
-		LogWriter.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
+		paradigm.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
 
 	} else {
-		LogWriter.Log("WARNING", "Nothing to up to Blockchain..., len(transactionPool) = 0")
+		paradigm.Log("CHAINUP", "Nothing to up to Blockchain..., len(transactionPool) = 0")
 	}
 }
 
@@ -122,20 +121,20 @@ func (c *MockerChainUpper) handle(query paradigm.Query) {
 	case *Query.BlockchainBlockHashQuery:
 		// 通过client获取到block
 		item := query.(*Query.BlockchainBlockHashQuery)
-		blockHash := item.BlockHash
-		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockHashQuery, blockHash: %s", blockHash))
+		//blockHash := item.BlockHash
+		//paradigm.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockHashQuery, blockHash: %s", blockHash))
 		//blockInfo := c.getBlockInfo(*block)
 		item.SendInfo(paradigm.NewMockerBlockInfo())
 
 	case *Query.BlockchainBlockNumberQuery:
 		// 通过client获取到block
 		item := query.(*Query.BlockchainBlockNumberQuery)
-		blockNumber := item.BlockNumber
-		LogWriter.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockNumberQuery, blockNumber: %d", blockNumber))
+		//blockNumber := item.BlockNumber
+		//paradigm.Log("DEBUG", fmt.Sprintf("receive BlockchainBlockNumberQuery, blockNumber: %d", blockNumber))
 		//blockInfo := c.getBlockInfo(*block)
 		item.SendInfo(paradigm.NewMockerBlockInfo())
 	default:
-		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
+		paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper")
 	}
 }
 
@@ -146,7 +145,7 @@ func NewMockerChainUpper(channel *paradigm.RappaChannel) (*MockerChainUpper, err
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}
-	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
+	paradigm.Print("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 	return &MockerChainUpper{
 		channel: channel,
 		//pendingTransactions: channel.PendingTransactions,

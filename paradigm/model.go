@@ -36,7 +36,8 @@ func NameToModelType(name string) SupportModelType {
 	case "ABM":
 		return ABM
 	default:
-		panic("Unknown model type!!!")
+		e := Error(RuntimeError, "Unknown model type")
+		panic(e.Error())
 	}
 }
 
@@ -54,6 +55,7 @@ func ModelOutputTypeToString(t ModelOutputType) string {
 	case NETWORK:
 		return "Network"
 	default:
-		panic("Unknown model output type!!!")
+		e := Error(RuntimeError, "Unknown output type")
+		panic(e.Error())
 	}
 }

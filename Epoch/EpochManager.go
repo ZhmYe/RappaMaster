@@ -1,7 +1,6 @@
 package Epoch
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Tracker"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
@@ -65,7 +64,7 @@ func (t *EpochManager) Start() {
 					commitSlotItem.SetFinalize()
 					err := t.tracker.Commit(&commitSlotItem) // 正式更新任务
 					if err != nil {
-						LogWriter.Log("ERROR", err.Error())
+						//paradigm.Error(Runt, err.Error())
 						continue
 					}
 					t.epochRecord.Finalize(&commitSlotItem)
@@ -168,7 +167,7 @@ func (t *EpochManager) Start() {
 
 func (t *EpochManager) UpdateEpoch() {
 	t.currentEpoch++
-	LogWriter.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
+	paradigm.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
 	//finalizedSlots, abortSlots := t.tracker.OutOfDate()
 	//validTaskMap := make(map[string]int32)
 	//for _, commitSlotItem := range finalizedSlots {

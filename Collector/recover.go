@@ -2,7 +2,6 @@ package Collector
 
 import (
 	"BHLayer2Node/ErasureDecoder"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
@@ -42,18 +41,19 @@ func (r *SlotRecover) Recover() interface{} {
 	var recoverOutputs []interface{}
 	for row, rowChunks := range r.chunks {
 		if len(rowChunks) == 0 {
-			LogWriter.Log("ERROR", fmt.Sprintf("recover %s row %d chunk failed, err: empty chunks", r.slotHash, row))
+
+			paradigm.Error(paradigm.ChunkRecoverError, fmt.Sprintf("Recover %s row %d chunk failed: Empty Chunks", r.slotHash, row))
 		} else {
 			rowChunkRecoverOutput, err := r.recoverRowChunk(rowChunks, row)
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("recover %s row %d chunk failed, err: %v", rowChunks[0].Hash, rowChunks[0].Row, err))
+				paradigm.Error(paradigm.ChunkRecoverError, fmt.Sprintf("Recover %s row %d chunk failed: %v", rowChunks[0].Hash, rowChunks[0].Row, err))
 			}
 			transformer := OutputTransformer{outputType: r.outputType} // 统一转化
-			LogWriter.Log("COLLECT", fmt.Sprintf("Try to transform to original output type, type: %s", paradigm.ModelOutputTypeToString(r.outputType)))
+			paradigm.Log("COLLECT", fmt.Sprintf("Try to transform to original output type, type: %s", paradigm.ModelOutputTypeToString(r.outputType)))
 
 			output, err := transformer.Transform(rowChunkRecoverOutput)
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Transform to %s Error: %v", paradigm.ModelOutputTypeToString(r.outputType), err))
+				paradigm.Error(paradigm.DataTransformError, fmt.Sprintf("Transform to %s Error: %v", paradigm.ModelOutputTypeToString(r.outputType), err))
 			}
 			recoverOutputs = append(recoverOutputs, output)
 			//output = append(output, rowChunkRecoverOutput)
@@ -70,19 +70,22 @@ func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([
 	case 1:
 		// 本地存储，那么只有可能有一个块
 		if len(chunks) != 1 {
-			return []byte{}, fmt.Errorf("local only have one chunk in each chunk, but receive %d", len(chunks))
+			e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Local only have one chunk in each chunk, but receive %d", len(chunks)))
+			return []byte{}, fmt.Errorf(e.Error())
 		}
-		LogWriter.Log("COLLECT", fmt.Sprintf("Local Store Chunk Receive Success..."))
+		paradigm.Log("COLLECT", fmt.Sprintf("Local Store Chunk Receive Success..."))
 		return chunks[0].Chunk, nil
 	case 2:
-		panic("Replicas has not been impl...")
+		e := paradigm.Error(paradigm.NotImplError, "Replicas Not impl")
+		panic(e.Error())
+		//panic("Replicas has not been impl...")
 	case 3:
 		// 纠删码
 		padding := r.paddingSize[row]
 		sort.Slice(chunks, func(i int, j int) bool {
 			return chunks[i].Col < chunks[j].Col
 		})
-		LogWriter.Log("COLLECT", fmt.Sprintf("Start recover %s row %d chunk with EC, padding Size = %d", chunks[0].Hash, chunks[0].Row, padding))
+		paradigm.Log("COLLECT", fmt.Sprintf("Start recover %s row %d chunk with EC, padding Size = %d", chunks[0].Hash, chunks[0].Row, padding))
 		//for _, chunk := range chunks {
 		//	fmt.Println(chunk.Row, chunk.Col, chunk.Chunk)
 		//}
@@ -95,8 +98,8 @@ func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([
 		decodedData = decodedData[:len(decodedData)-int(padding)]
 		return decodedData, nil
 	default:
-		panic("Unknown Store Method...")
-
+		e := paradigm.Error(paradigm.RuntimeError, "Unknown Store Method")
+		panic(e.Error())
 	}
 
 }
@@ -112,6 +115,8 @@ func (r *SlotRecover) merge(rowChunksOutputs []interface{}) interface{} {
 		}
 		return mergeDf
 	default:
-		panic("Unknown Output Type!!!")
+		e := paradigm.Error(paradigm.RuntimeError, "Unknown Output Type")
+		panic(e.Error())
+		//panic("Unknown Output Type!!!")
 	}
 }

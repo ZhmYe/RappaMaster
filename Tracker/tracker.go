@@ -1,7 +1,6 @@
 package Tracker
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
@@ -26,7 +25,7 @@ type Tracker struct {
 func (t *Tracker) InitTask(initTask *paradigm.SynthTaskTrackItem) {
 	t.taskTracks[initTask.TaskID] = initTask // todo 这里还没有判断重复
 	// 新建完任务后，就可以生成一个unprocessTask用于调度
-	LogWriter.Log("TRACK", fmt.Sprintf("Init New Task %s", initTask.TaskID))
+	paradigm.Print("INFO", fmt.Sprintf("Init New Task, TaskID: %s", initTask.TaskID))
 	t.channel.UnprocessedTasks <- initTask.Next()
 }
 
@@ -44,7 +43,8 @@ func (t *Tracker) UpdateTask(sign string) {
 func (t *Tracker) Commit(slot *paradigm.CommitSlotItem) error {
 	track, exist := t.taskTracks[slot.Sign]
 	if !exist {
-		return fmt.Errorf("task %s does not exist", slot.Sign)
+		e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Task %s does not exist in Tracker", slot.Sign))
+		return fmt.Errorf(e.Error())
 	}
 	return track.Commit(*slot)
 }
@@ -86,17 +86,15 @@ func (t *Tracker) CollectExpire() {
 	for expireItem := range t.expireOutputChannel {
 		switch expireItem.(type) {
 		case *paradigm.ExpireTask:
-			fmt.Println("task expire")
 			expireTask := expireItem.(*paradigm.ExpireTask)
 			task := t.taskTracks[expireTask.TaskID]
 			if task.IsFinish() {
-				LogWriter.Log("TRACKER", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", expireTask.TaskID, task.Size, task.History))
+				paradigm.Print("TRACKER", fmt.Sprintf("Task %s finished in Tracker, Not need schedule, expected: %d, processed: %d", expireTask.TaskID, task.Size, task.History))
 				continue
 			}
-			LogWriter.Log("TRACKER", fmt.Sprintf("Task %s Expire, unprocessed: %d, pass to schedule", task.TaskID, task.Size))
+			paradigm.Print("TRACKER", fmt.Sprintf("Task %s Expire, unprocessed: %d, pass to schedule", task.TaskID, task.Size))
 			t.channel.UnprocessedTasks <- task.Next()
 		case *paradigm.ExpireSlot:
-			fmt.Println("slot expire")
 
 			expireSlot := expireItem.(*paradigm.ExpireSlot)
 			slot := t.pendingCommitSlot[expireSlot.SlotHash]
@@ -114,7 +112,7 @@ func (t *Tracker) CollectExpire() {
 			delete(t.pendingCommitSlot, slot.SlotHash()) // 标记为已完成，不需要记录了
 
 		default:
-			paradigm.RaiseError(paradigm.RuntimeError, "Error in expire channel", false)
+			paradigm.Error(paradigm.RuntimeError, "Unknown ExpireItem Type")
 
 		}
 	}

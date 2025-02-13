@@ -1,12 +1,11 @@
 package paradigm
 
 import (
-	"BHLayer2Node/Config"
 	pb "BHLayer2Node/pb/service"
 )
 
 type RappaChannel struct {
-	Config           *Config.BHLayer2NodeConfig
+	Config           *BHLayer2NodeConfig
 	InitTasks        chan *SynthTaskTrackItem
 	UnprocessedTasks chan UnprocessedTask
 	//PendingRequestPool chan UnprocessedTask
@@ -35,7 +34,7 @@ type RappaChannel struct {
 	//SlotRecoverChannel     chan RecoverResponse
 }
 
-func NewRappaChannel(config *Config.BHLayer2NodeConfig) *RappaChannel {
+func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
 	return &RappaChannel{
 		Config:           config,
 		InitTasks:        make(chan *SynthTaskTrackItem, config.MaxUnprocessedTaskPoolSize),

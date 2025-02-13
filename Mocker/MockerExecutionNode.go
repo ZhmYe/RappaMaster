@@ -1,7 +1,6 @@
 package Mocker
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/pb/service"
 	"fmt"
@@ -41,7 +40,7 @@ func (m *MockerExecutionNode) Start() {
 		panic(fmt.Errorf("failed to listen on port 50052: %v", err))
 	}
 
-	LogWriter.Log("DEBUG", fmt.Sprintf("MockerExecutionNode is listening on port %s", m.ip))
+	paradigm.Log("DEBUG", fmt.Sprintf("MockerExecutionNode is listening on port %s", m.ip))
 	if err := server.Serve(listener); err != nil {
 		log.Fatalf("Failed to serve gRPC server: %v", err)
 	}

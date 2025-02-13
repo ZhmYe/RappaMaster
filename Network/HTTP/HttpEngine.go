@@ -1,8 +1,6 @@
 package HTTP
 
 import (
-	"BHLayer2Node/Config"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -14,7 +12,7 @@ type HttpEngine struct {
 	channel        *paradigm.RappaChannel
 	taskIDConsumer chan int // 这里暂时用这个方法获取TaskID
 	taskIDProvider chan paradigm.TaskHash
-	config         Config.BHLayer2NodeConfig
+	config         paradigm.BHLayer2NodeConfig
 	ip             string // IP 地址
 	port           int    // 端口
 	// 服务器
@@ -72,15 +70,15 @@ func (e *HttpEngine) AccumulateTaskID() {
 
 func (e *HttpEngine) Start() {
 	go e.AccumulateTaskID()
-	LogWriter.Log("INFO", fmt.Sprintf("Http server run on port %s:%d", e.ip, e.port))
+	paradigm.Print("INFO", fmt.Sprintf("Http server run on port %s:%d", e.ip, e.port))
 	err := e.r.Run(fmt.Sprintf(":%d", e.port))
 	if err != nil {
-		LogWriter.Log("ERROR", "Faild to start http engine because of"+err.Error())
+		paradigm.Error(paradigm.NetworkError, "Faild to start http engine because of"+err.Error())
 	}
 }
 
 // Setup 配置 HTTP 引擎
-func (e *HttpEngine) Setup(config Config.BHLayer2NodeConfig) {
+func (e *HttpEngine) Setup(config paradigm.BHLayer2NodeConfig) {
 	e.config = config
 	e.port = config.HttpPort
 	e.ip = "127.0.0.1" // 默认绑定到本地地址
@@ -97,7 +95,7 @@ func (e *HttpEngine) Setup(config Config.BHLayer2NodeConfig) {
 	for _, s := range e.SupportUrl() {
 		service, err := e.GetHttpService(s)
 		if err != nil {
-			paradigm.RaiseError(paradigm.RuntimeError, "url service not impl", false)
+			paradigm.Error(paradigm.RuntimeError, "url service not impl")
 			continue
 		}
 		if service.Method == "POST" {

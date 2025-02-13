@@ -1,9 +1,7 @@
 package service
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
-	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
@@ -26,7 +24,7 @@ func (w *MockerUpChainWorker) Process() {
 		case tx := <-w.queue: // 尝试从通道中接收数据
 			if tx != nil { // 判断是否接收到有效值
 				// log.Printf("Worker %d Received result: %v", id, result)
-				LogWriter.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
+				//paradigm.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
 
 				switch tx.(type) {
 				case *paradigm.InitTaskTransaction:
@@ -46,7 +44,7 @@ func (w *MockerUpChainWorker) Process() {
 
 				}
 			} else {
-				LogWriter.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
+				//paradigm.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
 				return
 			}
 		}

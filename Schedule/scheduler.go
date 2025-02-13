@@ -1,7 +1,6 @@
 package Schedule
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
@@ -17,11 +16,11 @@ type Scheduler struct {
 }
 
 func (s *Scheduler) Start() error {
-	LogWriter.Log("INFO", "Scheduler started, waiting for tasks...")
+	paradigm.Log("INFO", "Scheduler started, waiting for tasks...")
 	// 处理待调度的task，这些task有可能是由前端http新发的，也可能是task在前一个slot未完成返工的
 	processUnprocessedTasks := func() {
 		for request := range s.channel.UnprocessedTasks {
-			LogWriter.Log("SCHEDULE", fmt.Sprintf("Schedule Unprocessed Task: TaskID=%s, Total Size=%d", request.TaskID, request.Size))
+			paradigm.Print("SCHEDULE", fmt.Sprintf("Schedule Unprocessed Task: TaskID=%s, Total Size=%d", request.TaskID, request.Size))
 			s.process(request)
 		}
 	}
@@ -58,7 +57,7 @@ func (s *Scheduler) process(task paradigm.UnprocessedTask) {
 	}
 	// 构建分配计划
 	schedule := s.generateSynthSchedule(task, resp.NodeIDs, resp.ScheduleSize)
-	LogWriter.Log("SCHEDULE", fmt.Sprintf("New Schedule for Task %s, Schedule: %d, Size: %d", task.TaskID, schedule.ScheduleID, schedule.Size))
+	paradigm.Print("SCHEDULE", fmt.Sprintf("New Schedule for Task %s, Schedule: %d, Size: %d", task.TaskID, schedule.ScheduleID, schedule.Size))
 	s.channel.PendingSchedules <- schedule
 }
 func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []int32, size []int32) paradigm.SynthTaskSchedule {

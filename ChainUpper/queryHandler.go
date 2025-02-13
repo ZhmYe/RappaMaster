@@ -52,7 +52,7 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		blockInfo := c.getBlockInfo(*block)
 		item.SendInfo(blockInfo)
 	default:
-		paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper", false)
+		paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper")
 	}
 }
 

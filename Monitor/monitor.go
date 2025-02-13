@@ -1,7 +1,6 @@
 package Monitor
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 // Monitor 监视节点状态
 // 存储节点的状态信息，并维护一些统计值
 type Monitor struct {
-	//config  Config.BHLayer2NodeConfig
 	channel    *paradigm.RappaChannel
 	nodeStatus []*paradigm.NodeStatus
 }
@@ -41,17 +39,17 @@ func (m *Monitor) processOracleInfo() {
 					continue
 				}
 				m.nodeStatus[nodeID].UpdatePendingSlot(slot.SlotID)
-				LogWriter.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
+				paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
 
 			}
 		case *paradigm.TaskProcessTransaction:
 			tx := info.(*paradigm.TaskProcessTransaction)
 			nodeID := tx.Nid
 			m.nodeStatus[int(nodeID)].UpdateFinishSlot(tx.SlotHash(), tx.Process)
-			LogWriter.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
+			paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
 
 		default:
-			paradigm.RaiseError(paradigm.RuntimeError, "Error type in oracle channel", false)
+			paradigm.Error(paradigm.RuntimeError, "Error type in oracle channel")
 		}
 	}
 }
@@ -73,7 +71,7 @@ func (m *Monitor) processQuery() {
 			item := query.(*Query.NodesStatusQuery)
 			item.SendInfo(m.nodeStatus)
 		default:
-			paradigm.RaiseError(paradigm.RuntimeError, "Unsupported Query Type In Monitor", false)
+			paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In Monitor")
 
 		}
 	}

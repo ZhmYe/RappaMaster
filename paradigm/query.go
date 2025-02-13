@@ -1,9 +1,5 @@
 package paradigm
 
-import (
-	"fmt"
-)
-
 type Query interface {
 	GenerateResponse(data interface{}) Response
 	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
@@ -71,20 +67,18 @@ func (r *SuccessResponse) Error() string {
 }
 
 type ErrorResponse struct {
-	errorType    ErrorEnum
-	errorMessage string
+	error RappaError
 }
 
 func (e *ErrorResponse) ToHttpJson() map[string]interface{} {
-	return map[string]interface{}{"error": ErrorToString(e.errorType), "errorMessage": e.errorMessage}
+	return map[string]interface{}{"error": e.error.Error()}
 }
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("%s: %s", ErrorToString(e.errorType), e.errorMessage)
+	return e.error.Error()
 }
-func NewErrorResponse(errorType ErrorEnum, errorMessage string) *ErrorResponse {
+func NewErrorResponse(err RappaError) *ErrorResponse {
 	return &ErrorResponse{
-		errorType:    errorType,
-		errorMessage: errorMessage,
+		error: err,
 	}
 }
 
