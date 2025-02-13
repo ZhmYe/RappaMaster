@@ -17,7 +17,6 @@ type MockerUpChainWorker struct {
 	params map[paradigm.TransactionType]paradigm.PackedParams // 这里记录各种类型的交易参数 add by zhmye
 	count  int                                                // 交易计数
 }
-
 func (w *MockerUpChainWorker) Process() {
 	for {
 		select {
@@ -41,7 +40,6 @@ func (w *MockerUpChainWorker) Process() {
 					// 每当收集到batchSize个transaction的信息时，调用批量上链函数
 					w.consumer()
 					w.count = 0
-
 				}
 			} else {
 				//paradigm.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
@@ -61,7 +59,6 @@ func (w *MockerUpChainWorker) consumer() {
 		w.devPackedTransaction <- ptxs // 传递到dev
 	}
 	w.params = paradigm.NewParamsMap()
-
 }
 func NewMockerUpChainWorker(id int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction) *MockerUpChainWorker {
 

@@ -22,6 +22,7 @@ type MockerChainUpper struct {
 	count int // add by zhmye, 这里是用来给每笔交易赋予一个id的
 }
 
+
 func (c *MockerChainUpper) Start() {
 	go c.handleQuery()
 	timeStart := time.Now()
@@ -107,11 +108,12 @@ func (c *MockerChainUpper) UpChain() {
 	}
 }
 
-func (c *MockerChainUpper) handleQuery() {
-	for query := range c.channel.BlockchainQueryChannel {
-		c.handle(query)
-	}
-}
+// func (c *MockerChainUpper) handleQuery() {
+// 	for query := range c.channel.BlockchainQueryChannel {
+// 		c.handle(query)
+// 	}
+// }
+
 
 func (c *MockerChainUpper) handle(query paradigm.Query) {
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

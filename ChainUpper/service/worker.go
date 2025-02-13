@@ -3,10 +3,13 @@ package service
 import (
 	Store "BHLayer2Node/ChainUpper/contract/store"
 	"BHLayer2Node/paradigm"
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // TODO @XQ 这里看着应该是和合约相关，要把合约更新，我这边改成了结构体,下面一些todo看一下如果改不了就按照现在的一些格式写
@@ -78,13 +81,34 @@ func (w *UpChainWorker) consumer() {
 		// _, receipt, err := storeSession.SetItem(key, value)
 		_, receipt, err := storeSession.SetItems(keys, values)
 		if err != nil {
-			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
-			//paradigm.Log("ERROR", fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err)) 
+		}
+		// 获得有merkleProof的receipt
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_receipt, err := w.client.GetTransactionReceipt(ctx, common.HexToHash(receipt.TransactionHash), true)
+		if err != nil {
+			LogWriter.Log("ERROR", fmt.Sprintf("Failed to getReceipt with merkleProof for type %v: %v", tType, err))
 		} else {
-			//paradigm.Log("CHAINUP", fmt.Sprintf("Worker %d: transactions up-chained successfully for TX_%v.", w.id, tType))
-			ptxs := packedParam.BuildDevTransactions([]*types.Receipt{receipt})
+			// LogWriter.Log("DEBUG", fmt.Sprintf("Receipt with merkleProof: %s", _receipt)) //debug
+			// block, _ := w.client.GetBlockByNumber(ctx, int64(_receipt.BlockNumber), false, false)
+			blockHash, _ := w.client.GetBlockHashByNumber(ctx, int64(_receipt.BlockNumber))
+			ptxs := packedParam.BuildDevTransactions([]*types.Receipt{_receipt}, blockHash.Hex())
 			w.devPackedTransaction <- ptxs // 传递到dev
 		}
+		// } else {
+		// 	LogWriter.Log("CHAINUP", fmt.Sprintf("Worker %d: transactions up-chained successfully for TX_%v.", w.id, tType))
+
+		// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// 	defer cancel()
+		// 	// 链上查询交易所在区块的hash
+		// 	// blockHash, _ := w.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+		// 	// receipt.ContractAddress = w.contractAddress
+		// 	// 记录交易所在block（blockHash，MerkleRoot用于验证），暂时先存一整个block
+		// 	block, _ := w.client.GetBlockByNumber(ctx, int64(receipt.BlockNumber), false, false)
+		// 	ptxs := packedParam.BuildDevTransactions([]*types.Receipt{receipt}, block)
+		// 	w.devPackedTransaction <- ptxs // 传递到dev
+		// }
 
 	}
 	w.params = paradigm.NewParamsMap()

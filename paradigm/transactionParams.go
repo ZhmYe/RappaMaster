@@ -17,7 +17,7 @@ type PackedParams interface {
 	IsEmpty() bool
 	ConvertParamsToKVPairs() ([32]byte, []byte) // setItem
 	ParamsToKVPairs() ([][32]byte, [][]byte)    // batch setItem
-	BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction
+	BuildDevTransactions(receipts []*types.Receipt, blockHash string) []*PackedTransaction
 }
 
 // TODO 这里每多一个交易类型就要加上对应的参数
@@ -107,11 +107,11 @@ func (p *InitTaskTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) {
 	}
 	return keys, values
 }
-func (p *InitTaskTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
+func (p *InitTaskTransactionParams) BuildDevTransactions(receipts []*types.Receipt, blockHash string) []*PackedTransaction {
 	receipt := receipts[0]
 	result := make([]*PackedTransaction, 0)
 	for _, tx := range p.txs {
-		result = append(result, NewPackedTransaction(tx, receipt))
+		result = append(result, NewPackedTransaction(tx, receipt, blockHash))
 	}
 	return result
 }
@@ -200,7 +200,7 @@ func (p *TaskProcessTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) 
 	return keys, values
 }
 
-func (p *TaskProcessTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
+func (p *TaskProcessTransactionParams) BuildDevTransactions(receipts []*types.Receipt, blockHash string) []*PackedTransaction {
 	// todo 这里暂时先为多个receipt做好准备
 	// 要判断receipt和transaction长度 todo
 
@@ -208,7 +208,7 @@ func (p *TaskProcessTransactionParams) BuildDevTransactions(receipts []*types.Re
 	receipt := receipts[0]
 	result := make([]*PackedTransaction, 0)
 	for _, tx := range p.txs {
-		result = append(result, NewPackedTransaction(tx, receipt))
+		result = append(result, NewPackedTransaction(tx, receipt, blockHash))
 	}
 	return result
 }
@@ -309,11 +309,11 @@ func (p *EpochRecordTransactionParams) ParamsToKVPairs() ([][32]byte, [][]byte) 
 	}
 	return keys, values
 }
-func (p *EpochRecordTransactionParams) BuildDevTransactions(receipts []*types.Receipt) []*PackedTransaction {
+func (p *EpochRecordTransactionParams) BuildDevTransactions(receipts []*types.Receipt, blockHash string) []*PackedTransaction {
 	receipt := receipts[0]
 	result := make([]*PackedTransaction, 0)
 	for _, tx := range p.txs {
-		result = append(result, NewPackedTransaction(tx, receipt))
+		result = append(result, NewPackedTransaction(tx, receipt, blockHash))
 	}
 	return result
 }

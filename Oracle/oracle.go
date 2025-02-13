@@ -141,6 +141,8 @@ func (d *Oracle) Start() {
 							InitTasks:  initTasks,
 							TxReceipt:  ptx.Receipt,
 							TxID:       ptx.Id,
+							// TxBlock:    ptx.Block,
+							TxBlockHash: ptx.BlockHash,
 						}
 						//epoch := paradigm.NewDevEpoch(ptx)
 						if _, exist := d.epochs[epoch.EpochID]; exist {
@@ -165,6 +167,7 @@ func (d *Oracle) Start() {
 						reference := paradigm.DevReference{
 							TxHash:      ptx.Receipt.TransactionHash,
 							TxReceipt:   *ptx.Receipt,
+							TxBlockHash: ptx.BlockHash,
 							Rf:          paradigm.EpochTx,
 							TaskID:      "",
 							EpochID:     int32(epochRecord.Id),
@@ -187,6 +190,7 @@ func (d *Oracle) Start() {
 						reference := paradigm.DevReference{
 							TxHash:      ptx.Receipt.TransactionHash,
 							TxReceipt:   *ptx.Receipt,
+							TxBlockHash: ptx.BlockHash,
 							Rf:          paradigm.InitTaskTx,
 							TaskID:      task.Sign,
 							EpochID:     -1, // 这里的epochID需要等epoch更新才能拿到
@@ -256,6 +260,7 @@ func (d *Oracle) Start() {
 							reference := paradigm.DevReference{
 								TxHash:      ptx.Receipt.TransactionHash,
 								TxReceipt:   *ptx.Receipt,
+								TxBlockHash: ptx.BlockHash,
 								Rf:          paradigm.SlotTX,
 								TaskID:      commitRecord.Sign,
 								EpochID:     commitRecord.Epoch,

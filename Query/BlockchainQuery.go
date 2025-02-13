@@ -53,8 +53,8 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 		lt = append(lt, map[string]interface{}{
 			"txHash":      tx.Receipt.TransactionHash,
 			"txType":      txType,
-			"blockHash":   tx.Receipt.BlockNumber, // TODO @XQ 这里能否有区块哈希，如果没有，就改成blockHeight
-			"contract":    tx.Receipt.ContractAddress,
+			"blockHash":   tx.BlockHash, // TODO @XQ 这里能否有区块哈希，如果没有，就改成blockHeight
+			"contract":    tx.Receipt.To,
 			"upchainTime": paradigm.TimeFormat(tx.UpchainTime),
 		})
 	}
@@ -127,6 +127,7 @@ func (q *BlockchainBlockHashQuery) ToHttpJson() map[string]interface{} {
 // BlockchainTransactionQuery 查询交易，只能查询交易Hash
 type BlockchainTransactionQuery struct {
 	TxHash string
+	// BlockchainQuery
 	paradigm.BasicChannelQuery
 }
 
@@ -136,13 +137,27 @@ func (q *BlockchainTransactionQuery) GenerateResponse(data interface{}) paradigm
 	response := make(map[string]interface{})
 	response["txHash"] = ref.TxReceipt.TransactionHash // TODO 这个hash和details的Hash是一样的吗
 	response["blockNumber"] = ref.TxReceipt.BlockNumber
-	response["contract"] = ref.TxReceipt.ContractAddress
+	response["contract"] = ref.TxReceipt.To
+	response["txBlockHash"] = ref.TxBlockHash
 	response["upchainTime"] = paradigm.TimeFormat(ref.UpchainTime)
 	// TODO 区块哈希，考虑要不要加上，这个好像和另外某个地方的todo是一样的，最终会加在ref里
 	// 如果不好加就不要了
 	return paradigm.NewSuccessResponse(response)
 
 }
+
+// func (q *BlockchainTransactionQuery) GenerateResponse(data interface{}) paradigm.Response {
+// 	tx := data.(paradigm.TransactionInfo)
+// 	response := make(map[string]interface{})
+// 	// todo 查看对应参数名称
+// 	response["txHash"] = tx.TxHash
+// 	response["contract"] = tx.Contract
+// 	response["abi"] = tx.Abi
+// 	response["blockHash"] = tx.BlockHash
+// 	return paradigm.NewSuccessResponse(response)
+
+// }
+
 func (q *BlockchainTransactionQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
 	if txHash, ok := rawData["txHash"]; ok {
 		q.TxHash = txHash.(string)

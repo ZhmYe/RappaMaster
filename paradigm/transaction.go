@@ -119,22 +119,26 @@ func (t *EpochRecordTransaction) Blob() interface{} {
 }
 
 type PackedTransaction struct {
-	Tx          Transaction
-	Id          int
-	Receipt     *types.Receipt
+	Tx        Transaction
+	Id        int
+	Receipt   *types.Receipt
+	BlockHash string
 	UpchainTime time.Time
 }
 
 func (t *PackedTransaction) SetID(id int) {
 	t.Id = id
 }
+
 func (t *PackedTransaction) SetUpchainTime(time time.Time) {
 	t.UpchainTime = time
 }
-func NewPackedTransaction(tx Transaction, receipt *types.Receipt) *PackedTransaction {
+func NewPackedTransaction(tx Transaction, receipt *types.Receipt, blockHash string) *PackedTransaction {
 	return &PackedTransaction{
-		Tx:      tx,
-		Id:      -1,
-		Receipt: receipt,
+		Tx:        tx,
+		Id:        -1,
+		Receipt:   receipt,
+		BlockHash: blockHash,
+		// MerkleRoot: merkleRoot,
 	}
 }

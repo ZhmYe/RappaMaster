@@ -2,6 +2,7 @@ package paradigm
 
 import (
 	"fmt"
+
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"time"
 )
@@ -18,9 +19,10 @@ const (
 
 // DevReference 指代一个txMap得到的结果
 type DevReference struct {
-	TxHash    string
-	TxReceipt types.Receipt // 以上是交易信息
-	Rf        RFType        // 类型
+	TxHash      string
+	TxReceipt   types.Receipt // 以上是交易信息
+	TxBlockHash string
+	Rf          RFType // 类型
 	// 如果是InitTask，那么就是一个交易->TaskID，没有额外信息
 	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
 	// 如是果SlotTx, 那么需要包含两类信息
@@ -64,15 +66,16 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 // =================== 以下是epoch部分=========================
 
 type DevEpoch struct {
-	EpochID    int32
-	Process    int32
-	Commits    []*Slot
-	Justifieds []*Slot
-	Finalizes  []*Slot
-	Invalids   []*Slot
-	InitTasks  []*Task
-	TxReceipt  *types.Receipt // 交易上链后会有一个对应的receipt
-	TxID       int            // 交易ID，用于在Dev中定位交易
+	EpochID     int32
+	Process     int32
+	Commits     []*Slot
+	Justifieds  []*Slot
+	Finalizes   []*Slot
+	Invalids    []*Slot
+	InitTasks   []*Task
+	TxReceipt   *types.Receipt // 交易上链后会有一个对应的receipt
+	TxID        int            // 交易ID，用于在Dev中定位交易
+	TxBlockHash string
 }
 
 //func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
