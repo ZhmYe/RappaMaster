@@ -5,7 +5,6 @@ import (
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
-	"strconv"
 )
 
 // Monitor 监视节点状态
@@ -18,41 +17,13 @@ type Monitor struct {
 
 // processHeartbeatResponse 处理节点的心跳回复，其中包含节点最新的磁盘、cpu等信息用于展示
 func (m *Monitor) processHeartbeatResponse() {
-	for heartbeat := range m.channel.MonitorHeartbeatChannel {
-		// TODO 这里一旦发现heartbeat内容就continue，应该在coordinator里就检测
-		// 检测内容：1. 存在Map的key; 2. total >= disk
-		status := heartbeat.NodeStatus
-		if _, exist := status["cpu"]; !exist {
-			paradigm.RaiseError(paradigm.ValueError, "error status key", false)
-			continue
+	for report := range m.channel.MonitorHeartbeatChannel {
+		if report.IsError {
+			// 发现是错误的，那么对NodeStatus更新错误
+			m.nodeStatus[int(report.NodeID)].SetError(report.ErrMessage)
+		} else {
+			m.nodeStatus[int(report.NodeID)].UpdateUsage(report.CPUUsage, report.DiskUsage, report.DiskStorage)
 		}
-		if _, exist := status["disk"]; !exist {
-			paradigm.RaiseError(paradigm.ValueError, "error status key", false)
-			continue
-		}
-		if _, exist := status["total"]; !exist {
-			paradigm.RaiseError(paradigm.ValueError, "error status key", false)
-			continue
-		}
-		c, d, t := status["cpu"], status["disk"], status["total"]
-		cpuUsage, ok := strconv.Atoi(c)
-		if ok != nil {
-			paradigm.RaiseError(paradigm.ValueError, "error status value", false)
-			continue
-		}
-		diskUsage, ok := strconv.Atoi(d)
-		if ok != nil {
-			paradigm.RaiseError(paradigm.ValueError, "error status value", false)
-			continue
-		}
-		diskStorage, ok := strconv.Atoi(t)
-		if ok != nil {
-			paradigm.RaiseError(paradigm.ValueError, "error status value", false)
-			continue
-		}
-		LogWriter.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, CPU Usage: %d %%, Disk Usage: %d, Total Disk Space: %d", heartbeat.NodeId, cpuUsage, diskStorage, diskStorage))
-
-		m.nodeStatus[int(heartbeat.NodeId)].UpdateUsage(cpuUsage, int32(diskUsage), int32(diskStorage))
 	}
 }
 

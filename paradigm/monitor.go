@@ -1,6 +1,73 @@
 package paradigm
 
-import "BHLayer2Node/Config"
+import (
+	"BHLayer2Node/Config"
+	"BHLayer2Node/LogWriter"
+	"BHLayer2Node/pb/service"
+	"fmt"
+	"strconv"
+)
+
+type NodeHeartbeatReport struct {
+	NodeID      int32
+	CPUUsage    int
+	DiskUsage   int32
+	DiskStorage int32
+	IsError     bool
+	ErrMessage  string
+}
+
+func NewNodeHeartbeatReportFromHeartbeat(heartbeat *service.HeartbeatResponse) NodeHeartbeatReport {
+	status := heartbeat.NodeStatus
+	nodeID := heartbeat.NodeId
+	if _, exist := status["cpu"]; !exist {
+		RaiseError(ValueError, "error status key", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status key")
+	}
+	if _, exist := status["disk"]; !exist {
+		RaiseError(ValueError, "error status key", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status key")
+	}
+	if _, exist := status["total"]; !exist {
+		RaiseError(ValueError, "error status key", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status key")
+	}
+	c, d, t := status["cpu"], status["disk"], status["total"]
+	cpuUsage, ok := strconv.Atoi(c)
+	if ok != nil {
+		RaiseError(ValueError, "error status value", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status key")
+	}
+	diskUsage, ok := strconv.Atoi(d)
+	if ok != nil {
+		RaiseError(ValueError, "error status value", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status value")
+	}
+	diskStorage, ok := strconv.Atoi(t)
+	if ok != nil {
+		RaiseError(ValueError, "error status value", false)
+		return NewErrorNodeHeartbeatReport(nodeID, "error status value")
+	}
+	LogWriter.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, CPU Usage: %d %%, Disk Usage: %d, Total Disk Space: %d", heartbeat.NodeId, cpuUsage, diskUsage, diskStorage))
+	return NodeHeartbeatReport{
+		NodeID:      nodeID,
+		CPUUsage:    cpuUsage,
+		DiskUsage:   int32(diskUsage),
+		DiskStorage: int32(diskStorage),
+		IsError:     false,
+		ErrMessage:  "",
+	}
+}
+func NewErrorNodeHeartbeatReport(nodeID int32, error string) NodeHeartbeatReport {
+	return NodeHeartbeatReport{
+		NodeID:      nodeID,
+		CPUUsage:    0,
+		DiskUsage:   0,
+		DiskStorage: 0,
+		IsError:     true,
+		ErrMessage:  error,
+	}
+}
 
 type NodeStatus struct {
 	NodeID          int32
@@ -11,6 +78,8 @@ type NodeStatus struct {
 	PendingSlots    map[SlotHash]bool // 处理中的任务 todo 同上
 	SynthData       int32             // 合成数据总量 todo 同上
 	DiskStorage     int32             // 磁盘总量，B为单位
+	isError         bool              // 是否存在错误
+	errMessage      string            // 错误信息
 	Rate            float64           // 评分，用于Monitor Advice，暂时先不写
 }
 
@@ -33,6 +102,16 @@ func (s *NodeStatus) UpdateFinishSlot(slotHash string, process int32) {
 	s.FinishedSlots = append(s.FinishedSlots, slotHash)
 	s.SynthData += process
 }
+func (s *NodeStatus) IsError() bool {
+	return s.isError
+}
+func (s *NodeStatus) ErrorMessage() string {
+	return s.errMessage
+}
+func (s *NodeStatus) SetError(errMessage string) {
+	s.isError = true
+	s.errMessage = errMessage
+}
 func NewNodeStatus(nodeID int32, address Config.BHNodeAddress) *NodeStatus {
 	return &NodeStatus{
 		NodeID:          nodeID,
@@ -44,6 +123,8 @@ func NewNodeStatus(nodeID int32, address Config.BHNodeAddress) *NodeStatus {
 		SynthData:       0,
 		DiskStorage:     0,
 		Rate:            0,
+		isError:         false,
+		errMessage:      "",
 	}
 }
 

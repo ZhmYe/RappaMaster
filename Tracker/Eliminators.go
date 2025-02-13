@@ -12,7 +12,7 @@ type Eliminator struct {
 	expireInputChannel  chan paradigm.ExpireItem // 任务输入通道
 }
 
-// NewEliminators 创建 Eliminators
+// NewEliminator 创建 Eliminators
 func NewEliminator(input chan paradigm.ExpireItem, output chan paradigm.ExpireItem) *Eliminator {
 	e := &Eliminator{
 		expireHeap:          make(paradigm.ExpireHeap, 0),

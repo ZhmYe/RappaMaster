@@ -18,14 +18,19 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 	for _, node := range info {
 		nodeInfo := make(map[string]interface{})
 		nodeInfo["NodeID"] = node.NodeID
-		nodeInfo["Status"] = "Normal" // todo
-		nodeInfo["Workload"] = "空闲"   // todo
+		if node.IsError() {
+			nodeInfo["Status"] = "Abnormal"
+		} else {
+			nodeInfo["Status"] = "Normal"
+		}
+		nodeInfo["Workload"] = "空闲" // todo
 		nodeInfo["NbFinishedTasks"] = len(node.FinishedSlots)
 		nodeInfo["SynthData"] = node.SynthData
 		nodeInfo["NbPendingTasks"] = len(node.PendingSlots) // 进度根据这个算
 		nodeInfo["storage"] = node.DiskStorage
 		nodeInfo["cpu"] = node.AverageCPUUsage
 		nodeInfo["disk"] = node.DiskUsage
+		nodeInfo["errorMessage"] = node.ErrorMessage()
 		//合成详情就给出这个节点的合成总量，和所有完成的任务 todo 按时间有个图？
 		// 节点状态，就上面的状态的信息，和pending
 		nodes = append(nodes, nodeInfo)
