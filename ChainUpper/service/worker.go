@@ -81,14 +81,14 @@ func (w *UpChainWorker) consumer() {
 		// _, receipt, err := storeSession.SetItem(key, value)
 		_, receipt, err := storeSession.SetItems(keys, values)
 		if err != nil {
-			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err)) 
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
 		}
 		// 获得有merkleProof的receipt
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_receipt, err := w.client.GetTransactionReceipt(ctx, common.HexToHash(receipt.TransactionHash), true)
 		if err != nil {
-			LogWriter.Log("ERROR", fmt.Sprintf("Failed to getReceipt with merkleProof for type %v: %v", tType, err))
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to getReceipt with merkleProof for type %v: %v", tType, err))
 		} else {
 			// LogWriter.Log("DEBUG", fmt.Sprintf("Receipt with merkleProof: %s", _receipt)) //debug
 			// block, _ := w.client.GetBlockByNumber(ctx, int64(_receipt.BlockNumber), false, false)

@@ -17,6 +17,7 @@ type MockerUpChainWorker struct {
 	params map[paradigm.TransactionType]paradigm.PackedParams // 这里记录各种类型的交易参数 add by zhmye
 	count  int                                                // 交易计数
 }
+
 func (w *MockerUpChainWorker) Process() {
 	for {
 		select {
@@ -55,7 +56,7 @@ func (w *MockerUpChainWorker) consumer() {
 			panic("Param Length Error...Please check the code in paradigm!!!")
 		}
 		receipt := types.Receipt{}
-		ptxs := packedParam.BuildDevTransactions([]*types.Receipt{&receipt})
+		ptxs := packedParam.BuildDevTransactions([]*types.Receipt{&receipt}, "")
 		w.devPackedTransaction <- ptxs // 传递到dev
 	}
 	w.params = paradigm.NewParamsMap()

@@ -17,11 +17,11 @@
   "TLSCertFile": "./ChainUpper/sdk.crt",
   "TLSKeyFile": "./ChainUpper/sdk.key",
   "QueueBufferSize": 100000,
-  "WorkerCount": 1,
+  "WorkerCount": 3,
   "BatchSize": 1,
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
-  "DEBUG": false,
+  "DEBUG": false ,
   "BHNodeAddressMap": {
     "0": {
       "NodeIPAddress": "127.0.0.1",
@@ -38,6 +38,30 @@
     "3": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1240
+    },
+    "4": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1242
+    },
+    "5": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1244
+    },
+    "6": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1246
+    },
+    "7": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1248
+    },
+    "8": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1250
+    },
+    "9": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1252
     }
   }
 }
