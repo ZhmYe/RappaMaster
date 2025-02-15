@@ -32,7 +32,7 @@ func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response 
 	fmt.Println(fileByte)
 	result := make(map[string]interface{})
 	generateFileName := func() string {
-		return fmt.Sprintf("%s_%s_%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"))
+		return fmt.Sprintf("%s_%d_%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"))
 	}
 	result["filename"] = generateFileName()
 	result["file"] = fileByte
