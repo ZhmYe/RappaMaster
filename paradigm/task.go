@@ -2,8 +2,8 @@ package paradigm
 
 import (
 	"fmt"
-	"strings"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"strings"
 	"time"
 )
 
@@ -27,6 +27,7 @@ type Task struct {
 	HasbeenCollect bool
 	StartTime      time.Time
 	EndTime        time.Time
+	collector      RappaCollector
 	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
 }
 
@@ -109,10 +110,21 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	//slotRecord := t.records[slot.Slot]
 	//slotRecord.Process = append(slotRecord.Process, slot.Record())
 	t.Process += slot.Process
+	t.collector.ProcessSlotUpdate(CollectSlotItem{
+		Sign: slot.Sign,
+		Hash: slot.SlotHash(),
+		Size: slot.Process,
+		//OutputType:  t.OutputType,
+		PaddingSize: slot.Padding,
+		StoreMethod: slot.Store,
+	})
 	Print("INFO", fmt.Sprintf("Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
 	//LogWriter.Log("DEBUG", fmt.Sprintf("Epoch %s process %d by node %d", slot.Sign, slot.Process, slot.Nid))
 	//t.records[slot.Slot] = slotRecord
 	return nil
+}
+func (t *Task) GetCollector() RappaCollector {
+	return t.collector
 }
 func (t *Task) IsReliable() bool {
 	return t.isReliable
@@ -147,6 +159,9 @@ func (t *Task) SetCollected() {
 }
 func (t *Task) SetEndTime() {
 	t.EndTime = time.Now()
+}
+func (t *Task) SetCollector(c RappaCollector) {
+	t.collector = c
 }
 func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME

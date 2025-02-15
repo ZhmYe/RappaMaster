@@ -218,8 +218,8 @@ func (d *Oracle) Start() {
 								// 更新date
 								dateRecord.UpdateFinishTasks(1)
 								task.SetEndTime()
-								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
-								task.SetCollected()
+								//d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
+								//task.SetCollected()
 								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								//LogWriter.Log("DEBUG", "Test Query Generation...")
@@ -246,16 +246,16 @@ func (d *Oracle) Start() {
 							d.nbFinalized++                     // 又完成了一个finalized
 							d.synthData += commitRecord.Process // 合成数据
 							// 这里更新了task的slot，那么可以将这里的Slot传递给collector
-							commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
-							collectSlotItem := paradigm.CollectSlotItem{
-								Sign:        commitSlotItem.Sign,
-								Hash:        commitSlotItem.SlotHash(),
-								Size:        commitSlotItem.Process,
-								OutputType:  task.OutputType,
-								PaddingSize: commitSlotItem.Padding,
-								StoreMethod: commitSlotItem.Store,
-							}
-							d.channel.ToCollectorSlotChannel <- collectSlotItem
+							//commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
+							//collectSlotItem := paradigm.CollectSlotItem{
+							//	Sign:        commitSlotItem.Sign,
+							//	Hash:        commitSlotItem.SlotHash(),
+							//	Size:        commitSlotItem.Process,
+							//	OutputType:  task.OutputType,
+							//	PaddingSize: commitSlotItem.Padding,
+							//	StoreMethod: commitSlotItem.Store,
+							//}
+							//d.channel.ToCollectorSlotChannel <- collectSlotItem
 							// 更新reference
 							reference := paradigm.DevReference{
 								TxHash:      ptx.Receipt.TransactionHash,

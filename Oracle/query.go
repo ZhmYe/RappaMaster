@@ -134,7 +134,16 @@ func (d *Oracle) processQuery() {
 			item := query.(*Query.SynthTaskQuery)
 			tasks := d.tasks
 			item.SendResponse(item.GenerateResponse(tasks))
-
+		case *Query.CollectTaskQuery:
+			item := query.(*Query.CollectTaskQuery)
+			if task, exist := d.tasks[item.TaskID()]; !exist {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Task does not exist in Oracle"))
+				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, "Task does not exist in Oracle")
+				continue
+			} else {
+				go item.SendResponse(item.GenerateResponse(task.GetCollector())) // 有ref一定有task
+			}
 		default:
 			panic("Unsupported Query Type!!!")
 		}

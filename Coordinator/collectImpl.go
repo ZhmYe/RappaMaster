@@ -15,7 +15,7 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 	nodeAddresses := c.connManager.GetNodeAddresses() // 所有节点
 	var wg sync.WaitGroup
 	wg.Add(len(nodeAddresses))
-	recoverRequest := pb.RecoverRequest{Mission: request.Mission, Hashs: request.Hashs}
+	recoverRequest := pb.RecoverRequest{Mission: fmt.Sprintf("Mission_%s", time.Now().Format("2006-01-02_15-04-05")), Hashs: request.Hashs}
 	for nodeID, address := range nodeAddresses {
 		// 并行处理各个节点
 		go func(nodeID int, address string, request *pb.RecoverRequest) {

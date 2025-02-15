@@ -108,7 +108,23 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewDateTransactionQuery()
 	case "SynthTaskQuery":
 		return true, NewSynthTaskQuery()
-
+	case "CollectTaskQuery":
+		taskID := c.DefaultQuery("taskID", "")
+		if taskID == "" {
+			return false, nil
+		}
+		size := c.DefaultQuery("size", "")
+		if size == "" {
+			return false, nil
+		}
+		s, err := strconv.Atoi(size)
+		if err != nil {
+			return false, nil
+		}
+		return true, NewCollectTaskQuery(map[interface{}]interface{}{
+			"taskID": taskID,
+			"size":   s,
+		})
 	default:
 		return false, nil
 	}

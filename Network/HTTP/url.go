@@ -1,6 +1,7 @@
 package HTTP
 
 import (
+	"BHLayer2Node/Collector"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
@@ -29,7 +30,7 @@ const (
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -84,6 +85,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					requestBody.Size,
 					requestBody.IsReliable,
 				)
+				task.SetCollector(Collector.NewCollector(task.Sign, e.channel))
 				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
 				// 新建任务用于上链，然后直接返回response
 				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}
@@ -106,8 +108,12 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 		}
 		return &httpService, nil
 	case COLLECT_TASK:
-		// TODO
-		return nil, nil
+		httpService := HttpService{
+			Url:     "/collect",
+			Method:  "GET",
+			Handler: e.HandleGET,
+		}
+		return &httpService, nil
 	case BLOCKCHAIN_QUERY:
 		httpService := HttpService{
 			Url:     "/blockchain",

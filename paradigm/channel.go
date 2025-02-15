@@ -26,7 +26,7 @@ type RappaChannel struct {
 	MonitorOracleChannel        chan interface{}    // todo
 	MonitorQueryChannel         chan Query
 
-	ToCollectorRequestChannel chan CollectRequest
+	ToCollectorRequestChannel chan HttpCollectRequest
 	SlotCollectChannel        chan RecoverConnection
 	QueryChannel              chan Query
 	// ============================== DEBUG用的Channel==========================
@@ -50,7 +50,7 @@ func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
 		EpochEvent:                  make(chan bool, 1),
 		DevTransactionChannel:       make(chan []*PackedTransaction, config.MaxCommitSlotItemPoolSize), // todo
 		ToCollectorSlotChannel:      make(chan CollectSlotItem, config.MaxCommitSlotItemPoolSize),      // todo
-		ToCollectorRequestChannel:   make(chan CollectRequest, config.MaxCommitSlotItemPoolSize),       // todo
+		ToCollectorRequestChannel:   make(chan HttpCollectRequest, config.MaxCommitSlotItemPoolSize),   // todo
 		BlockchainQueryChannel:      make(chan Query, config.MaxCommitSlotItemPoolSize),                // todo
 		BlockchainInfoUpdateChannel: make(chan bool, 1),
 		MonitorAdviceChannel:        make(chan *AdviceRequest, config.MaxCommitSlotItemPoolSize),      // todo

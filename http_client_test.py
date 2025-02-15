@@ -83,6 +83,14 @@ def oracle_query_tasks():
     }
     url = "http://127.0.0.1:8080/oracle"
     send_GET_request(url, request_data)
+def oracle_query_collect():
+    request_data = {
+        "query": "CollectTaskQuery",
+        "taskID": "SynthTask-0-1739610529",
+        "size": 50
+    }
+    url = "http://127.0.0.1:8080/collect"
+    send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
 
@@ -138,6 +146,8 @@ def main():
             oracle_query_date_tx()
         if command == "tasks":
             oracle_query_tasks()
+        if command == "collect":
+            oracle_query_collect()
         if command == 'exit':
             print("Exiting the client...")
             break

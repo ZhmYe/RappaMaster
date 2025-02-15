@@ -2,7 +2,6 @@ package main
 
 import (
 	"BHLayer2Node/ChainUpper"
-	"BHLayer2Node/Collector"
 	"BHLayer2Node/Coordinator"
 	"BHLayer2Node/Epoch"
 	"BHLayer2Node/Event"
@@ -27,14 +26,13 @@ func main() {
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel)
-	// chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
+	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewOracle(rappaChannel)
 	monitir := Monitor.NewMonitor(rappaChannel)
-	collector := Collector.NewCollector(rappaChannel)
-	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
-	if err != nil {
-		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	}
+	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
+	//if err != nil {
+	//	paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	//}
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(rappaChannel)
@@ -52,7 +50,7 @@ func main() {
 	go event.Start()
 	go monitir.Start()
 	go chainUpper.Start()
-	go collector.Start()
+	//go collector.Start()
 	// 启动 Scheduler
 	if err := scheduler.Start(); err != nil {
 		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to start scheduler: %v", err))

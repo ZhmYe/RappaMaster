@@ -109,9 +109,18 @@ func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([
 func (r *SlotRecover) merge(rowChunksOutputs []interface{}) interface{} {
 	switch r.outputType {
 	case paradigm.DATAFRAME:
-		mergeDf := rowChunksOutputs[0].(dataframe.DataFrame)
+		mergeDf, ok := rowChunksOutputs[0].(dataframe.DataFrame)
+		if !ok {
+			paradigm.Error(paradigm.ChunkRecoverError, "output type error")
+			return nil
+		}
 		for i := 1; i < len(rowChunksOutputs); i++ {
-			mergeDf = mergeDf.Concat(rowChunksOutputs[i].(dataframe.DataFrame))
+			nextDf, ok := rowChunksOutputs[i].(dataframe.DataFrame)
+			if !ok {
+				paradigm.Error(paradigm.ChunkRecoverError, "output type error")
+				continue
+			}
+			mergeDf = mergeDf.Concat(nextDf)
 		}
 		return mergeDf
 	default:
