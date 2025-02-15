@@ -1,9 +1,7 @@
 package service
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
-	"fmt"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
@@ -26,7 +24,7 @@ func (w *MockerUpChainWorker) Process() {
 		case tx := <-w.queue: // 尝试从通道中接收数据
 			if tx != nil { // 判断是否接收到有效值
 				// log.Printf("Worker %d Received result: %v", id, result)
-				LogWriter.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
+				//paradigm.Log("CHAINUP", fmt.Sprintf("Worker %d Received Transaction: %v", w.id, tx))
 
 				switch tx.(type) {
 				case *paradigm.InitTaskTransaction:
@@ -43,10 +41,9 @@ func (w *MockerUpChainWorker) Process() {
 					// 每当收集到batchSize个transaction的信息时，调用批量上链函数
 					w.consumer()
 					w.count = 0
-
 				}
 			} else {
-				LogWriter.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
+				//paradigm.Log("ERROR", fmt.Sprintf("Upchain channel closed, received nil value"))
 				return
 			}
 		}
@@ -59,11 +56,10 @@ func (w *MockerUpChainWorker) consumer() {
 			panic("Param Length Error...Please check the code in paradigm!!!")
 		}
 		receipt := types.Receipt{}
-		ptxs := packedParam.BuildDevTransactions([]*types.Receipt{&receipt})
+		ptxs := packedParam.BuildDevTransactions([]*types.Receipt{&receipt}, "")
 		w.devPackedTransaction <- ptxs // 传递到dev
 	}
 	w.params = paradigm.NewParamsMap()
-
 }
 func NewMockerUpChainWorker(id int, queue chan paradigm.Transaction, dev chan []*paradigm.PackedTransaction) *MockerUpChainWorker {
 

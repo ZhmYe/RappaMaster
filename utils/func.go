@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 )
@@ -44,6 +46,37 @@ func StringToBytes32(s string) [32]byte {
 	var b [32]byte
 	copy(b[:], s)
 	return b
+}
+
+// serializeParams 将 map[string]interface{} 转化为[32]byte
+func SerializeParams(params map[string]interface{}) [32]byte {
+	bytes, _ := json.Marshal(params)
+	return StringToBytes32(string(bytes))
+}
+
+// BigIntToBytes32 将 *big.Int 转换为32字节的切片（左侧填充0）
+func BigIntToBytes32(n *big.Int) []byte {
+	b := n.Bytes() // 返回大端序的最小字节切片
+	if len(b) > 32 {
+		// 如果超出32字节，取最后32字节（通常不应该发生）
+		return b[len(b)-32:]
+	}
+	// 否则左侧填充0
+	padded := make([]byte, 32)
+	copy(padded[32-len(b):], b)
+	return padded
+}
+
+func FlattenByte32Slice(arr [][32]byte) []byte {
+	// 每个元素都是 32 字节
+	totalBytes := len(arr) * 32
+	// 提前分配足够容量，减少内存拷贝
+	result := make([]byte, 0, totalBytes)
+	for _, v := range arr {
+		// v[:] 把 [32]byte 转成 []byte，然后 ... 将其展开
+		result = append(result, v[:]...)
+	}
+	return result
 }
 
 //// BinarySearch 二分查找

@@ -1,7 +1,6 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
@@ -13,7 +12,7 @@ import (
 func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest) (*pb.SlotCommitResponse, error) {
 	//nodeId, _ := strconv.Atoi(req.NodeId)
 	//slot, _ := strconv.Atoi(req.Slot)
-	LogWriter.Log("DEBUG", "successfully receive commit slot") // TODO
+	//paradigm.Log("DEBUG", "successfully receive commit slot") // TODO
 
 	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
 		Nid:        req.NodeId,
@@ -22,12 +21,13 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Slot:       req.Slot,
 		Epoch:      -1, // 这里先不加真正的epoch,等待TaskManager
 		Padding:    req.Padding,
+		Store:      req.Store,
 		Commitment: req.Commitment,
 	})
 	item.SetHash(req.Hash) // 设置slotHash
 	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
 	c.channel.CommitSlots <- item
-	LogWriter.Log("COORDINATOR", fmt.Sprintf("successfully receive commit slot: {%s}", item.SlotHash()))
+	paradigm.Log("COORDINATOR", fmt.Sprintf("Successfully receive commit slot: {%s}", item.SlotHash()))
 	generateRandomSeed := func() []byte {
 		size := 256 // 暂定
 		randomBytes := make([]byte, size)

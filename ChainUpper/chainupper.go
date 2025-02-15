@@ -2,18 +2,17 @@ package ChainUpper
 
 import (
 	"BHLayer2Node/ChainUpper/service"
-	"BHLayer2Node/Config"
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"sync"
 	"time"
 
-	SlotCommit "BHLayer2Node/ChainUpper/contract/slotCommit"
+	Store "BHLayer2Node/ChainUpper/contract/store"
 	"context"
 	"encoding/hex"
-	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"log"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/client"
 )
 
 type ChainUpper struct {
@@ -25,11 +24,12 @@ type ChainUpper struct {
 	//queue               chan map[string]interface{} // 用于异步上链的队列
 	queue    chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
 	client   *client.Client            // FISCO-BCOS 客户端
-	instance *SlotCommit.SlotCommit    // 合约实例
-	count    int                       // add by zhmye, 这里是用来给每笔交易赋予一个id的
+	instance *Store.Store
+	count    int // add by zhmye, 这里是用来给每笔交易赋予一个id的
 }
 
 func (c *ChainUpper) Start() {
+	go c.handleQuery()
 	timeStart := time.Now()
 	go func() {
 		for {
@@ -90,7 +90,7 @@ func (c *ChainUpper) UpChain() {
 			}
 			if err := check(tx); err != nil {
 				//panic(err)
-				LogWriter.Log("ERROR", err.Error())
+				paradigm.Log("ERROR", err.Error())
 				continue
 			} else {
 				c.queue <- tx
@@ -105,14 +105,14 @@ func (c *ChainUpper) UpChain() {
 			//}
 		}
 		// LogWriter.Log("CHAINUP", fmt.Sprintf("%d Transactions pushed to queue for async processing", len(packedTransactions)))
-		LogWriter.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
+		paradigm.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
 
 	} else {
-		LogWriter.Log("WARNING", "Nothing to up to Blockchain..., len(transactionPool) = 0")
+		paradigm.Log("CHAINUP", "Nothing to up to Blockchain..., len(transactionPool) = 0")
 	}
 }
 
-func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeConfig) (*ChainUpper, error) {
+func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2NodeConfig) (*ChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{
@@ -126,8 +126,9 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 		TLSKeyFile:  config.TLSKeyFile,
 	})
 	if err != nil {
-		LogWriter.Log("ERROR", fmt.Sprintf("failed to initialize FISCO-BCOS client: %v", err))
-		return nil, fmt.Errorf("failed to initialize FISCO-BCOS client: %v", err)
+		e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize FISCO-BCOS client: %v", err))
+		//paradigm.Log("ERROR", fmt.Sprintf("failed to initialize FISCO-BCOS client: %v", err))
+		return nil, fmt.Errorf(e.Error())
 	}
 
 	// 部署或加载合约
@@ -135,12 +136,13 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to load contract: %v", err)
 	// }
-	address, receipt, instance, err := SlotCommit.DeploySlotCommit(client.GetTransactOpts(), client)
+	address, receipt, instance, err := Store.DeployStore(client.GetTransactOpts(), client)
 	if err != nil {
 		log.Fatal(err)
 	}
-	LogWriter.Log("INFO", fmt.Sprintf("contract address: ", address.Hex())) // the address should be saved, will use in next example
-	LogWriter.Log("INFO", fmt.Sprintf("transaction hash: ", receipt.TransactionHash))
+	paradigm.Print("INFO", fmt.Sprintf("Deploy Contract on Blockchain Success, contract adddress: %s, transaction hash: %s", address.Hex(), receipt.TransactionHash))
+	//paradigm.Print("INFO", fmt.Sprintf("contract address: %s", address.Hex())) // the address should be saved, will use in next example
+	//paradigm.Log("INFO", fmt.Sprintf("transaction hash: %s", receipt.TransactionHash))
 
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
@@ -149,7 +151,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *Config.BHLayer2NodeCo
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}
-	LogWriter.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
+	paradigm.Log("INFO", "Chainupper initialized successfully, workers waiting for transactions...")
 
 	return &ChainUpper{
 		channel: channel,

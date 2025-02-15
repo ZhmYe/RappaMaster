@@ -74,7 +74,7 @@ get_csdk_lib()
     local package_name="libbcos-c-sdk${OS_ARCH}.${suffix}"
     LOG_INFO "downloading ${package_name} to ${install_path} on ${OS} ..."
     if [ ! -f "${install_path}/${package_name}" ];then
-        curl -o "${install_path}/${package_name}" -#L "https://github.com/FISCO-BCOS/bcos-c-sdk/releases/download/v${version}/${package_name}"
+        curl -o "${install_path}/${package_name}" -#L "https://github.yuuza.net/FISCO-BCOS/bcos-c-sdk/releases/download/v${version}/${package_name}"
     fi
 }
 

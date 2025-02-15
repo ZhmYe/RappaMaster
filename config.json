@@ -21,7 +21,7 @@
   "BatchSize": 1,
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
-  "DEBUG": false,
+  "DEBUG": false ,
   "BHNodeAddressMap": {
     "0": {
       "NodeIPAddress": "127.0.0.1",

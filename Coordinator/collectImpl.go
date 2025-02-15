@@ -1,13 +1,13 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
 	"sync"
+	"time"
 )
 
 func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
@@ -15,7 +15,7 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 	nodeAddresses := c.connManager.GetNodeAddresses() // 所有节点
 	var wg sync.WaitGroup
 	wg.Add(len(nodeAddresses))
-	recoverRequest := pb.RecoverRequest{Mission: request.Mission, Hashs: request.Hashs}
+	recoverRequest := pb.RecoverRequest{Mission: fmt.Sprintf("Mission_%s", time.Now().Format("2006-01-02_15-04-05")), Hashs: request.Hashs}
 	for nodeID, address := range nodeAddresses {
 		// 并行处理各个节点
 		go func(nodeID int, address string, request *pb.RecoverRequest) {
@@ -24,18 +24,21 @@ func (c *Coordinator) sendCollect(request paradigm.RecoverConnection) {
 			// 建立grpc连接
 			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				//paradigm.Log("ERROR", fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				//wg.Done()
 				return
 			}
 			client := pb.NewRappaExecutorClient(conn)
-			ctx := context.WithoutCancel(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
 			//defer cancel()
 
 			// 发送调度请求
 			resp, err := client.Collect(ctx, request, grpc.WaitForReady(true))
 			if err != nil {
-				LogWriter.Log("ERROR", fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
+				paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
+				//paradigm.Log("ERROR", fmt.Sprintf("Failed to send collect request to node %d: %v", nodeID, err))
 				//rejectedChannel <- 0 // 默认统计为未接受
 				//wg.Done()
 				return

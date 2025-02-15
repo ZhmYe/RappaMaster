@@ -1,85 +1,36 @@
 package paradigm
 
 import (
-	"BHLayer2Node/LogWriter"
 	"fmt"
+
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"time"
 )
 
-// ================ 以下是task部分=================
+// =============== 以下是Reference部分==============
 
-type DevTask struct {
-	Task      *Task
-	Slots     []*SlotRecord // 一个个的slot
-	TxID      int
-	TxReceipt *types.Receipt
-}
+type RFType int
 
-func (t *DevTask) UpdateCommitSlot(slot *CommitRecord) {
-	index := slot.Slot
-	for int32(len(t.Slots)) <= index {
-		t.Slots = append(t.Slots, NewSlotRecord(len(t.Slots)))
-	}
-	t.Slots[index].Update(slot)
+const (
+	InitTaskTx = iota
+	EpochTx
+	SlotTX
+)
 
-}
-func (t *DevTask) Print() {
-	fmt.Println("DevTask:")
-	fmt.Printf("  Sign: %s\n", t.Task.Sign)
-	fmt.Printf("	Size: %d\n", t.Task.Size)
-	fmt.Printf("  TxID: %d\n", t.TxID)
-	fmt.Printf("	Process: %d\n", t.Task.Process)
-	fmt.Println("  Slots:")
-	for _, slot := range t.Slots {
-		slot.Print()
-	}
-}
-func (t *DevTask) IsFinished() bool {
-	return t.Task.IsFinish()
-}
-func NewDevTask(ptx *PackedTransaction) *DevTask {
-	switch ptx.Tx.(type) {
-	case *InitTaskTransaction:
-		return &DevTask{
-			Task:      ptx.Tx.Blob().(*Task),
-			Slots:     make([]*SlotRecord, 0),
-			TxID:      ptx.Id,
-			TxReceipt: ptx.Receipt,
-		}
-	default:
-		panic("A DevTask should be init from InitTaskTransaction!!!")
-	}
-}
-
-//func (t *DevTask) Consensus(ptx *PackedTransaction) {
-//	t.tID = ptx.Id
-//	t.receipt = ptx.Receipt
-//}
-
-// SlotRecord 代表一个task的某个slot,由若干个commitSlot组成，每个commitSlot对应一笔TaskProcessTransaction交易,包装成CommitRecord
-type SlotRecord struct {
-	Sid int // id
-	//commits []*CommitSlotItem
-	commits []*CommitRecord
-}
-
-func (r *SlotRecord) Update(commit *CommitRecord) {
-	r.commits = append(r.commits, commit)
-}
-func NewSlotRecord(slot int) *SlotRecord {
-	return &SlotRecord{
-		Sid:     slot,
-		commits: make([]*CommitRecord, 0),
-	}
-}
-func (r *SlotRecord) Print() {
-	fmt.Printf("	SlotID:%d\n", r.Sid)
-	fmt.Printf("	len(commits) = %d\n", len(r.commits))
-	fmt.Println("	CommitSlots:")
-	for _, commit := range r.commits {
-		commit.Print()
-	}
-
+// DevReference 指代一个txMap得到的结果
+type DevReference struct {
+	TxHash      string
+	TxReceipt   types.Receipt // 以上是交易信息
+	TxBlockHash string
+	Rf          RFType // 类型
+	// 如果是InitTask，那么就是一个交易->TaskID，没有额外信息
+	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
+	// 如是果SlotTx, 那么需要包含两类信息
+	// 1. Slot所在epoch; 2. Slot所在Task
+	TaskID      TaskHash
+	EpochID     int32
+	UpchainTime time.Time
+	//ScheduleID ScheduleHash
 }
 
 // CommitRecord 每个commitRecord对应一个完成finalize的commitSlotItem，对应一笔TaskProcessTransaction
@@ -107,31 +58,38 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 			TxID:           ptx.Id,
 		}
 	default:
-		panic("A CommitRecord should be init from an TaskProcessTransaction!!!")
+		e := Error(RuntimeError, "A CommitRecord should be init from an TaskProcessTransaction!!!")
+		panic(e.Error())
 	}
 }
 
 // =================== 以下是epoch部分=========================
 
 type DevEpoch struct {
-	//epochID int
-	*EpochRecord
-	TxReceipt *types.Receipt // 交易上链后会有一个对应的receipt
-	TxID      int            // 交易ID，用于在Dev中定位交易
+	EpochID     int32
+	Process     int32
+	Commits     []*Slot
+	Justifieds  []*Slot
+	Finalizes   []*Slot
+	Invalids    []*Slot
+	InitTasks   []*Task
+	TxReceipt   *types.Receipt // 交易上链后会有一个对应的receipt
+	TxID        int            // 交易ID，用于在Dev中定位交易
+	TxBlockHash string
 }
 
-func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
-	switch ptx.Tx.(type) {
-	case *EpochRecordTransaction:
-		return &DevEpoch{
-			EpochRecord: ptx.Tx.Blob().(*EpochRecord),
-			TxReceipt:   ptx.Receipt,
-			TxID:        ptx.Id,
-		}
-	default:
-		panic("A DevEpoch should be init from an EpochRecordTransaction!!!")
-	}
-}
+//func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
+//	switch ptx.Tx.(type) {
+//	case *EpochRecordTransaction:
+//		return &DevEpoch{
+//			EpochRecord: ptx.Tx.Blob().(*EpochRecord),
+//			TxReceipt:   ptx.Receipt,
+//			TxID:        ptx.Id,
+//		}
+//	default:
+//		panic("A DevEpoch should be init from an EpochRecordTransaction!!!")
+//	}
+//}
 
 /*** EpochRecord 用于记录一个epoch内情况，由TaskManager更新***/
 
@@ -145,11 +103,13 @@ type EpochRecord struct {
 	Finalizes  map[SlotHash]SlotCommitment    // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
 	Invalids   map[SlotHash]InvalidCommitType // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
 	Tasks      map[string]int32               // 新收到的任务sign, 对应的数据量
+	Process    int32                          // 一共处理了多少
 }
 
 func (r *EpochRecord) UpdateTask(task *Task) {
 	if _, exist := r.Tasks[task.Sign]; exist {
-		panic("Repeat Task Sign!!!")
+		e := Error(RuntimeError, "Repeat Epoch Sign!!!")
+		panic(e.Error())
 	}
 	r.Tasks[task.Sign] = task.Size
 }
@@ -173,7 +133,8 @@ func (r *EpochRecord) Justified(slot *CommitSlotItem) {
 		return true
 	}
 	if check() {
-		r.Justifieds[slot.hash] = slot.Commitment
+		//fmt.Println(slot.State(), len(r.Justifieds))
+		r.Justifieds[slot.SlotHash()] = slot.Commitment
 	} else {
 		slot.SetInvalid(UNKNOWN) // TODO
 	}
@@ -190,6 +151,7 @@ func (r *EpochRecord) Finalize(slot *CommitSlotItem) {
 		//slot.SetFinalize() // finalize
 		//r.finalizes = append(r.finalizes, slot.JustifiedSlot)
 		r.Finalizes[slot.SlotHash()] = slot.Commitment
+		r.Process += slot.Process
 	} else {
 		slot.SetInvalid(UNKNOWN) // 这里目前没用，甚至不会进入这里 todo
 
@@ -209,23 +171,26 @@ func (r *EpochRecord) Abort(slot *CommitSlotItem, reason InvalidCommitType) {
 }
 func (r *EpochRecord) Refresh() {
 	r.Id++
+	r.Process = 0
 	r.Commits = make(map[SlotHash]SlotCommitment)
+	r.Justifieds = make(map[SlotHash]SlotCommitment)
 	r.Finalizes = make(map[SlotHash]SlotCommitment)
 	r.Invalids = make(map[SlotHash]InvalidCommitType)
 }
 func (r *EpochRecord) Echo() {
-	LogWriter.Log("EPOCH", fmt.Sprintf("Epoch %d Record: ", r.Id))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Commits: %v", r.Commits))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Justifieds: %v", r.Justifieds))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
-	LogWriter.Log("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
+	Print("EPOCH", fmt.Sprintf("Epoch %d Record, Commits: %d, Justified: %d, Finalized: %d, Invalid: %d", r.Id, len(r.Commits), len(r.Justifieds), len(r.Finalizes), len(r.Invalids)))
+	//Print("EPOCH", fmt.Sprintf("	Commits: %v", r.Commits))
+	//Print("EPOCH", fmt.Sprintf("	Justifieds: %v", r.Justifieds))
+	//Print("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
+	//Print("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
 }
 func NewEpochRecord() *EpochRecord {
 	return &EpochRecord{
-		Id:        0,
-		Commits:   make(map[SlotHash]SlotCommitment),
-		Finalizes: make(map[SlotHash]SlotCommitment),
-		Invalids:  make(map[SlotHash]InvalidCommitType),
-		Tasks:     make(map[string]int32),
+		Id:         0,
+		Commits:    make(map[SlotHash]SlotCommitment),
+		Finalizes:  make(map[SlotHash]SlotCommitment),
+		Justifieds: make(map[SlotHash]SlotCommitment),
+		Invalids:   make(map[SlotHash]InvalidCommitType),
+		Tasks:      make(map[string]int32),
 	}
 }

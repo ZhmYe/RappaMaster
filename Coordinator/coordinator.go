@@ -1,7 +1,6 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/LogWriter"
 	"BHLayer2Node/Network/Grpc"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
@@ -41,14 +40,14 @@ type Coordinator struct {
 func (c *Coordinator) Start() {
 	// 处理调度,向节点发送调度信息
 	processSchedule := func() {
-		for schedule := range c.channel.PendingSchedule {
-			mapSchedule := make(map[int]int32)
-			for _, item := range schedule.Schedules {
-				mapSchedule[item.NID] = item.Size
-			}
+		for schedule := range c.channel.PendingSchedules {
+			//mapSchedule := make(map[int]int32)
+			//for nodeID, slot := range schedule.Slots {
+			//	mapSchedule[nodeID] = slot.ScheduleSize
+			//}
 
 			// 调用 sendSchedule，这里暂时是统一发给有节点 todo 有必要只给分配的节点?
-			c.sendSchedule(schedule.Sign, schedule.Slot, schedule.Size, schedule.Model, schedule.Params, mapSchedule)
+			c.sendSchedule(schedule)
 		}
 	}
 
@@ -64,13 +63,13 @@ func (c *Coordinator) Start() {
 		// 监听指定端口
 		lis, err := net.Listen("tcp", ":"+strconv.Itoa(c.serverPort))
 		if err != nil {
-			LogWriter.Log("ERROR", fmt.Sprintf("Failed to listen: %v", err))
+			paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to listen: %v", err))
 		}
 		server := grpc.NewServer()
 		pb.RegisterRappaMasterServer(server, c)
-		LogWriter.Log("DEBUG", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
+		paradigm.Print("INFO", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
 		if err := server.Serve(lis); err != nil {
-			LogWriter.Log("ERROR", fmt.Sprintf("Failed to serve: %v", err))
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to serve: %v", err))
 		}
 
 	}
@@ -90,9 +89,9 @@ func (c *Coordinator) Start() {
 			//	index++
 			//	responseChannel <- response
 			//}
-			LogWriter.Log("DEBUG", "Send Recover Request to nodes...")
+			//paradigm.Log("DEBUG", "Send Recover Request to nodes...")
 			c.sendCollect(recoverRequest)
-			LogWriter.Log("DEBUG", "Receive All Recover Responses from nodes...")
+			//paradigm.Log("DEBUG", "Receive All Recover Responses from nodes...")
 			//close(responseChannel)
 		}
 	}

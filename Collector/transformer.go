@@ -24,7 +24,8 @@ func (t *OutputTransformer) Transform(data []byte) (interface{}, error) {
 		return t.TransformDataFrame(jsonStr)
 		// todo 剩下的类型适配
 	default:
-		panic("Unknown Output Type!!!")
+		e := paradigm.Error(paradigm.RuntimeError, "Unknown Output Type")
+		panic(e.Error())
 	}
 }
 func (t *OutputTransformer) TransformDataFrame(rawData map[string]map[string]interface{}) (dataframe.DataFrame, error) {
