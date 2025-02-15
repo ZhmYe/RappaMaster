@@ -35,6 +35,7 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 			"NbCommit":    len(epoch.Commits),
 			"NbJustified": len(epoch.Justifieds),
 			"NbFinalized": len(epoch.Finalizes),
+			"NbInvalid":   len(epoch.Invalids),
 			"TxHash":      epoch.TxReceipt.TransactionHash,
 		})
 	}
