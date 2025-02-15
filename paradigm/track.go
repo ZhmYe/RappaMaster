@@ -18,7 +18,7 @@ func (t *SynthTaskTrackItem) Commit(item CommitSlotItem) error {
 	//t.records[slot.Slot] = slotRecord
 	t.UnprocessedTask.Process(item.Process)
 	t.History += item.Process
-	Log("TRACKER", fmt.Sprintf("Task Track %s process %d by node %d, total: %d, history: %d, unprocessedSize: %d", item.Sign, item.Process, item.Nid, t.Total, t.History, t.Size))
+	Log("TRACKER", fmt.Sprintf("Task Track %s process %d by node %d, slotHash: %s, total: %d, history: %d, unprocessedSize: %d", item.Sign, item.Process, item.Nid, item.SlotHash(), t.Total, t.History, t.Size))
 	return nil
 }
 func (t *SynthTaskTrackItem) IsFinish() bool {
@@ -48,6 +48,7 @@ func (t *UnprocessedTask) Process(size int32) {
 
 type PendingCommitSlotTrack struct {
 	*CommitSlotItem
+	IsFinalized      int32
 	hasVerifiedProof bool
 	hasWonVote       bool
 }
@@ -60,6 +61,7 @@ func NewPendingCommitSlotTrack(item *CommitSlotItem, isReliable bool) *PendingCo
 		CommitSlotItem:   item,
 		hasVerifiedProof: isReliable, // 如果不需要可信证明，那么就是完成了
 		hasWonVote:       false,
+		IsFinalized:      0,
 	}
 }
 func (t *PendingCommitSlotTrack) ReceiveProof() {

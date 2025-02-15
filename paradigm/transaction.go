@@ -1,8 +1,9 @@
 package paradigm
 
 import (
-	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"time"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 /*** Transaction相关内容 ***/
@@ -119,10 +120,10 @@ func (t *EpochRecordTransaction) Blob() interface{} {
 }
 
 type PackedTransaction struct {
-	Tx        Transaction
-	Id        int
-	Receipt   *types.Receipt
-	BlockHash string
+	Tx          Transaction
+	Id          int
+	Receipt     *types.Receipt
+	BlockHash   string
 	UpchainTime time.Time
 }
 
@@ -133,6 +134,12 @@ func (t *PackedTransaction) SetID(id int) {
 func (t *PackedTransaction) SetUpchainTime(time time.Time) {
 	t.UpchainTime = time
 }
+
+func (t *PackedTransaction) SetBlockInfo(block *types.Block) {
+	t.BlockHash = block.Hash
+	t.UpchainTime = TimestampConvert(block.Timestamp)
+}
+
 func NewPackedTransaction(tx Transaction, receipt *types.Receipt, blockHash string) *PackedTransaction {
 	return &PackedTransaction{
 		Tx:        tx,

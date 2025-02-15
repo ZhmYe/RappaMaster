@@ -30,7 +30,7 @@ def oracle_query_epoch():
 def oracle_query_task():
     request_data = {
         "query": "EvidencePreserveTaskIDQuery",
-        "taskID": "SynthTask-0-1739346636",
+        "taskID": "SynthTask-0-1739524707",
     }
 
     # 发送 POST 请求
@@ -45,17 +45,17 @@ def oracle_query_blockchain_latest():
 # todo 这里还有blockNumber的Query，暂时手动改，上面的epoch和task也类似
 def oracle_query_block():
     request_data = {
-#         "query": "BlockchainBlockHashQuery",
-#         "blockHash": "0x111"
-        "query": "BlockchainBlockNumberQuery",
-        "blockNumber": 1,
+        "query": "BlockchainBlockHashQuery",
+        "blockHash": "0x1ca92b9f55a9f977f85f7d4a0f07c31ba2b8e75a903d7e0fe0999e15a351b19c",
+        # "query": "BlockchainBlockNumberQuery",
+        # "blockNumber": 88,
     }
     url = "http://127.0.0.1:8080/blockchain"
     send_GET_request(url, request_data)
 def oracle_query_tx():
     request_data = {
         "query": "BlockchainTransactionQuery",
-        "txHash": "0x111"
+        "txHash": "0x5e52a917657f32bf0fe8b894c4bd2a4e8410a50b1237d487c0ddaf9ddde622bd"
     }
     url = "http://127.0.0.1:8080/blockchain"
     send_GET_request(url, request_data)

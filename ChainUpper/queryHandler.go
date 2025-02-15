@@ -53,33 +53,26 @@ func (c *ChainUpper) handle(query paradigm.Query) {
 		blockInfo := c.getBlockInfo(*block)
 		item.SendInfo(blockInfo)
 
-		// case *Query.BlockchainTransactionQuery:
-		// 	item := query.(*Query.BlockchainTransactionQuery)
-		// 	txHash := common.HexToHash(item.TxHash)
-		// 	tx, err := c.client.GetTransactionByHash(ctx, txHash, false)
-		// 	if err != nil {
-		// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
-		// 		return
-		// 	}
-		// 	abi := tx.Abi
-		// 	// // 通过tx查询获得receipt -> receipt.blockNumber -> blockhash
-		// 	// receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
-		// 	// blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
-		// 	// txInfo := c.getTransactionInfo(*tx, blockHash.Hex())
-		// 	receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
-		// 	if err != nil {
-		// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
-		// 		return
-		// 	}
-		// 	blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
-		// 	if err != nil {
-		// 		item.SendBlockchainInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction blockHash: %v", err)))
-		// 		return
-		// 	}
-		// 	txInfo := c.getTransactionInfo(receipt, blockHash.Hex(), abi)
-		// 	item.SendBlockchainInfo(txInfo)
+	case *Query.BlockchainTransactionQuery:
+		item := query.(*Query.BlockchainTransactionQuery)
+		txHash := common.HexToHash(item.TxHash)
+		receipt, err := c.client.GetTransactionReceipt(ctx, txHash, false)
+		if err != nil {
+			item.SendInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction: %v", err)))
+			return
+		}
+		// blockHash, err := c.client.GetBlockHashByNumber(ctx, int64(receipt.BlockNumber))
+		// if err != nil {
+		// 	item.SendInfo(paradigm.NewInvalidTransactionInfo(fmt.Sprintf("Failed to get transaction blockHash: %v", err)))
+		// 	return
+		// }
+		// txInfo := c.getTransactionInfo(receipt, blockHash.Hex())
 
-		item.SendInfo(blockInfo)
+		// block 提供 blockHash 和 upchainTime
+		block, err := c.client.GetBlockByNumber(ctx, int64(receipt.BlockNumber), false, false)
+		txInfo := c.getTransactionInfo(receipt, block.Hash, block.Timestamp)
+		item.SendInfo(txInfo)
+
 	default:
 		paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In ChainUpper")
 	}
@@ -106,16 +99,10 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 				Contract:     txObj.GetTo(),
 				Abi:          txObj.GetAbi(),
 				BlockHash:    block.Hash,
+				UpchainTime:  paradigm.TimestampConvert(block.Timestamp),
 				Invalid:      true,
 				ErrorMessage: "",
 			})
-			//txs = append(txs, txObj.Hash().String())
-			//c.client.GetTransactionReceipt()
-			//		txDetails = append(txDetails, TxDetail{
-			//			TxHash:   txObj.DataHash.String(),
-			//			Contract: txObj.To().String(),
-			//			Method:   "Unknown", // todo: 无法直接获取调用接口，此处用占位符
-			//		})
 		} else {
 			//		// 如果转换失败，尝试转换为 map[string]interface{}
 			if txMap, ok := tx.(map[string]interface{}); ok {
@@ -125,23 +112,10 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 					Contract:     txMap["to"].(string),
 					Abi:          txMap["abi"].(string),
 					BlockHash:    block.Hash,
+					UpchainTime:  paradigm.TimestampConvert(block.Timestamp),
 					Invalid:      true,
 					ErrorMessage: "",
 				})
-
-				//txHash, _ := txMap["DataHash"].(string)
-				//txs = append(txs, txHash)
-				//			contract, _ := txMap["to"].(string)
-				//			method, _ := txMap["method"].(string)
-				//			if method == "" {
-				//				method = "Unknown"
-				//			}
-				//			txDetails = append(txDetails, TxDetail{
-				//				TxHash:   txHash,
-				//				Contract: contract,
-				//				Method:   method,
-				//			})
-				//		}
 			}
 		}
 	}
@@ -156,12 +130,15 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 	}
 }
 
-func (c *ChainUpper) getTransactionInfo(receipt *types.Receipt, blockHash string, abi string) paradigm.TransactionInfo {
+func (c *ChainUpper) getTransactionInfo(receipt *types.Receipt, blockHash string, timestamp uint64) paradigm.TransactionInfo {
 	return paradigm.TransactionInfo{
 		TxHash:   receipt.TransactionHash,
 		Contract: receipt.To,
-		// Abi:       "processTask", // todo
-		Abi:       abi, // 检查是否有值
-		BlockHash: blockHash,
+		Abi:      "processTask", // todo
+		// Abi:       abi, // nil?
+		BlockHash:    blockHash,
+		UpchainTime:  paradigm.TimestampConvert(timestamp),
+		Invalid:      true,
+		ErrorMessage: "",
 	}
 }

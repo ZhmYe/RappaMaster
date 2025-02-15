@@ -220,7 +220,7 @@ func (d *Oracle) Start() {
 								task.SetEndTime()
 								d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
-								paradigm.Log("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
+								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 								task.Print()
 								//LogWriter.Log("DEBUG", "Test Query Generation...")
 								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})

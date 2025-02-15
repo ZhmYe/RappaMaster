@@ -22,3 +22,10 @@ func DateFormat(date time.Time) string {
 func TimeFormat(date time.Time) string {
 	return fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d", date.Year(), date.Month(), date.Day(), date.Hour(), date.Minute(), date.Second())
 }
+func TimestampConvert(timestamp uint64) time.Time {
+	// Convert to seconds and nanoseconds
+	seconds := int64(timestamp) / 1000
+	nanoseconds := (timestamp % 1000) * 1000000
+	// Convert to time.Time
+	return time.Unix(seconds, int64(nanoseconds))
+}

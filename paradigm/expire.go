@@ -46,5 +46,6 @@ type ExpireTask struct {
 }
 type ExpireSlot struct {
 	BasicTimeExpire
-	SlotHash SlotHash
+	SlotHash    SlotHash
+	PendingSlot *PendingCommitSlotTrack
 }

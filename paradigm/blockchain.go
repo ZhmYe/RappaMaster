@@ -3,6 +3,7 @@ package paradigm
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"time"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
@@ -54,11 +55,11 @@ func NewMockerBlockInfo() BlockInfo {
 }
 
 type TransactionInfo struct {
-	TxHash    string
-	Contract  string
-	Abi       string
-	BlockHash string
-	//UpchainTime  time.Time
+	TxHash       string
+	Contract     string
+	Abi          string
+	BlockHash    string
+	UpchainTime  time.Time
 	Invalid      bool
 	ErrorMessage string
 	// TODO
@@ -66,11 +67,11 @@ type TransactionInfo struct {
 
 func NewMockerTransactionInfo() TransactionInfo {
 	return TransactionInfo{
-		TxHash:    "",
-		Contract:  "",
-		Abi:       "STORE",
-		BlockHash: "",
-		//UpchainTime:  time.Now(),
+		TxHash:       "",
+		Contract:     "",
+		Abi:          "STORE",
+		BlockHash:    "",
+		UpchainTime:  time.Now(),
 		Invalid:      true,
 		ErrorMessage: "",
 	}
@@ -78,11 +79,11 @@ func NewMockerTransactionInfo() TransactionInfo {
 
 func NewInvalidTransactionInfo(e string) TransactionInfo {
 	return TransactionInfo{
-		TxHash:    "",
-		Contract:  "",
-		Abi:       "",
-		BlockHash: "",
-		//UpchainTime:  time.Now(),
+		TxHash:       "",
+		Contract:     "",
+		Abi:          "",
+		BlockHash:    "",
+		UpchainTime:  time.Now(),
 		Invalid:      false,
 		ErrorMessage: e,
 	}

@@ -106,14 +106,17 @@ func (d *Oracle) processQuery() {
 			item.SendResponse(item.GenerateResponse(block))
 		case *Query.BlockchainTransactionQuery: // TODO: 改为链上查询
 			item := query.(*Query.BlockchainTransactionQuery)
-			if _, exist := d.txMap[item.TxHash]; !exist {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Transaction does not exist in Oracle"))
-				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "Transaction does not exist in Oracle")
-				continue
-			}
-			ref := d.txMap[item.TxHash]
-			item.SendResponse(item.GenerateResponse(ref))
+			// if _, exist := d.txMap[item.TxHash]; !exist {
+			// 	errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Transaction does not exist in Oracle"))
+			// 	item.SendResponse(errorResponse)
+			// 	paradigm.Error(paradigm.ValueError, "Transaction does not exist in Oracle")
+			// 	continue
+			// }
+			// ref := d.txMap[item.TxHash]
+			// item.SendResponse(item.GenerateResponse(ref))
+			d.channel.BlockchainQueryChannel <- item
+			tx := item.ReceiveInfo()
+			item.SendResponse(item.GenerateResponse(tx))
 		case *Query.NodesStatusQuery:
 			item := query.(*Query.NodesStatusQuery)
 			d.channel.MonitorQueryChannel <- item

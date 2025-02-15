@@ -30,7 +30,7 @@ func (handler *VoteHandler) Process() {
 				}
 			} else {
 				// 这里暂时先不报错
-				paradigm.Error(paradigm.RuntimeError, "Vote Instance does not exist")
+				//paradigm.Error(paradigm.RuntimeError, "Vote Instance does not exist")
 				continue
 			}
 

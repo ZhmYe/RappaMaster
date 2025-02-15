@@ -3,6 +3,7 @@ package Tracker
 import (
 	"BHLayer2Node/paradigm"
 	"fmt"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,34 +52,42 @@ func (t *Tracker) Commit(slot *paradigm.CommitSlotItem) error {
 
 // UpdateSlot 更新一个slot,等待其提交
 func (t *Tracker) UpdateSlot(commitSlotItem paradigm.CommitSlotItem) {
-	t.pendingCommitSlot[commitSlotItem.SlotHash()] = paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.checkIsReliable(commitSlotItem.Sign)) // 等待verify
+	slot := paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.checkIsReliable(commitSlotItem.Sign)) // 等待verify
+	t.pendingCommitSlot[commitSlotItem.SlotHash()] = slot
 	// 每个slot设置比较长的时间，因为是zkp，设置1分钟吧先 todo @SD 这里的时间写成config，按秒
 	expireTime := time.Now().Add(1 * time.Minute)
 	expireSlot := &paradigm.ExpireSlot{
 		BasicTimeExpire: paradigm.NewBasicTimeExpire(expireTime),
 		SlotHash:        commitSlotItem.SlotHash(),
+		PendingSlot:     slot,
 	}
 	t.expireInputChannel <- expireSlot
 }
 func (t *Tracker) WonVote(slotHash string) {
 	if slot, exist := t.pendingCommitSlot[slotHash]; exist {
-		t.pendingCommitSlot[slotHash].WonVote()
-		if t.pendingCommitSlot[slotHash].Check() {
-			commitSlot := slot.CommitSlotItem
-			commitSlot.SetFinalize()
-			t.channel.CommitSlots <- *commitSlot
+		if atomic.LoadInt32(&slot.IsFinalized) == 1 {
+			return // 如果已经提交过，直接跳过
 		}
+		slot.WonVote()
+		t.CheckFinalized(*slot)
 	}
 
 }
+func (t *Tracker) CheckFinalized(slot paradigm.PendingCommitSlotTrack) {
+	if t.pendingCommitSlot[slot.SlotHash()].Check() {
+		commitSlot := slot.CommitSlotItem
+		commitSlot.SetFinalize()
+		atomic.StoreInt32(&slot.IsFinalized, 1)
+		t.channel.CommitSlots <- *commitSlot
+	}
+}
 func (t *Tracker) ReceiveProof(slotHash string) {
 	if slot, exist := t.pendingCommitSlot[slotHash]; exist {
-		t.pendingCommitSlot[slotHash].ReceiveProof()
-		if t.pendingCommitSlot[slotHash].Check() {
-			commitSlot := slot.CommitSlotItem
-			commitSlot.SetFinalize()
-			t.channel.CommitSlots <- *commitSlot
+		if atomic.LoadInt32(&slot.IsFinalized) == 1 {
+			return // 如果已经提交过，直接跳过
 		}
+		slot.ReceiveProof()
+		t.CheckFinalized(*slot)
 	}
 
 }
@@ -97,19 +106,19 @@ func (t *Tracker) CollectExpire() {
 		case *paradigm.ExpireSlot:
 
 			expireSlot := expireItem.(*paradigm.ExpireSlot)
-			slot := t.pendingCommitSlot[expireSlot.SlotHash]
-			if slot.Check() {
+			// TODO @YZM 这里按理会有并发错误，目前不太可能出现
+			if !expireSlot.PendingSlot.Check() {
 				// finalized 按道理这里不可能
-				commitSlot := slot.CommitSlotItem
-				commitSlot.SetFinalize()
-				t.channel.CommitSlots <- *commitSlot
-			} else {
+				//commitSlot := slot.CommitSlotItem
+				//commitSlot.SetFinalize()
+				//t.channel.CommitSlots <- *commitSlot
+				//} else {
 				// abort
-				commitSlot := slot.CommitSlotItem
+				commitSlot := expireSlot.PendingSlot.CommitSlotItem
 				commitSlot.SetInvalid(paradigm.VERIFIED_FAILED)
 				t.channel.CommitSlots <- *commitSlot
 			}
-			delete(t.pendingCommitSlot, slot.SlotHash()) // 标记为已完成，不需要记录了
+			delete(t.pendingCommitSlot, expireSlot.SlotHash) // 标记为已完成，不需要记录了
 
 		default:
 			paradigm.Error(paradigm.RuntimeError, "Unknown ExpireItem Type")
