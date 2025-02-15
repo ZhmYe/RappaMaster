@@ -190,6 +190,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	info["nbCommit"] = len(epoch.Commits)
 	info["nbJustified"] = len(epoch.Justifieds)
 	info["nbFinalized"] = len(epoch.Finalizes)
+	info["nbInvalid"] = len(epoch.Invalids)
 	info["nbTasks"] = len(epoch.InitTasks)
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
