@@ -55,7 +55,7 @@ def oracle_query_block():
 def oracle_query_tx():
     request_data = {
         "query": "BlockchainTransactionQuery",
-        "txHash": "0x5e52a917657f32bf0fe8b894c4bd2a4e8410a50b1237d487c0ddaf9ddde622bd"
+        "txHash": "0x6def399ded1ffa3859d9acf81d8a5c6fddb7d0a669a0375d7f668593a056655d"
     }
     url = "http://127.0.0.1:8080/blockchain"
     send_GET_request(url, request_data)
