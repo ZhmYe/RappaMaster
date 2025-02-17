@@ -30,7 +30,7 @@ def oracle_query_epoch():
 def oracle_query_task():
     request_data = {
         "query": "EvidencePreserveTaskIDQuery",
-        "taskID": "SynthTask-0-1739524707",
+        "taskID": "SynthTask-0-1739767757",
     }
 
     # 发送 POST 请求

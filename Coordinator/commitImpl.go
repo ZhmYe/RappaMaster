@@ -27,7 +27,7 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 	item.SetHash(req.Hash) // 设置slotHash
 	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
 	c.channel.CommitSlots <- item
-	paradigm.Log("COORDINATOR", fmt.Sprintf("Successfully receive commit slot: {%s}", item.SlotHash()))
+	paradigm.Print("COORDINATOR", fmt.Sprintf("Successfully receive commit slot: {%s}, commitment: {%v}", item.SlotHash(), item.Commitment))
 	generateRandomSeed := func() []byte {
 		size := 256 // 暂定
 		randomBytes := make([]byte, size)
