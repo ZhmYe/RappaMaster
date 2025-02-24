@@ -26,6 +26,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["schedule"] = len(task.Schedules) // 调度数量
 	info["commit"] = len(task.Schedules)   // 提交的slot的数量 todo
 	info["params"] = task.Params           // 任务的一些参数，包括模型、输入、数据集等，待定 todo
+	info["dataset"] = task.GetDataset()
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
 	tx["txHash"] = task.TxReceipt.TransactionHash                   // 交易哈希

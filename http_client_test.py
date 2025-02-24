@@ -86,7 +86,7 @@ def oracle_query_tasks():
 def oracle_query_collect():
     request_data = {
         "query": "CollectTaskQuery",
-        "taskID": "SynthTask-0-1739610529",
+        "taskID": "SynthTask-0-1739783282",
         "size": 50
     }
     url = "http://127.0.0.1:8080/collect"

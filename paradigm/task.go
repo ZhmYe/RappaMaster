@@ -163,6 +163,14 @@ func (t *Task) SetEndTime() {
 func (t *Task) SetCollector(c RappaCollector) {
 	t.collector = c
 }
+func (t *Task) GetDataset() string {
+	if dataset, exist := t.Params["dataset"]; exist {
+		return dataset.(string)
+	} else {
+		Error(ValueError, "Dataset is not given in params")
+		return ""
+	}
+}
 func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {

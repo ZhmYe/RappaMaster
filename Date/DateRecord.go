@@ -13,8 +13,9 @@ type DateRecord struct {
 	NbInitTasks     int32     // 新建任务数量
 	NbFinalizedSlot int32     // 完成slot数量
 	//nbCommitSlot    int32     // 提交slot数量
-	NbTransactions int32 // 上链交易数量
-	NbFinishTasks  int32 // 完成任务数量
+	NbTransactions      int32            // 上链交易数量
+	NbFinishTasks       int32            // 完成任务数量
+	DatasetDistribution map[string]int32 // 每天不同数据集的合成数量（任务数）
 }
 
 func (r *DateRecord) UpdateProcess(process int32) {
@@ -39,7 +40,15 @@ func (r *DateRecord) Date() time.Time {
 func (r *DateRecord) UpdateTransactions(n int32) {
 	r.NbTransactions += n
 }
-
+func (r *DateRecord) UpdateDateset(dataset string) {
+	if dataset == "" {
+		return
+	}
+	if _, exist := r.DatasetDistribution[dataset]; !exist {
+		r.DatasetDistribution[dataset] = 0
+	}
+	r.DatasetDistribution[dataset] += 1
+}
 func NewDateRecord(date time.Time) *DateRecord {
 	return &DateRecord{
 		date:            date,
@@ -47,7 +56,8 @@ func NewDateRecord(date time.Time) *DateRecord {
 		NbInitTasks:     0,
 		NbFinalizedSlot: 0,
 		//nbCommitSlot:    0,
-		NbTransactions: 0,
-		NbFinishTasks:  0,
+		NbTransactions:      0,
+		NbFinishTasks:       0,
+		DatasetDistribution: make(map[string]int32),
 	}
 }

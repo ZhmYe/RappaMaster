@@ -15,11 +15,13 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 	response := make(map[string]interface{})
 	nodes := make([]map[string]interface{}, 0) // 节点信息
 	totalStorage, usedStorage := int32(0), int32(0)
+	nbError := 0
 	for _, node := range info {
 		nodeInfo := make(map[string]interface{})
 		nodeInfo["NodeID"] = node.NodeID
 		if node.IsError() {
 			nodeInfo["Status"] = "Abnormal"
+			nbError++
 		} else {
 			nodeInfo["Status"] = "Normal"
 		}
@@ -40,8 +42,8 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 	response["nodes"] = nodes
 	// todo
 	response["statusDistribution"] = map[string]interface{}{
-		"normal": len(info),
-		"down":   0,
+		"normal": len(info) - nbError,
+		"down":   nbError,
 		"close":  0,
 	}
 	response["storageDistribution"] = map[string]interface{}{
@@ -78,16 +80,32 @@ func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Respons
 	synthData := make([]int32, 0)   // 合成数据
 	initTasks := make([]int32, 0)   // 新建任务
 	finishTasks := make([]int32, 0) // 完成任务
+	totalTasks := int32(0)
+	totalFinish := int32(0)
+	datasetDistribution := make(map[string]int32)
 	for _, record := range records {
 		dates = append(dates, paradigm.DateFormat(record.Date()))
 		synthData = append(synthData, record.SynthData)
 		initTasks = append(initTasks, record.NbInitTasks)
 		finishTasks = append(finishTasks, record.NbFinishTasks)
+		totalTasks += record.NbInitTasks
+		totalFinish += record.NbFinishTasks
+		for dataset, n := range record.DatasetDistribution {
+			if _, exist := datasetDistribution[dataset]; !exist {
+				datasetDistribution[dataset] = 0
+			}
+			datasetDistribution[dataset] += n
+		}
 	}
 	response["date"] = dates
 	response["init"] = initTasks
 	response["finish"] = finishTasks
 	response["synthData"] = synthData
+	response["taskDistribution"] = map[string]interface{}{
+		"processing": totalTasks - totalFinish,
+		"finish":     totalFinish,
+	}
+	response["datasetDistribution"] = datasetDistribution
 	return paradigm.NewSuccessResponse(response)
 
 }

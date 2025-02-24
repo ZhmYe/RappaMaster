@@ -26,6 +26,7 @@ func NewNodeHeartbeatReportFromHeartbeat(heartbeat *service.HeartbeatResponse) N
 		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: disk")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
+
 	if _, exist := status["total"]; !exist {
 		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: total")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())

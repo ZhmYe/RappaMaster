@@ -200,6 +200,7 @@ func (d *Oracle) Start() {
 						d.txMap[ptx.Receipt.TransactionHash] = reference
 						// 更新date
 						dateRecord.UpdateInitTasks(1)
+						dateRecord.UpdateDateset(task.GetDataset())
 					case *paradigm.TaskProcessTransaction:
 						// 上链了一笔任务推进交易
 						commitRecord := paradigm.NewCommitRecord(ptx)

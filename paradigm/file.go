@@ -11,14 +11,13 @@ import (
 func DataFrameToCSV(df dataframe.DataFrame) ([]byte, error) {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
-
 	// 写入列名
 	columnNames := df.Names()
 	writer.Write(columnNames)
-
+	fmt.Println(df)
 	// 写入每一行数据
 	for i := 0; i < df.Nrow(); i++ {
-		row := df.Subset([]int{i}).Records()[0] // 取出一行
+		row := df.Subset([]int{i}).Records()[1] // 取出一行
 		writer.Write(row)
 	}
 
