@@ -17,12 +17,18 @@ func (t *OutputTransformer) Transform(data []byte) (interface{}, error) {
 	case paradigm.DATAFRAME:
 		// 如果是dataframe，那么将data解析出json,然后将json转换为dataframe
 		// dataframe在python中得到的json, 如是是多条df会用嵌套字典的方法叠加，所以要额外处理
-		jsonStr, err := t.parseJson(data)
+		rawData, err := t.parseJson2RawMap(data)
 		if err != nil {
 			return nil, err
 		}
-		return t.TransformDataFrame(jsonStr)
-		// todo 剩下的类型适配
+		return t.TransformDataFrame(rawData)
+	case paradigm.NETWORK:
+		// 这里就直接转换为net结构体
+		netList, err := t.parseJson2Net(data)
+		if err != nil {
+			return nil, err
+		}
+		return netList, nil
 	default:
 		e := paradigm.Error(paradigm.RuntimeError, "Unknown Output Type")
 		panic(e.Error())
@@ -64,14 +70,28 @@ func (t *OutputTransformer) TransformDataFrame(rawData map[string]map[string]int
 	return df, nil
 }
 
+func (t *OutputTransformer) TransformNetWork() (interface{}, error) {
+
+	return nil, nil
+}
+
 // parseJson 解析byte->json
-func (t *OutputTransformer) parseJson(jsonStr []byte) (map[string]map[string]interface{}, error) {
+func (t *OutputTransformer) parseJson2RawMap(jsonStr []byte) (map[string]map[string]interface{}, error) {
 	var rawData map[string]map[string]interface{}
 	err := json.Unmarshal(jsonStr, &rawData)
 	if err != nil {
 		return nil, err
 	}
 	return rawData, nil
+}
+
+func (t *OutputTransformer) parseJson2Net(jsonStr []byte) ([]paradigm.Graph, error) {
+	var netList []paradigm.Graph
+	err := json.Unmarshal(jsonStr, &netList)
+	if err != nil {
+		return nil, err
+	}
+	return netList, nil
 }
 
 //func (t *OutputTransformer) BatchTransform(datas [][]byte) ([]interface{}, error) {

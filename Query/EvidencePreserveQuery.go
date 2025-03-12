@@ -26,6 +26,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["schedule"] = len(task.Schedules) // 调度数量
 	info["commit"] = len(task.Schedules)   // 提交的slot的数量 todo
 	info["params"] = task.Params           // 任务的一些参数，包括模型、输入、数据集等，待定 todo
+	info["model"] = paradigm.ModelTypeToString(task.Model)
 	info["dataset"] = task.GetDataset()
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
@@ -187,12 +188,21 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	// 1. Epoch的基本信息
 	info := make(map[string]interface{})
 	info["epochID"] = epoch.EpochID // epochID
-	info["process"] = epoch.Process
 	info["nbCommit"] = len(epoch.Commits)
 	info["nbJustified"] = len(epoch.Justifieds)
 	info["nbFinalized"] = len(epoch.Finalizes)
 	info["nbInvalid"] = len(epoch.Invalids)
 	info["nbTasks"] = len(epoch.InitTasks)
+
+	epochProcess := make(map[string]int32)
+	epochProcess["ABM"] = 0
+	epochProcess["BAED"] = 0
+	epochProcess["FINKAN"] = 0
+	for modelType, process := range epoch.Process {
+		epochProcess[paradigm.ModelTypeToString(modelType)] = process
+	}
+	info["process"] = epochProcess
+
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
 	tx["txHash"] = epoch.TxReceipt.TransactionHash                   // 交易哈希
@@ -215,23 +225,39 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	// 4. slot信息, commit/finalized/invalid，前两个展示在过程查证，后者展示在异常溯源（左下角）
 	//slots := make(map[interface{}]interface{})
 	//commitInfo := make(map[interface{}]interface{})
+
 	commitInfo := make([]map[string]interface{}, 0)
-	for _, slot := range epoch.Commits {
-		commitInfo = append(commitInfo, slot.Json())
-	}
-	taskProcessDistribution := make(map[paradigm.TaskHash]int32)
-	finalizedInfo := make([]map[string]interface{}, 0)
-	for _, slot := range epoch.Finalizes {
-		finalizedInfo = append(finalizedInfo, slot.Json())
-		if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
-			taskProcessDistribution[slot.TaskID] = 0
+	for modelType, slots := range epoch.Commits {
+		for _, slot := range slots {
+			slotView := slot.Json()
+			slotView["model"] = paradigm.ModelTypeToString(modelType)
+			commitInfo = append(commitInfo, slotView)
 		}
-		taskProcessDistribution[slot.TaskID] += slot.ScheduleSize // TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
 	}
+	taskProcessDistribution := make(map[paradigm.TaskHash]map[string]interface{})
+	finalizedInfo := make([]map[string]interface{}, 0)
+
+	for modelType, slots := range epoch.Finalizes {
+		for _, slot := range slots {
+			slotView := slot.Json()
+			slotView["model"] = paradigm.ModelTypeToString(modelType)
+			finalizedInfo = append(finalizedInfo, slotView)
+			if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
+				taskProcess := make(map[string]interface{})
+				taskProcess["model"] = paradigm.ModelTypeToString(modelType)
+				taskProcess["schedule"] = 0
+				taskProcessDistribution[slot.TaskID] = taskProcess
+			}
+			// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
+			taskProcessDistribution[slot.TaskID]["schedule"] = int32(taskProcessDistribution[slot.TaskID]["schedule"].(int)) + slot.ScheduleSize
+		}
+	}
+
 	invalidSlot := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Invalids {
 		invalidSlot = append(invalidSlot, slot.Json())
 	}
+
 	initTaskInfo := make([]map[string]interface{}, 0)
 	for _, task := range epoch.InitTasks {
 		taskInfo := make(map[string]interface{})
@@ -239,6 +265,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 		taskInfo["TxHash"] = task.TxReceipt.TransactionHash
 		taskInfo["Total"] = task.Size
 		taskInfo["Process"] = task.Process
+		taskInfo["Model"] = task.Model
 		taskInfo["Status"] = task.IsFinish()
 		initTaskInfo = append(initTaskInfo, taskInfo)
 	}

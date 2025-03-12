@@ -27,7 +27,17 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 		}
 		nodeInfo["Workload"] = "空闲" // todo
 		nodeInfo["NbFinishedTasks"] = len(node.FinishedSlots)
-		nodeInfo["SynthData"] = node.SynthData
+
+		// 写入分任务的合成数据
+		dataGroup := make(map[string]int32)
+		dataGroup["ABM"] = 0
+		dataGroup["BAED"] = 0
+		dataGroup["FINKAN"] = 0
+		for key, value := range node.SynthData {
+			dataGroup[paradigm.ModelTypeToString(key)] += value
+		}
+		nodeInfo["SynthData"] = dataGroup
+
 		nodeInfo["NbPendingTasks"] = len(node.PendingSlots) // 进度根据这个算
 		nodeInfo["storage"] = node.DiskStorage
 		nodeInfo["cpu"] = node.AverageCPUUsage
@@ -76,16 +86,23 @@ func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Respons
 	// 传入的数据是dateRecords
 	records := data.([]*Date.DateRecord)
 	response := make(map[string]interface{})
-	dates := make([]string, 0)      // 按序存储时间，便于前端排序,go的map无序
-	synthData := make([]int32, 0)   // 合成数据
-	initTasks := make([]int32, 0)   // 新建任务
-	finishTasks := make([]int32, 0) // 完成任务
+	dates := make([]string, 0)               // 按序存储时间，便于前端排序,go的map无序
+	synthData := make([]map[string]int32, 0) // 合成数据
+	initTasks := make([]int32, 0)            // 新建任务
+	finishTasks := make([]int32, 0)          // 完成任务
 	totalTasks := int32(0)
 	totalFinish := int32(0)
 	datasetDistribution := make(map[string]int32)
 	for _, record := range records {
 		dates = append(dates, paradigm.DateFormat(record.Date()))
-		synthData = append(synthData, record.SynthData)
+		dataGroup := make(map[string]int32)
+		dataGroup["ABM"] = 0
+		dataGroup["BAED"] = 0
+		dataGroup["FINKAN"] = 0
+		for key, value := range record.SynthData {
+			dataGroup[paradigm.ModelTypeToString(key)] += value
+		}
+		synthData = append(synthData, dataGroup)
 		initTasks = append(initTasks, record.NbInitTasks)
 		finishTasks = append(finishTasks, record.NbFinishTasks)
 		totalTasks += record.NbInitTasks

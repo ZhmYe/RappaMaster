@@ -37,7 +37,7 @@ func (e *HttpEngine) HandleGET(c *gin.Context) {
 	// 解析请求体中的 JSON 数据
 
 	if success, query := requestBody.BuildQueryFromGETRequest(c); success {
-		fmt.Println(query.ToHttpJson())
+		//fmt.Println(query.ToHttpJson())
 		e.channel.QueryChannel <- query
 		r := query.ReceiveResponse() // 这里会阻塞
 		//fmt.Println(r.ToHttpJson(), r.Error())
@@ -85,7 +85,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					requestBody.Size,
 					requestBody.IsReliable,
 				)
-				task.SetCollector(Collector.NewCollector(task.Sign, e.channel))
+				task.SetCollector(Collector.NewCollector(task.Sign, task.OutputType, e.channel))
 				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
 				// 新建任务用于上链，然后直接返回response
 				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}

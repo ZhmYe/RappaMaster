@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/go-gota/gota/dataframe"
+	"github.com/goccy/go-json"
 )
 
 // DataFrameToCSV 将 Gota 的 DataFrame 转换为 CSV 格式的字节流
@@ -25,12 +26,20 @@ func DataFrameToCSV(df dataframe.DataFrame) ([]byte, error) {
 	return buf.Bytes(), writer.Error()
 }
 
+// 将graph转换为json的字节流,这里直接转换即可
+func GraphToJson(graphs []Graph) ([]byte, error) {
+	return json.MarshalIndent(graphs, "", "\t")
+}
+
 func DataToFile(data interface{}) ([]byte, error) {
 	switch data.(type) {
 	case dataframe.DataFrame:
 		//Log("DEBUG", "Transform data to dataframe")
 		//fmt.Println(data)
 		return DataFrameToCSV(data.(dataframe.DataFrame))
+	case []Graph:
+		return GraphToJson(data.([]Graph))
+
 	default:
 		e := Error(ValueError, "can not convert data to file")
 		return []byte{}, fmt.Errorf(e.Error())

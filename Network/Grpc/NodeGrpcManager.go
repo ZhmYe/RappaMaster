@@ -10,15 +10,17 @@ import (
 
 // NodeGrpcManager gRPC 连接管理
 type NodeGrpcManager struct {
-	nodeAddresses map[int]*paradigm.BHNodeAddress // 节点地址映射，节点ID -> 地址
-	connPool      map[int]*grpc.ClientConn        // 按nodeId分组的连接池
-	mu            sync.RWMutex                    // 使用读写锁保护 connPool
+	nodeAddresses    map[int]*paradigm.BHNodeAddress // 节点地址映射，节点ID -> 地址
+	connPool         map[int]*grpc.ClientConn        // 按nodeId分组的连接池
+	mu               sync.RWMutex                    // 使用读写锁保护 connPool
+	messageLimitSize int
 }
 
 func NewNodeGrpcManager(nodeAddresses map[int]*paradigm.BHNodeAddress) *NodeGrpcManager {
 	p := &NodeGrpcManager{
-		connPool:      make(map[int]*grpc.ClientConn),
-		nodeAddresses: nodeAddresses,
+		connPool:         make(map[int]*grpc.ClientConn),
+		nodeAddresses:    nodeAddresses,
+		messageLimitSize: 1024 * 1024 * 1024,
 	}
 	return p
 }
@@ -45,7 +47,10 @@ func (p *NodeGrpcManager) GetConn(nodeId int) (*grpc.ClientConn, error) {
 		p.mu.RUnlock() // 释放读锁
 		p.mu.Lock()
 		defer p.mu.Unlock()
-		newConn, err := grpc.Dial(p.nodeAddresses[nodeId].GetAddrStr(), grpc.WithInsecure())
+		newConn, err := grpc.Dial(p.nodeAddresses[nodeId].GetAddrStr(), grpc.WithInsecure(), grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(p.messageLimitSize), // 设置最大接收消息为 20MB
+			grpc.MaxCallSendMsgSize(p.messageLimitSize), // 设置最大发送消息为 20MB
+		))
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to Node{%d}: %v", nodeId, err)
 		}

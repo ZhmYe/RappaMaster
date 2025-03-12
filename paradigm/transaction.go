@@ -45,7 +45,7 @@ func (t *InitTaskTransaction) CallData() map[string]interface{} {
 	result["Size"] = t.Size
 	result["Model"] = t.Model
 	result["IsReliable"] = t.IsReliable()
-	result["Params"] = t.Params // 这里如果solidity不太好操作，就把它用hash转化成一个bytes传上去，后续是否要考虑验证啥的再说
+	result["Params"] = t.Params
 	return result
 }
 func (t *InitTaskTransaction) Blob() interface{} {
@@ -60,9 +60,10 @@ func NewInitTaskTransaction(task *Task) *InitTaskTransaction {
 // 这里上链以后要维护的是若干个task结构体，这些结构体的状态会不断更新，其中会有一个slots数组，slots根据下面提交的slot和nid更新字段，可能会比较大，后续用于展示
 // 我现在想的我们未来的前端里，溯源界面，会有一个EpochChain，也就是每个epoch完成了哪些任务的slot；会有一个Task的搜索，给出TaskSlotChain，也就是每个task的每个slot在哪些epoch里被完成了多少
 type TaskProcessTransaction struct {
-	*CommitSlotItem          // 这里有很多的字段
-	Proof           Proof    // 这个是可信证明，暂时先不用放到链上，先在链上准备一下相关的字段和函数
-	Signatures      [][]byte // 这里后面我们要加入节点的公私钥，每次投票都会附上自己的签名，我打算在这里签名上链验证的，和上面一样，先留下字段
+	*CommitSlotItem                  // 这里有很多的字段
+	Proof           Proof            // 这个是可信证明，暂时先不用放到链上，先在链上准备一下相关的字段和函数
+	Signatures      [][]byte         // 这里后面我们要加入节点的公私钥，每次投票都会附上自己的签名，我打算在这里签名上链验证的，和上面一样，先留下字段
+	Model           SupportModelType // TODO 这里的目的是暂时拿到任务类型给monitor，先这样写
 }
 
 func (t *TaskProcessTransaction) Call() string {
@@ -78,7 +79,6 @@ func (t *TaskProcessTransaction) CallData() map[string]interface{} {
 	result["Epoch"] = t.Epoch
 	result["Hash"] = t.hash
 	result["Commitment"] = t.Commitment
-	// 下面的calldata里proof和signatures可以注释掉
 	result["Proof"] = t.Proof
 	result["Signatures"] = t.Signatures
 	return result

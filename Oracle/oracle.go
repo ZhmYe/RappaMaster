@@ -36,12 +36,12 @@ type Oracle struct {
 	//slotsMap sync.Map
 	epochs       map[int32]*paradigm.DevEpoch // 所有的epoch,以epochID为ma
 	tID          int
-	txMap        map[string]paradigm.DevReference // 这里以txHash作为key,交易最终会指向一个task或者epoch
-	latestTxs    []*paradigm.PackedTransaction    // 展示最新的20笔交易
-	latestEpochs []*paradigm.DevEpoch             // 展示最新的20个epoch的信息：commit, justified, finalized,txHash, data
-	synthData    int32                            // 合成总量
-	nbFinalized  int32                            //提交总量，这里指Finalized
-	dates        []*Date.DateRecord               // 日期记录
+	txMap        map[string]paradigm.DevReference    // 这里以txHash作为key,交易最终会指向一个task或者epoch
+	latestTxs    []*paradigm.PackedTransaction       // 展示最新的20笔交易
+	latestEpochs []*paradigm.DevEpoch                // 展示最新的20个epoch的信息：commit, justified, finalized,txHash, data
+	synthData    map[paradigm.SupportModelType]int32 // 合成总量
+	nbFinalized  int32                               //提交总量，这里指Finalized
+	dates        []*Date.DateRecord                  // 日期记录
 	//latestEpoch int32                            // 最新的epoch，这里要保证Epoch一定是连续的合法 TODO
 	//slotsMaoMutex sync.RWMutex
 }
@@ -105,19 +105,55 @@ func (d *Oracle) Start() {
 						// 那么需要新建一个epoch
 						epochRecord := ptx.Tx.Blob().(*paradigm.EpochRecord)
 						//fmt.Println(222, epochRecord)
-						commits, justifieds, finalizeds := make([]*paradigm.Slot, 0), make([]*paradigm.Slot, 0), make([]*paradigm.Slot, 0)
+						commits, justifieds, finalizeds := make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0)
 						invalids := make([]*paradigm.Slot, 0)
 						initTasks := make([]*paradigm.Task, 0)
+
 						for slotHash, _ := range epochRecord.Commits {
 							//slot := d.GetSlot(slotHash)
-							commits = append(commits, d.GetSlot(slotHash))
+							slot := d.GetSlot(slotHash)
+							slotType := d.tasks[slot.TaskID].Model
+							if value, ok := commits[slotType]; ok {
+								commits[slotType] = append(value, slot)
+							} else {
+								commitOfType := make([]*paradigm.Slot, 0)
+								commitOfType = append(commitOfType, slot)
+								commits[slotType] = commitOfType
+							}
 						}
+
 						for slotHash, _ := range epochRecord.Justifieds {
-							justifieds = append(justifieds, d.GetSlot(slotHash))
+							slot := d.GetSlot(slotHash)
+							slotType := d.tasks[slot.TaskID].Model
+							if value, ok := justifieds[slotType]; ok {
+								justifieds[slotType] = append(value, slot)
+							} else {
+								justifiedOfType := make([]*paradigm.Slot, 0)
+								justifiedOfType = append(justifiedOfType, slot)
+								justifieds[slotType] = justifiedOfType
+							}
 						}
+
+						epochProcess := make(map[paradigm.SupportModelType]int32)
+
 						for slotHash, _ := range epochRecord.Finalizes {
-							finalizeds = append(finalizeds, d.GetSlot(slotHash))
+							slot := d.GetSlot(slotHash)
+							slotType := d.tasks[slot.TaskID].Model
+							if value, ok := finalizeds[slotType]; ok {
+								finalizeds[slotType] = append(value, slot)
+							} else {
+								finalizedOfType := make([]*paradigm.Slot, 0)
+								finalizedOfType = append(finalizedOfType, slot)
+								finalizeds[slotType] = finalizedOfType
+							}
+							if value, ok := epochProcess[slotType]; ok {
+								epochProcess[slotType] = value + slot.ScheduleSize
+							} else {
+								epochProcess[slotType] = slot.ScheduleSize
+							}
+
 						}
+
 						for slotHash, e := range epochRecord.Invalids {
 							d.SetSlotError(slotHash, e, int32(epochRecord.Id))
 							invalids = append(invalids, d.GetSlot(slotHash))
@@ -133,7 +169,7 @@ func (d *Oracle) Start() {
 						}
 						epoch := &paradigm.DevEpoch{
 							EpochID:    int32(epochRecord.Id),
-							Process:    epochRecord.Process,
+							Process:    epochProcess,
 							Commits:    commits,
 							Justifieds: justifieds,
 							Finalizes:  finalizeds,
@@ -214,15 +250,17 @@ func (d *Oracle) Start() {
 								panic(e.Error())
 							}
 							// 传递给monitor更新完成的任务
+							// TODO 这里暂时将任务的类型写入
+							transaction.(*paradigm.TaskProcessTransaction).Model = task.Model
 							d.channel.MonitorOracleChannel <- transaction
 							if task.IsFinish() && !task.HasbeenCollect {
 								// 更新date
 								dateRecord.UpdateFinishTasks(1)
 								task.SetEndTime()
 								//d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
-								//task.SetCollected()
+								task.SetCollected()
 								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
-								task.Print()
+								//task.Print()
 								//LogWriter.Log("DEBUG", "Test Query Generation...")
 								//query := NewEvidencePreserveTaskIDQuery(map[interface{}]interface{}{"taskID": task.Sign})
 								//d.channel.QueryChannel <- query
@@ -244,8 +282,12 @@ func (d *Oracle) Start() {
 								//fmt.Println(response)
 							}
 							// 这里更新oracle的全局信息
-							d.nbFinalized++                     // 又完成了一个finalized
-							d.synthData += commitRecord.Process // 合成数据
+							d.nbFinalized++ // 又完成了一个finalized
+							if value, ok := d.synthData[task.Model]; ok {
+								d.synthData[task.Model] = value + commitRecord.Process
+							} else {
+								d.synthData[task.Model] = commitRecord.Process
+							}
 							// 这里更新了task的slot，那么可以将这里的Slot传递给collector
 							//commitSlotItem := transaction.(*paradigm.TaskProcessTransaction).CommitSlotItem
 							//collectSlotItem := paradigm.CollectSlotItem{
@@ -270,7 +312,7 @@ func (d *Oracle) Start() {
 							}
 							d.txMap[ptx.Receipt.TransactionHash] = reference
 							dateRecord.UpdateFinalized(1)
-							dateRecord.UpdateProcess(commitRecord.Process)
+							dateRecord.UpdateProcess(commitRecord.Process, task.Model)
 							//task.Print()
 						} else {
 							e := paradigm.Error(paradigm.RuntimeError, "Task not in Oracle")
@@ -317,7 +359,7 @@ func NewOracle(channel *paradigm.RappaChannel) *Oracle {
 		txMap:        map[string]paradigm.DevReference{},
 		latestEpochs: make([]*paradigm.DevEpoch, 0),
 		latestTxs:    make([]*paradigm.PackedTransaction, 0),
-		synthData:    0,
+		synthData:    make(map[paradigm.SupportModelType]int32),
 		nbFinalized:  0,
 		dates:        make([]*Date.DateRecord, 0),
 		//tx:                     channel.OracleTransactionChannel,

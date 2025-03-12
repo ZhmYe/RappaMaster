@@ -13,7 +13,14 @@ import (
 	"fmt"
 )
 
+func catchPanic() {
+	if r := recover(); r != nil {
+		// 捕获 panic 错误并输出
+		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Recovered from panic: %v", r))
+	}
+}
 func main() {
+	defer catchPanic()
 	config := paradigm.LoadBHLayer2NodeConfig("config.json")
 
 	rappaChannel := paradigm.NewRappaChannel(config)

@@ -118,7 +118,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 		PaddingSize: slot.Padding,
 		StoreMethod: slot.Store,
 	})
-	Print("INFO", fmt.Sprintf("Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
+	//Print("INFO", fmt.Sprintf("Task %s Process %d, Total: %d, Process: %d", slot.Sign, slot.Process, t.Size, t.Process))
 	//LogWriter.Log("DEBUG", fmt.Sprintf("Epoch %s process %d by node %d", slot.Sign, slot.Process, slot.Nid))
 	//t.records[slot.Slot] = slotRecord
 	return nil

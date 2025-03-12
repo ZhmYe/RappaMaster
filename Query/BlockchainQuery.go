@@ -26,7 +26,6 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 	response["NbBlock"] = info.NbBlock             // 区块数量
 	response["NbTransaction"] = info.NbTransaction // 交易数量
 	response["NbEpoch"] = info.NbEpoch             // 纪元数量
-	response["SynthData"] = info.SynthData         // 历史合成数量
 	response["NbFinalized"] = info.NbFinalized     // 完成提交数
 	le := make([]map[string]interface{}, 0)
 	for _, epoch := range info.LatestEpoch {
@@ -62,6 +61,16 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 		})
 	}
 	response["LatestTx"] = lt
+
+	dataGroup := make(map[string]int32)
+	dataGroup["ABM"] = 0
+	dataGroup["BAED"] = 0
+	dataGroup["FINKAN"] = 0
+	for key, value := range info.SynthData {
+		dataGroup[paradigm.ModelTypeToString(key)] += value
+	}
+	response["SynthData"] = dataGroup // 历史合成数量
+
 	return paradigm.NewSuccessResponse(response)
 }
 func (q *BlockchainLatestInfoQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {

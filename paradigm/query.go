@@ -86,7 +86,7 @@ type LatestBlockchainInfo struct {
 	LatestTxs     []*PackedTransaction
 	LatestEpoch   []*DevEpoch
 	NbFinalized   int32
-	SynthData     int32
+	SynthData     map[SupportModelType]int32
 	NbEpoch       int32
 	NbBlock       int32
 	NbTransaction int32

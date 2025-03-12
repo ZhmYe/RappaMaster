@@ -4,17 +4,15 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
-        "model": "FINKAN",
+        "model": "BAED",
         "params": {
-            "condition_column": "native-country",
-            "condition_value": "United-States"
         },
-        "size": 50,
+        "size": 100,
         "isReliable": True
     }
 
     # 发送 POST 请求
-    url = "http://127.0.0.1:8080/create"  # 修改为你的实际服务器地址和端口
+    url = "http://127.0.0.1:8081/create"  # 修改为你的实际服务器地址和端口
     send_POST_request(url, request_data)
 def oracle_query_epoch():
     # 请求体数据
@@ -24,7 +22,7 @@ def oracle_query_epoch():
         }
 
         # 发送 POST 请求
-        url = "http://127.0.0.1:8080/oracle"
+        url = "http://127.0.0.1:8081/oracle"
         send_GET_request(url, request_data)
 
 def oracle_query_task():
@@ -34,13 +32,13 @@ def oracle_query_task():
     }
 
     # 发送 POST 请求
-    url = "http://127.0.0.1:8080/oracle"
+    url = "http://127.0.0.1:8081/oracle"
     send_GET_request(url, request_data)
 def oracle_query_blockchain_latest():
     request_data = {
         "query": "BlockchainLatestInfoQuery"
     }
-    url = "http://127.0.0.1:8080/blockchain"
+    url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
 # todo 这里还有blockNumber的Query，暂时手动改，上面的epoch和task也类似
 def oracle_query_block():
@@ -50,38 +48,38 @@ def oracle_query_block():
         # "query": "BlockchainBlockNumberQuery",
         # "blockNumber": 88,
     }
-    url = "http://127.0.0.1:8080/blockchain"
+    url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
 def oracle_query_tx():
     request_data = {
         "query": "BlockchainTransactionQuery",
         "txHash": "0xdb8674759ea3e56ad0b5d40e2cc1b6fb724ae657d2277dc11bc23e4c68f4ffa9"
     }
-    url = "http://127.0.0.1:8080/blockchain"
+    url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
 def oracle_query_nodes():
     request_data = {
         "query": "NodesStatusQuery"
     }
-    url = "http://127.0.0.1:8080/dataSynth"
+    url = "http://127.0.0.1:8081/dataSynth"
     send_GET_request(url, request_data)
 def oracle_query_date_synth():
     request_data = {
         "query": "DateSynthDataQuery"
     }
-    url = "http://127.0.0.1:8080/dataSynth"
+    url = "http://127.0.0.1:8081/dataSynth"
     send_GET_request(url, request_data)
 def oracle_query_date_tx():
     request_data = {
         "query": "DateTransactionQuery"
     }
-    url = "http://127.0.0.1:8080/dataSynth"
+    url = "http://127.0.0.1:8081/dataSynth"
     send_GET_request(url, request_data)
 def oracle_query_tasks():
     request_data = {
         "query": "SynthTaskQuery"
     }
-    url = "http://127.0.0.1:8080/oracle"
+    url = "http://127.0.0.1:8081/oracle"
     send_GET_request(url, request_data)
 def oracle_query_collect():
     request_data = {
@@ -89,7 +87,7 @@ def oracle_query_collect():
         "taskID": "SynthTask-0-1739783282",
         "size": 50
     }
-    url = "http://127.0.0.1:8080/collect"
+    url = "http://127.0.0.1:8081/collect"
     send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}

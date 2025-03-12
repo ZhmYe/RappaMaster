@@ -90,14 +90,18 @@ func (d *Oracle) processQuery() {
 			}
 		case *Query.BlockchainLatestInfoQuery:
 			item := query.(*Query.BlockchainLatestInfoQuery)
+			nbBlock := int32(0)
+			if len(d.latestTxs) > 0 {
+				nbBlock = int32(d.latestTxs[len(d.latestTxs)-1].Receipt.BlockNumber)
+			}
 			info := paradigm.LatestBlockchainInfo{
 				LatestTxs:     d.latestTxs,
 				LatestEpoch:   d.latestEpochs,
 				NbFinalized:   d.nbFinalized,
 				SynthData:     d.synthData,
 				NbEpoch:       int32(len(d.epochs)),
-				NbBlock:       int32(d.latestTxs[len(d.latestTxs)-1].Receipt.BlockNumber), // TODO
-				NbTransaction: int32(len(d.txMap)),                                        // TODO
+				NbBlock:       nbBlock,             // TODO
+				NbTransaction: int32(len(d.txMap)), // TODO
 			}
 			item.SendResponse(item.GenerateResponse(info))
 		case *Query.BlockchainBlockNumberQuery:
