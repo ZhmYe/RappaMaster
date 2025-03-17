@@ -3,7 +3,6 @@ package Monitor
 import (
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
-	"fmt"
 )
 
 // Monitor 监视节点状态
@@ -39,14 +38,14 @@ func (m *Monitor) processOracleInfo() {
 					continue
 				}
 				m.nodeStatus[nodeID].UpdatePendingSlot(slot.SlotID)
-				paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
+				//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
 
 			}
 		case *paradigm.TaskProcessTransaction:
 			tx := info.(*paradigm.TaskProcessTransaction)
 			nodeID := tx.Nid
-			m.nodeStatus[int(nodeID)].UpdateFinishSlot(tx.SlotHash(), tx.Process)
-			paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
+			m.nodeStatus[int(nodeID)].UpdateFinishSlot(tx.SlotHash(), tx.Process, tx.Model)
+			//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
 
 		default:
 			paradigm.Error(paradigm.RuntimeError, "Error type in oracle channel")
@@ -86,8 +85,8 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 		nodeIDs[i] = int32(i)
 		adviceSize := request.Size / int32(len(nodeIDs))
 		// 慢点来 后续考虑维护一个全局的均值
-		if adviceSize > 10 {
-			adviceSize = 10
+		if adviceSize > 3000 {
+			adviceSize = 3000
 		}
 		if adviceSize == 0 {
 			adviceSize = 1

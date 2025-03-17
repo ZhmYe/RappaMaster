@@ -26,6 +26,7 @@ func NewNodeHeartbeatReportFromHeartbeat(heartbeat *service.HeartbeatResponse) N
 		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: disk")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
+
 	if _, exist := status["total"]; !exist {
 		e := Error(ExecutorError, "Invalid Heartbeat Node Status, Error status key: total")
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
@@ -70,15 +71,15 @@ func NewErrorNodeHeartbeatReport(nodeID int32, error string) NodeHeartbeatReport
 type NodeStatus struct {
 	NodeID          int32
 	Address         BHNodeAddress
-	AverageCPUUsage int               // 平均cpu使用率,%
-	DiskUsage       int32             // 存储状况，B为单位 todo 这里要考虑是否会溢出，以及是否用小数比较好
-	FinishedSlots   []SlotHash        // 已经完成的任务， todo 这里其实要考虑节点虚报，对于真正的完整的monitor来说应该是需要根据oracle来统计的
-	PendingSlots    map[SlotHash]bool // 处理中的任务 todo 同上
-	SynthData       int32             // 合成数据总量 todo 同上
-	DiskStorage     int32             // 磁盘总量，B为单位
-	isError         bool              // 是否存在错误
-	errMessage      string            // 错误信息
-	Rate            float64           // 评分，用于Monitor Advice，暂时先不写
+	AverageCPUUsage int                        // 平均cpu使用率,%
+	DiskUsage       int32                      // 存储状况，B为单位 todo 这里要考虑是否会溢出，以及是否用小数比较好
+	FinishedSlots   []SlotHash                 // 已经完成的任务， todo 这里其实要考虑节点虚报，对于真正的完整的monitor来说应该是需要根据oracle来统计的
+	PendingSlots    map[SlotHash]bool          // 处理中的任务 todo 同上
+	SynthData       map[SupportModelType]int32 // 合成数据总量, 根据modeltype划分 todo 同上
+	DiskStorage     int32                      // 磁盘总量，GB为单位
+	isError         bool                       // 是否存在错误
+	errMessage      string                     // 错误信息
+	Rate            float64                    // 评分，用于Monitor Advice，暂时先不写
 }
 
 func (s *NodeStatus) UpdateUsage(cpu int, disk int32, total int32) {
@@ -91,14 +92,21 @@ func (s *NodeStatus) UpdateUsage(cpu int, disk int32, total int32) {
 	if total >= 0 {
 		s.DiskStorage = total
 	}
+	s.DiscardError()
 }
 func (s *NodeStatus) UpdatePendingSlot(slotHash string) {
 	s.PendingSlots[slotHash] = true
+	s.DiscardError()
 }
-func (s *NodeStatus) UpdateFinishSlot(slotHash string, process int32) {
+func (s *NodeStatus) UpdateFinishSlot(slotHash string, process int32, modelType SupportModelType) {
 	delete(s.PendingSlots, slotHash)
 	s.FinishedSlots = append(s.FinishedSlots, slotHash)
-	s.SynthData += process
+	if value, ok := s.SynthData[modelType]; ok {
+		s.SynthData[modelType] = value + process
+	} else {
+		s.SynthData[modelType] = process
+	}
+	s.DiscardError()
 }
 func (s *NodeStatus) IsError() bool {
 	return s.isError
@@ -110,6 +118,10 @@ func (s *NodeStatus) SetError(errMessage string) {
 	s.isError = true
 	s.errMessage = errMessage
 }
+func (s *NodeStatus) DiscardError() {
+	s.isError = false
+	s.errMessage = ""
+}
 func NewNodeStatus(nodeID int32, address BHNodeAddress) *NodeStatus {
 	return &NodeStatus{
 		NodeID:          nodeID,
@@ -118,7 +130,7 @@ func NewNodeStatus(nodeID int32, address BHNodeAddress) *NodeStatus {
 		DiskUsage:       0,
 		FinishedSlots:   make([]SlotHash, 0),
 		PendingSlots:    make(map[SlotHash]bool),
-		SynthData:       0,
+		SynthData:       make(map[SupportModelType]int32),
 		DiskStorage:     0,
 		Rate:            0,
 		isError:         false,

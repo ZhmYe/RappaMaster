@@ -15,17 +15,29 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 	response := make(map[string]interface{})
 	nodes := make([]map[string]interface{}, 0) // 节点信息
 	totalStorage, usedStorage := int32(0), int32(0)
+	nbError := 0
 	for _, node := range info {
 		nodeInfo := make(map[string]interface{})
 		nodeInfo["NodeID"] = node.NodeID
 		if node.IsError() {
 			nodeInfo["Status"] = "Abnormal"
+			nbError++
 		} else {
 			nodeInfo["Status"] = "Normal"
 		}
 		nodeInfo["Workload"] = "空闲" // todo
 		nodeInfo["NbFinishedTasks"] = len(node.FinishedSlots)
-		nodeInfo["SynthData"] = node.SynthData
+
+		// 写入分任务的合成数据
+		dataGroup := make(map[string]int32)
+		dataGroup["ABM"] = 0
+		dataGroup["BAED"] = 0
+		dataGroup["FINKAN"] = 0
+		for key, value := range node.SynthData {
+			dataGroup[paradigm.ModelTypeToString(key)] += value
+		}
+		nodeInfo["SynthData"] = dataGroup
+
 		nodeInfo["NbPendingTasks"] = len(node.PendingSlots) // 进度根据这个算
 		nodeInfo["storage"] = node.DiskStorage
 		nodeInfo["cpu"] = node.AverageCPUUsage
@@ -40,8 +52,8 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 	response["nodes"] = nodes
 	// todo
 	response["statusDistribution"] = map[string]interface{}{
-		"normal": len(info),
-		"down":   0,
+		"normal": len(info) - nbError,
+		"down":   nbError,
 		"close":  0,
 	}
 	response["storageDistribution"] = map[string]interface{}{
@@ -74,20 +86,43 @@ func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Respons
 	// 传入的数据是dateRecords
 	records := data.([]*Date.DateRecord)
 	response := make(map[string]interface{})
-	dates := make([]string, 0)      // 按序存储时间，便于前端排序,go的map无序
-	synthData := make([]int32, 0)   // 合成数据
-	initTasks := make([]int32, 0)   // 新建任务
-	finishTasks := make([]int32, 0) // 完成任务
+	dates := make([]string, 0)               // 按序存储时间，便于前端排序,go的map无序
+	synthData := make([]map[string]int32, 0) // 合成数据
+	initTasks := make([]int32, 0)            // 新建任务
+	finishTasks := make([]int32, 0)          // 完成任务
+	totalTasks := int32(0)
+	totalFinish := int32(0)
+	datasetDistribution := make(map[string]int32)
 	for _, record := range records {
 		dates = append(dates, paradigm.DateFormat(record.Date()))
-		synthData = append(synthData, record.SynthData)
+		dataGroup := make(map[string]int32)
+		dataGroup["ABM"] = 0
+		dataGroup["BAED"] = 0
+		dataGroup["FINKAN"] = 0
+		for key, value := range record.SynthData {
+			dataGroup[paradigm.ModelTypeToString(key)] += value
+		}
+		synthData = append(synthData, dataGroup)
 		initTasks = append(initTasks, record.NbInitTasks)
 		finishTasks = append(finishTasks, record.NbFinishTasks)
+		totalTasks += record.NbInitTasks
+		totalFinish += record.NbFinishTasks
+		for dataset, n := range record.DatasetDistribution {
+			if _, exist := datasetDistribution[dataset]; !exist {
+				datasetDistribution[dataset] = 0
+			}
+			datasetDistribution[dataset] += n
+		}
 	}
 	response["date"] = dates
 	response["init"] = initTasks
 	response["finish"] = finishTasks
 	response["synthData"] = synthData
+	response["taskDistribution"] = map[string]interface{}{
+		"processing": totalTasks - totalFinish,
+		"finish":     totalFinish,
+	}
+	response["datasetDistribution"] = datasetDistribution
 	return paradigm.NewSuccessResponse(response)
 
 }

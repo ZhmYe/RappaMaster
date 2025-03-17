@@ -138,7 +138,7 @@ func (c *ChainUpper) getTransactionInfo(receipt *types.Receipt, blockHash string
 		// Abi:       abi, // nil?
 		BlockHash:    blockHash,
 		UpchainTime:  paradigm.TimestampConvert(timestamp),
-		Invalid:      true,
+		Invalid:      false,
 		ErrorMessage: "",
 	}
 }

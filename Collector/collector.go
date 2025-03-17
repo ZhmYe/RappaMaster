@@ -61,7 +61,7 @@ func (c *Collector) ProcessSlotUpdate(slot paradigm.CollectSlotItem) {
 		panic("error in insert...")
 	}
 
-	paradigm.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Epoch %s", slot.Hash, slot.Sign))
+	//paradigm.Log("COLLECT", fmt.Sprintf("Collector Update Slot %s to Epoch %s", slot.Hash, slot.Sign))
 	//}
 }
 
@@ -114,10 +114,11 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 //	}
 //}
 
-func NewCollector(taskID paradigm.TaskHash, channel *paradigm.RappaChannel) *Collector {
+func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *paradigm.RappaChannel) *Collector {
 	return &Collector{
-		taskID:  taskID,
-		items:   make([]paradigm.CollectSlotItem, 0),
-		channel: channel,
+		taskID:     taskID,
+		items:      make([]paradigm.CollectSlotItem, 0),
+		channel:    channel,
+		outputType: outputType,
 	}
 }

@@ -34,9 +34,9 @@ func (d *Oracle) processQuery() {
 			}
 			ref := d.txMap[item.TxHash]
 			if ref.Rf == paradigm.EpochTx {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction"))
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "%s is a EpochRecord Transaction, not a Task-related Transaction"))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "%s is a EpochUpdate Transaction, not a Task-related Transaction")
+				paradigm.Error(paradigm.ValueError, "%s is a EpochRecord Transaction, not a Task-related Transaction")
 			} else {
 				// 如果是Slot或者initTask，那么都会有对应的TaskID
 				if ref.TaskID == "" {
@@ -67,7 +67,13 @@ func (d *Oracle) processQuery() {
 				continue
 			}
 			ref := d.txMap[item.TxHash]
-			// 无论如何ref.EpochID都是有的
+			// 这里不再将initTask记入Epoch，Epoch只记录slot相关内容
+			if ref.Rf == paradigm.InitTaskTx {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "%s is a InitTask Transaction, not a Epoch-related Transaction"))
+				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, "%s is a InitTask Transaction, not a Epoch-related Transaction")
+				continue
+			}
 			if ref.EpochID == -1 {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "runtime error"))
 				item.SendResponse(errorResponse)
@@ -84,14 +90,18 @@ func (d *Oracle) processQuery() {
 			}
 		case *Query.BlockchainLatestInfoQuery:
 			item := query.(*Query.BlockchainLatestInfoQuery)
+			nbBlock := int32(0)
+			if len(d.latestTxs) > 0 {
+				nbBlock = int32(d.latestTxs[len(d.latestTxs)-1].Receipt.BlockNumber)
+			}
 			info := paradigm.LatestBlockchainInfo{
 				LatestTxs:     d.latestTxs,
 				LatestEpoch:   d.latestEpochs,
 				NbFinalized:   d.nbFinalized,
 				SynthData:     d.synthData,
 				NbEpoch:       int32(len(d.epochs)),
-				NbBlock:       int32(d.latestTxs[len(d.latestTxs)-1].Receipt.BlockNumber), // TODO
-				NbTransaction: int32(len(d.txMap)),                                        // TODO
+				NbBlock:       nbBlock,             // TODO
+				NbTransaction: int32(len(d.txMap)), // TODO
 			}
 			item.SendResponse(item.GenerateResponse(info))
 		case *Query.BlockchainBlockNumberQuery:
@@ -116,7 +126,28 @@ func (d *Oracle) processQuery() {
 			// item.SendResponse(item.GenerateResponse(ref))
 			d.channel.BlockchainQueryChannel <- item
 			tx := item.ReceiveInfo()
-			item.SendResponse(item.GenerateResponse(tx))
+			txInfo := tx.(paradigm.TransactionInfo)
+			if _, exist := d.txMap[txInfo.TxHash]; !exist {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Transaction does not exist in Oracle"))
+				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, "Transaction does not exist in Oracle")
+				continue
+			}
+			ref := d.txMap[txInfo.TxHash]
+			switch ref.Rf {
+			case paradigm.InitTaskTx:
+				txInfo.Abi = "InitTask"
+			case paradigm.SlotTX:
+				txInfo.Abi = "TaskProcess"
+			case paradigm.EpochTx:
+				txInfo.Abi = "EpochRecord"
+			default:
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Runtime Error in Oracle"))
+				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.RuntimeError, "Runtime Error in Oracle")
+				continue
+			}
+			item.SendResponse(item.GenerateResponse(txInfo))
 		case *Query.NodesStatusQuery:
 			item := query.(*Query.NodesStatusQuery)
 			d.channel.MonitorQueryChannel <- item

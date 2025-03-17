@@ -108,7 +108,7 @@ func (c *ChainUpper) UpChain() {
 		paradigm.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
 
 	} else {
-		paradigm.Log("CHAINUP", "Nothing to up to Blockchain..., len(transactionPool) = 0")
+		//paradigm.Log("CHAINUP", "Nothing to up to Blockchain..., len(transactionPool) = 0")
 	}
 }
 

@@ -29,7 +29,7 @@ func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response 
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
 	}
-	fmt.Println(fileByte)
+	//fmt.Println(fileByte)
 	result := make(map[string]interface{})
 	generateFileName := func() string {
 		return fmt.Sprintf("%s_%d_%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"))
@@ -75,9 +75,11 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
 		taskInfo["txHash"] = task.TxReceipt.TransactionHash
-		taskInfo["total"] = task.Size        // 数据总量
-		taskInfo["process"] = task.Process   // 已合成
+		taskInfo["total"] = task.Size // 数据总量
+		//taskInfo["process"] = min(task.Process, task.Size) // 已合成
+		taskInfo["process"] = task.Process
 		taskInfo["status"] = task.IsFinish() // 是否完成
+		taskInfo["model"] = paradigm.ModelTypeToString(task.Model)
 		taskInfo["startTime"] = paradigm.TimeFormat(task.StartTime)
 		if task.IsFinish() {
 			taskInfo["endTime"] = paradigm.TimeFormat(task.EndTime)

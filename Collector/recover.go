@@ -123,6 +123,23 @@ func (r *SlotRecover) merge(rowChunksOutputs []interface{}) interface{} {
 			mergeDf = mergeDf.Concat(nextDf)
 		}
 		return mergeDf
+	case paradigm.NETWORK:
+		// 这里直接归并数组就ok了
+		netList, ok := rowChunksOutputs[0].([]paradigm.Graph)
+		if !ok {
+			paradigm.Error(paradigm.ChunkRecoverError, "output type error")
+			return nil
+		}
+		for i := 1; i < len(rowChunksOutputs); i++ {
+			nextNetList, ok := rowChunksOutputs[i].([]paradigm.Graph)
+			if !ok {
+				paradigm.Error(paradigm.ChunkRecoverError, "output type error")
+				continue
+			}
+			netList = append(netList, nextNetList...)
+		}
+		return netList
+
 	default:
 		e := paradigm.Error(paradigm.RuntimeError, "Unknown Output Type")
 		panic(e.Error())

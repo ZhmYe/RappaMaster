@@ -33,7 +33,7 @@ func (t *Tracker) InitTask(initTask *paradigm.SynthTaskTrackItem) {
 // UpdateTask 更新一个任务，已有的任务会根据OutOfDate()不断更新
 func (t *Tracker) UpdateTask(sign string) {
 	// 每个任务设置10s的时间
-	expireTime := time.Now().Add(10 * time.Second) // todo @SD 这里的时间写成config
+	expireTime := time.Now().Add(40 * time.Second) // todo @SD 这里的时间写成config
 	expireTask := &paradigm.ExpireTask{
 		BasicTimeExpire: paradigm.NewBasicTimeExpire(expireTime),
 		TaskID:          sign,

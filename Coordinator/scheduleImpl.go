@@ -34,6 +34,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 		// TODO @YZM 这里暂时先这样写了，就是给每个slot一个标识
 		//computeScheduleHash := func(nodeID int) paradigm.SlotHash {
 		//	return fmt.Sprintf("%s_%d_%d", sign, slot, nodeID)
+
 		address := nodeAddresses[nID]
 		slot := schedule.Slots[index]
 		request := pb.ScheduleRequest{

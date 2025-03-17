@@ -65,7 +65,7 @@ func (c *Coordinator) Start() {
 		if err != nil {
 			paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to listen: %v", err))
 		}
-		server := grpc.NewServer()
+		server := grpc.NewServer(grpc.MaxSendMsgSize(1024*1024*1024), grpc.MaxRecvMsgSize(1024*1024*1024))
 		pb.RegisterRappaMasterServer(server, c)
 		paradigm.Print("INFO", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
 		if err := server.Serve(lis); err != nil {

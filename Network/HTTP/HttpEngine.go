@@ -3,8 +3,10 @@ package HTTP
 import (
 	"BHLayer2Node/paradigm"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 // HttpEngine 定义模拟的 HTTP 引擎,这里引入gin框架提高编码效率
@@ -89,6 +91,7 @@ func (e *HttpEngine) Setup(config paradigm.BHLayer2NodeConfig) {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	e.r = gin.Default()
+	e.r.Use(cors.Default())
 
 	// 注册url
 	//e.r.POST("/task", e.HandleRequest)

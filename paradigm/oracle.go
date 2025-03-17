@@ -66,11 +66,12 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 // =================== 以下是epoch部分=========================
 
 type DevEpoch struct {
-	EpochID     int32
-	Process     int32
-	Commits     []*Slot
-	Justifieds  []*Slot
-	Finalizes   []*Slot
+	EpochID int32
+	// TODO 这里需要根据根据任务类型去分类，要不然前端这边就没办法判断出来了
+	Process     map[SupportModelType]int32
+	Commits     map[SupportModelType][]*Slot
+	Justifieds  map[SupportModelType][]*Slot
+	Finalizes   map[SupportModelType][]*Slot
 	Invalids    []*Slot
 	InitTasks   []*Task
 	TxReceipt   *types.Receipt // 交易上链后会有一个对应的receipt
