@@ -28,12 +28,26 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 	response["NbEpoch"] = info.NbEpoch             // 纪元数量
 	response["NbFinalized"] = info.NbFinalized     // 完成提交数
 	le := make([]map[string]interface{}, 0)
+
 	for _, epoch := range info.LatestEpoch {
+		//计算单元数
+		nbCommits := 0
+		nbJustified := 0
+		NbFinalized := 0
+		for _, slots := range epoch.Commits {
+			nbCommits += len(slots)
+		}
+		for _, slots := range epoch.Justifieds {
+			nbJustified += len(slots)
+		}
+		for _, slots := range epoch.Finalizes {
+			NbFinalized += len(slots)
+		}
 		le = append(le, map[string]interface{}{
 			"EpochID":     epoch.EpochID,
-			"NbCommit":    len(epoch.Commits),
-			"NbJustified": len(epoch.Justifieds),
-			"NbFinalized": len(epoch.Finalizes),
+			"NbCommit":    nbCommits,
+			"NbJustified": nbJustified,
+			"NbFinalized": NbFinalized,
 			"NbInvalid":   len(epoch.Invalids),
 			"TxHash":      epoch.TxReceipt.TransactionHash,
 		})

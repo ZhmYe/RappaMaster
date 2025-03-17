@@ -25,7 +25,6 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 		} else {
 			nodeInfo["Status"] = "Normal"
 		}
-		nodeInfo["Workload"] = "空闲" // todo
 		nodeInfo["NbFinishedTasks"] = len(node.FinishedSlots)
 
 		// 写入分任务的合成数据
@@ -48,6 +47,18 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 		nodes = append(nodes, nodeInfo)
 		totalStorage += node.DiskStorage
 		usedStorage += node.DiskUsage
+
+		//这里简单判断下
+		taskRate := float32(0)
+		if len(node.PendingSlots)+len(node.FinishedSlots) == 0 {
+			taskRate = float32(len(node.PendingSlots)) / float32(len(node.FinishedSlots)+len(node.PendingSlots))
+		}
+		if taskRate > 0.5 {
+			nodeInfo["Workload"] = "忙碌"
+		} else {
+			nodeInfo["Workload"] = "空闲"
+		}
+
 	}
 	response["nodes"] = nodes
 	// todo

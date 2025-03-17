@@ -188,12 +188,25 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	// 1. Epoch的基本信息
 	info := make(map[string]interface{})
 	info["epochID"] = epoch.EpochID // epochID
-	info["nbCommit"] = len(epoch.Commits)
-	info["nbJustified"] = len(epoch.Justifieds)
-	info["nbFinalized"] = len(epoch.Finalizes)
 	info["nbInvalid"] = len(epoch.Invalids)
 	info["nbTasks"] = len(epoch.InitTasks)
 
+	//计算单元数
+	nbCommits := 0
+	nbJustified := 0
+	NbFinalized := 0
+	for _, slots := range epoch.Commits {
+		nbCommits += len(slots)
+	}
+	for _, slots := range epoch.Justifieds {
+		nbJustified += len(slots)
+	}
+	for _, slots := range epoch.Finalizes {
+		NbFinalized += len(slots)
+	}
+	info["nbCommit"] = nbCommits
+	info["nbJustified"] = nbJustified
+	info["nbFinalized"] = NbFinalized
 	epochProcess := make(map[string]int32)
 	epochProcess["ABM"] = 0
 	epochProcess["BAED"] = 0
@@ -245,11 +258,11 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 			if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
 				taskProcess := make(map[string]interface{})
 				taskProcess["model"] = paradigm.ModelTypeToString(modelType)
-				taskProcess["schedule"] = 0
+				taskProcess["schedule"] = int32(0)
 				taskProcessDistribution[slot.TaskID] = taskProcess
 			}
 			// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
-			taskProcessDistribution[slot.TaskID]["schedule"] = int32(taskProcessDistribution[slot.TaskID]["schedule"].(int)) + slot.ScheduleSize
+			taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
 		}
 	}
 

@@ -54,6 +54,38 @@
     "7": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1248
+    },
+    "8": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31234
+    },
+    "9": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31235
+    },
+    "10": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31236
+    },
+    "11": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31237
+    },
+    "12": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31238
+    },
+    "13": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31239
+    },
+    "14": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31240
+    },
+    "15": {
+      "NodeIPAddress": "172.23.166.113",
+      "NodeGrpcPort": 31241
     }
   }
 }
