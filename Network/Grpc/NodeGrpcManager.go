@@ -48,8 +48,8 @@ func (p *NodeGrpcManager) GetConn(nodeId int) (*grpc.ClientConn, error) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		newConn, err := grpc.Dial(p.nodeAddresses[nodeId].GetAddrStr(), grpc.WithInsecure(), grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(p.messageLimitSize), // 设置最大接收消息为 20MB
-			grpc.MaxCallSendMsgSize(p.messageLimitSize), // 设置最大发送消息为 20MB
+			grpc.MaxCallRecvMsgSize(p.messageLimitSize), // 设置最大接收消息为 1gb
+			grpc.MaxCallSendMsgSize(p.messageLimitSize), // 设置最大发送消息为 1gb
 		))
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to Node{%d}: %v", nodeId, err)
