@@ -49,14 +49,13 @@ func TestHttpClient(t *testing.T) {
 // createTask 发送 POST 请求到 /create
 func createTask() {
 	// 请求体数据
-	requestData := paradigm.HttpInitTaskRequest{
-		Model: "exampleModel",
+	requestData := paradigm.Task{
+		Model: paradigm.ABM,
 		Params: map[string]interface{}{
 			"param1": "value1",
 			"param2": "value2",
 		},
-		Size:       10,
-		IsReliable: true,
+		Size: 10,
 	}
 
 	// 将请求数据编码为 JSON

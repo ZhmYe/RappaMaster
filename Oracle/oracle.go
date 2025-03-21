@@ -66,8 +66,8 @@ func (d *Oracle) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *parad
 	slot := d.GetSlot(slotHash)
 	// 更新slot状态，这里应该是指针
 	slot.Commit(commitSlotItem) // 将slot提交
-
 }
+
 func (d *Oracle) GetSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
 	if _, exist := d.slotsMap[slotHash]; !exist {
 		d.slotsMap[slotHash] = paradigm.NewSlotWithSlotID(slotHash)

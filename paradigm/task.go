@@ -49,7 +49,7 @@ func (t *Task) Print() {
 	for _, schedule := range t.Schedules {
 		sb.WriteString(fmt.Sprintf("  - Schedule %d: [Size: %d]\n", schedule.ScheduleID, schedule.Size))
 		for nodeID, slot := range schedule.Slots {
-			sb.WriteString(fmt.Sprintf("    - Slots %s [NodeID: %d], ScheduleSize: %d, Status: %d, err: %s\n", slot.SlotID, nodeID, slot.ScheduleSize, slot.Status, slot.err))
+			sb.WriteString(fmt.Sprintf("    - Slots %s [NodeID: %d], ScheduleSize: %d, Status: %d, Err: %s\n", slot.SlotID, nodeID, slot.ScheduleSize, slot.Status, slot.Err))
 		}
 
 		//sb.WriteString(fmt.Sprintf("  - %v\n", schedule))

@@ -43,7 +43,7 @@ func (s *SynthTaskSchedule) Print() {
 		case Failed:
 			status = "Failed"
 		}
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", slot.SlotID, slot.ScheduleSize, status, slot.err)
+		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", slot.SlotID, slot.ScheduleSize, status, slot.Err)
 	}
 	w.Flush() // 刷新输出
 }
