@@ -18,26 +18,37 @@ const (
 )
 
 // DevReference 指代一个txMap得到的结果
+//type DevReference struct {
+//	TxHash      string
+//	TxReceipt   types.Receipt // 以上是交易信息
+//	TxBlockHash string
+//	Rf          RFType // 类型
+//	// 如果是InitTask，那么就是一个交易->TaskID，没有额外信息
+//	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
+//	// 如是果SlotTx, 那么需要包含两类信息
+//	// 1. Slot所在epoch; 2. Slot所在Task
+//	TaskID      TaskHash
+//	EpochID     int32
+//	UpchainTime time.Time
+//	//ScheduleID ScheduleHash
+//}
+
 type DevReference struct {
-	TxHash      string
-	TxReceipt   types.Receipt // 以上是交易信息
-	TxBlockHash string
-	Rf          RFType // 类型
-	// 如果是InitTask，那么就是一个交易->TaskID，没有额外信息
-	// 如果是EpochTx，那么就是一个交易->EpochID，没有额外信息
-	// 如是果SlotTx, 那么需要包含两类信息
-	// 1. Slot所在epoch; 2. Slot所在Task
-	TaskID      TaskHash
-	EpochID     int32
-	UpchainTime time.Time
-	//ScheduleID ScheduleHash
+	TID         int64         `gorm:"primaryKey;autoIncrement"`
+	TxHash      string        `gorm:"type:char(66)"`
+	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"` // JSON 类型需要数据库支持
+	TxBlockHash string        `gorm:"not null;type:char(66)"`
+	Rf          RFType        `gorm:"not null;type:tinyint"` // 枚举存储为整数类型
+	TaskID      TaskHash      `gorm:"type:varchar(255)"`     // 假设 TaskHash 是字符串类型
+	EpochID     int32         `gorm:"type:int"`
+	UpchainTime time.Time     `gorm:"not null;type:datetime"`
 }
 
 // CommitRecord 每个commitRecord对应一个完成finalize的commitSlotItem，对应一笔TaskProcessTransaction
 type CommitRecord struct {
 	*CommitSlotItem
 	TxReceipt *types.Receipt // 交易回执
-	TxID      int            // 这个交易的id
+	TxID      int64          // 这个交易的id
 }
 
 func (r *CommitRecord) Print() {
@@ -55,7 +66,6 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 		return &CommitRecord{
 			CommitSlotItem: ptx.Tx.Blob().(*CommitSlotItem),
 			TxReceipt:      ptx.Receipt,
-			TxID:           ptx.Id,
 		}
 	default:
 		e := Error(RuntimeError, "A CommitRecord should be init from an TaskProcessTransaction!!!")
@@ -68,15 +78,16 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 type DevEpoch struct {
 	EpochID int32
 	// TODO 这里需要根据根据任务类型去分类，要不然前端这边就没办法判断出来了
-	Process     map[SupportModelType]int32
-	Commits     map[SupportModelType][]*Slot
-	Justifieds  map[SupportModelType][]*Slot
-	Finalizes   map[SupportModelType][]*Slot
-	Invalids    []*Slot
-	InitTasks   []*Task
-	TxReceipt   *types.Receipt // 交易上链后会有一个对应的receipt
-	TxID        int            // 交易ID，用于在Dev中定位交易
-	TxBlockHash string
+	Process     map[SupportModelType]int32   `gorm:"type:json;serializer:json"`
+	Commits     map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
+	Justifieds  map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
+	Finalizes   map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
+	Invalids    []*Slot                      `gorm:"type:json;serializer:json"`
+	InitTasks   []*Task                      `gorm:"type:json;serializer:json"`
+	TxReceipt   *types.Receipt               `gorm:"-"` // 交易上链后会有一个对应的receipt
+	TID         int64                        `gorm:"not null"`
+	TxHash      string                       `gorm:"-"` // 交易Hash，用于在Dev中定位交易
+	TxBlockHash string                       `gorm:"-"`
 }
 
 //func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {

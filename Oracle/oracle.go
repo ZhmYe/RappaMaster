@@ -110,7 +110,7 @@ func (d *Oracle) Start() {
 						initTasks := make([]*paradigm.Task, 0)
 
 						for slotHash, _ := range epochRecord.Commits {
-							//slot := d.GetSlot(slotHash)
+							//slot := d.getSlot(slotHash)
 							slot := d.GetSlot(slotHash)
 							slotType := d.tasks[slot.TaskID].Model
 							if value, ok := commits[slotType]; ok {
@@ -176,7 +176,7 @@ func (d *Oracle) Start() {
 							Invalids:   invalids,
 							InitTasks:  initTasks,
 							TxReceipt:  ptx.Receipt,
-							TxID:       ptx.Id,
+							//TxID:       ptx.Id,
 							// TxBlock:    ptx.Block,
 							TxBlockHash: ptx.BlockHash,
 						}
@@ -194,7 +194,7 @@ func (d *Oracle) Start() {
 
 						//遍历epoch中的invalid，用于更新状态
 						//for slotHash, e := range epoch.Invalids {
-						//	d.SetSlotError(slotHash, e, int32(epoch.EpochRecord.Id))
+						//	d.setSlotError(slotHash, e, int32(epoch.EpochRecord.Id))
 						//slot, _ := d.slotsMap[slotHash]
 						//slot.CommitSlot.SetEpoch(int32(epoch.EpochRecord.Id))
 						//slot.SetError(paradigm.InvalidCommitTypeToString(e))

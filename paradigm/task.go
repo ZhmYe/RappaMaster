@@ -8,27 +8,48 @@ import (
 )
 
 // Task 描述一个合成任务
+//type Task struct {
+//	Sign        string
+//	Slot        int32
+//	Model       SupportModelType
+//	Params      map[string]interface{}
+//	Size        int32                // 总的数据量
+//	Process     int32                // 已经完成的数据量
+//	isReliable  bool                 // 是否可信 TODO: @YZM 这里需要加入任务是否可信的部分，这个需要在http前端得到
+//	OutputType  ModelOutputType      // 模型类型，这里假定一个任务一个模型
+//	Schedules   []*SynthTaskSchedule // 该任务的所有的调度
+//	ScheduleMap map[ScheduleHash]int // 为了防止乱序
+//	TxID        int
+//	TxReceipt   *types.Receipt
+//	// TxBlock     *types.Block
+//	TxBlockHash string
+//	// 以下是测试字段
+//	HasbeenCollect bool
+//	StartTime      time.Time
+//	EndTime        time.Time
+//	Collector      RappaCollector
+//	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
+//}
+
 type Task struct {
-	Sign        string
-	Slot        int32
-	Model       SupportModelType
-	Params      map[string]interface{}
-	Size        int32                // 总的数据量
-	Process     int32                // 已经完成的数据量
-	isReliable  bool                 // 是否可信 TODO: @YZM 这里需要加入任务是否可信的部分，这个需要在http前端得到
-	OutputType  ModelOutputType      // 模型类型，这里假定一个任务一个模型
-	Schedules   []*SynthTaskSchedule // 该任务的所有的调度
-	scheduleMap map[ScheduleHash]int // 为了防止乱序
-	TxID        int
-	TxReceipt   *types.Receipt
-	// TxBlock     *types.Block
-	TxBlockHash string
-	// 以下是测试字段
-	HasbeenCollect bool
-	StartTime      time.Time
-	EndTime        time.Time
-	collector      RappaCollector
-	//records    []paradigm.SlotRecord // 记录每个slot的调度和完成情况
+	Sign           string                 `gorm:"primaryKey;type:varchar(256);not null;comment:唯一任务标识符（必填）"`
+	Slot           int32                  `gorm:"type:int;not null"`
+	Model          SupportModelType       `gorm:"type:tinyint;not null;comment:支持的模型类型（必填，0=CTGAN, 1=BAED, 2=FINKAN, 3=ABM）"`
+	Params         map[string]interface{} `gorm:"type:json;serializer:json"`
+	Size           int32                  `gorm:"type:int;not null;default:0;comment:总数据处理量（必填，默认0）"`
+	Process        int32                  `gorm:"type:int;not null;default:0;comment:已完成数据量（必填，默认0）"`
+	isReliable     bool                   `gorm:"type:tinyint;not null;default:false;comment:任务可信标记（必填，默认false）"`
+	OutputType     ModelOutputType        `gorm:"type:tinyint;not null;comment:模型输出类型（必填，0=DATAFRAME, 1=NETWORK）"`
+	Schedules      []*SynthTaskSchedule   `gorm:"type:json;serializer:json"`
+	ScheduleMap    map[ScheduleHash]int   `gorm:"type:json;serializer:json"`
+	TID            int64                  `gorm:"not null"`
+	TxHash         string                 `gorm:"-"`
+	TxReceipt      *types.Receipt         `gorm:"-"`
+	TxBlockHash    string                 `gorm:"-"`
+	HasbeenCollect bool                   `gorm:"-"`
+	StartTime      time.Time              `gorm:"type:datetime;not null;comment:任务启动时间戳"`
+	EndTime        time.Time              `gorm:"type:datetime;comment:任务结束时间戳"`
+	Collector      RappaCollector         `gorm:"-"`
 }
 
 func (t *Task) Print() {
@@ -54,7 +75,7 @@ func (t *Task) Print() {
 
 		//sb.WriteString(fmt.Sprintf("  - %v\n", schedule))
 	}
-	sb.WriteString(fmt.Sprintf("TxID: %d\n", t.TxID))
+	sb.WriteString(fmt.Sprintf("TxHash: %s\n", t.TxHash))
 	sb.WriteString(fmt.Sprintf("TxReceipt: %v\n", t.TxReceipt))
 	sb.WriteString(fmt.Sprintf("TxBlockHash: %v\n", t.TxBlockHash))
 	//sb.WriteString(fmt.Sprintf("Has Been Collected: %t\n", t.HasbeenCollect))
@@ -65,7 +86,7 @@ func (t *Task) UpdateTxInfo(ptx *PackedTransaction) {
 	switch ptx.Tx.(type) {
 	case *InitTaskTransaction:
 		t.TxReceipt = ptx.Receipt
-		t.TxID = ptx.Id
+		//t.TxID = ptx.Id
 		t.TxBlockHash = ptx.BlockHash
 		//return &DevTask{
 		//	Task:      ptx.Tx.Blob().(*Task),
@@ -95,7 +116,7 @@ func (t *Task) InitTrack() *SynthTaskTrackItem {
 // UpdateSchedule 更新调度情况
 func (t *Task) UpdateSchedule(schedule *SynthTaskSchedule) {
 	// todo 这里有代码内部问题是没有调试的
-	t.scheduleMap[schedule.ScheduleID] = len(t.Schedules)
+	t.ScheduleMap[schedule.ScheduleID] = len(t.Schedules)
 	t.Schedules = append(t.Schedules, schedule) // 这里假设的是依次不错不重复
 	//return nil
 }
@@ -110,7 +131,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	//slotRecord := t.records[slot.Slot]
 	//slotRecord.Process = append(slotRecord.Process, slot.Record())
 	t.Process += slot.Process
-	t.collector.ProcessSlotUpdate(CollectSlotItem{
+	t.Collector.ProcessSlotUpdate(CollectSlotItem{
 		Sign: slot.Sign,
 		Hash: slot.SlotHash(),
 		Size: slot.Process,
@@ -124,7 +145,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	return nil
 }
 func (t *Task) GetCollector() RappaCollector {
-	return t.collector
+	return t.Collector
 }
 func (t *Task) IsReliable() bool {
 	return t.isReliable
@@ -161,7 +182,7 @@ func (t *Task) SetEndTime() {
 	t.EndTime = time.Now()
 }
 func (t *Task) SetCollector(c RappaCollector) {
-	t.collector = c
+	t.Collector = c
 }
 func (t *Task) GetDataset() string {
 	if dataset, exist := t.Params["dataset"]; exist {
@@ -191,7 +212,7 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 		Slot:        -1,
 		Model:       model,
 		OutputType:  outputType,
-		scheduleMap: make(map[ScheduleHash]int),
+		ScheduleMap: make(map[ScheduleHash]int),
 		Schedules:   make([]*SynthTaskSchedule, 0),
 		Params:      params,
 		Size:        total,

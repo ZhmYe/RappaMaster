@@ -208,7 +208,7 @@ func (q *DateTransactionQuery) GenerateResponse(data interface{}) paradigm.Respo
 	dates := make([]string, 0) // 按序存储时间，便于前端排序,go的map无序
 	txs := make([]int32, 0)    // 交易数据
 	for _, record := range records {
-		dates = append(dates, paradigm.DateFormat(record.Date()))
+		dates = append(dates, paradigm.DateFormat(record.Date))
 		txs = append(txs, record.NbTransactions)
 	}
 	response["date"] = dates

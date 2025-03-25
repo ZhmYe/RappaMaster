@@ -22,16 +22,16 @@ func (o *PersistedOracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	}
 }
 
-func (o *PersistedOracle) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
-	slotQuery := o.GetSlot(slotHash)
+func (o *PersistedOracle) setSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
+	slotQuery := o.getSlot(slotHash)
 	slotQuery.Epoch = epoch
 	slotQuery.Err = paradigm.InvalidCommitTypeToString(e)
 	//slot.CommitSlot.SetEpoch(epoch)
 	o.db.Model(slotQuery).Select("epoch", "err", "status").Updates(slotQuery)
 }
 
-func (o *PersistedOracle) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
-	slotQuery := o.GetSlot(slotHash)
+func (o *PersistedOracle) setSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
+	slotQuery := o.getSlot(slotHash)
 	// 更新slot状态，这里应该是指针
 	slotQuery.CommitSlot = commitSlotItem
 	slotQuery.Status = paradigm.Finished
@@ -39,7 +39,7 @@ func (o *PersistedOracle) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotIt
 	o.db.Model(slotQuery).Select("status", "epoch", "commit_slot").Updates(slotQuery)
 }
 
-func (o *PersistedOracle) GetSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
+func (o *PersistedOracle) getSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
 	slotQuery := paradigm.Slot{}
 	o.db.Where(paradigm.Slot{SlotID: slotHash}).Attrs(paradigm.NewSlotWithSlotID(slotHash)).FirstOrCreate(&slotQuery)
 	return &slotQuery

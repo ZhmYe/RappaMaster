@@ -4,7 +4,7 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
-        "model": "BAED",
+        "model": "FINKAN",
         "params": {
         },
         "size": 100,

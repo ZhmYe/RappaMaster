@@ -105,7 +105,7 @@ func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Respons
 	totalFinish := int32(0)
 	datasetDistribution := make(map[string]int32)
 	for _, record := range records {
-		dates = append(dates, paradigm.DateFormat(record.Date()))
+		dates = append(dates, paradigm.DateFormat(record.Date))
 		dataGroup := make(map[string]int32)
 		dataGroup["ABM"] = 0
 		dataGroup["BAED"] = 0
