@@ -53,6 +53,20 @@ type BHLayer2NodeConfig struct {
 	QueueBufferSize int // 上链队列缓冲区大小
 	WorkerCount     int // Worker 的数量
 	BatchSize       int
+
+	// 数据库配置
+	Database struct {
+		Username      string `json:"username"`
+		Password      string `json:"password"`
+		Host          string `json:"host"`
+		Port          int    `json:"port"`
+		Dbname        string `json:"dbname"`
+		Timeout       string `json:"timeout"`
+		IsAutoMigrate bool   `json:"isAutoMigrate"`
+		MaxIdleConns  int    `json:"maxIdleConns"`
+		MaxOpenConns  int    `json:"maxOpenConns"`
+		MaxLifetime   string `json:"maxLifetime"`
+	} `json:"database"`
 }
 
 // DefaultBHLayer2NodeConfig 定义默认的配置值
@@ -85,6 +99,30 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	QueueBufferSize: 100000,
 	WorkerCount:     3, // 256
 	BatchSize:       1,
+
+	Database: struct {
+		Username      string `json:"username"`
+		Password      string `json:"password"`
+		Host          string `json:"host"`
+		Port          int    `json:"port"`
+		Dbname        string `json:"dbname"`
+		Timeout       string `json:"timeout"`
+		IsAutoMigrate bool   `json:"isAutoMigrate"`
+		MaxIdleConns  int    `json:"maxIdleConns"`
+		MaxOpenConns  int    `json:"maxOpenConns"`
+		MaxLifetime   string `json:"maxLifetime"`
+	}{
+		Username:      "root",
+		Password:      "bassword",
+		Host:          "127.0.0.1",
+		Port:          3306,
+		Dbname:        "db_rappa",
+		Timeout:       "5s",
+		IsAutoMigrate: true,
+		MaxIdleConns:  10,
+		MaxOpenConns:  100,
+		MaxLifetime:   "1h",
+	},
 }
 
 //var (

@@ -9,6 +9,7 @@ import (
 	"BHLayer2Node/Network/HTTP"
 	"BHLayer2Node/Oracle"
 	"BHLayer2Node/Schedule"
+	"BHLayer2Node/database"
 	"BHLayer2Node/paradigm"
 	"fmt"
 )
@@ -31,6 +32,10 @@ func main() {
 	//httpEngine.Setup(*config)
 	httpEngine := HTTP.NewHttpEngine(rappaChannel)
 	event := Event.NewEvent(rappaChannel)
+	_, err := database.NewDatabaseService(rappaChannel, config)
+	if err != nil {
+		paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("Failed to init database: %v", err))
+	}
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker

@@ -30,6 +30,7 @@ const (
 	NotImplError
 	ExecutorError
 	SlotLifeError
+	DatabaseError
 )
 
 func ErrorToString(error ErrorEnum) string {
