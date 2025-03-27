@@ -172,7 +172,7 @@ func (t *EpochManager) UpdateEpoch() {
 	currentEpoch := t.currentEpoch
 	t.mu.Unlock()
 
-	paradigm.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
+	// paradigm.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
 	//finalizedSlots, abortSlots := t.tracker.OutOfDate()
 	//validTaskMap := make(map[string]int32)
 	//for _, commitSlotItem := range finalizedSlots {

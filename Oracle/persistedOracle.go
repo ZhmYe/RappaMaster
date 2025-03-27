@@ -140,9 +140,9 @@ func (o *PersistedOracle) Start() {
 							Invalids:   invalids,
 							InitTasks:  initTasks,
 							TID:        reference.TID,
-							//TxReceipt:  ptx.Receipt,
-							//// TxBlock:    ptx.Block,
-							//TxBlockHash: ptx.BlockHash,
+							TxReceipt:  ptx.Receipt,
+							// TxBlock:    ptx.Block,
+							TxBlockHash: ptx.BlockHash,
 						}
 						// 记录epoch
 						o.setEpoch(epoch)
@@ -250,7 +250,7 @@ func (o *PersistedOracle) Start() {
 	}
 	// 处理Query
 
-	//go o.processQuery()
+	go o.processDBQuery()
 	updateOracle()
 }
 

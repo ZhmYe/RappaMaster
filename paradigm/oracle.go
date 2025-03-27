@@ -34,15 +34,25 @@ const (
 //	//ScheduleID ScheduleHash
 //}
 
+//	type DevReference struct {
+//		TID         int64         `gorm:"primaryKey;autoIncrement"`
+//		TxHash      string        `gorm:"type:char(66)"`
+//		TxReceipt   types.Receipt `gorm:"type:json;serializer:json"` // JSON 类型需要数据库支持
+//		TxBlockHash string        `gorm:"not null;type:char(66)"`
+//		Rf          RFType        `gorm:"not null;type:tinyint"` // 枚举存储为整数类型
+//		TaskID      TaskHash      `gorm:"type:varchar(255)"`     // 假设 TaskHash 是字符串类型
+//		EpochID     int32         `gorm:"type:int"`
+//		UpchainTime time.Time     `gorm:"not null;type:datetime"`
+//	}
 type DevReference struct {
 	TID         int64         `gorm:"primaryKey;autoIncrement"`
-	TxHash      string        `gorm:"type:char(66)"`
-	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"` // JSON 类型需要数据库支持
-	TxBlockHash string        `gorm:"not null;type:char(66)"`
-	Rf          RFType        `gorm:"not null;type:tinyint"` // 枚举存储为整数类型
-	TaskID      TaskHash      `gorm:"type:varchar(255)"`     // 假设 TaskHash 是字符串类型
-	EpochID     int32         `gorm:"type:int"`
-	UpchainTime time.Time     `gorm:"not null;type:datetime"`
+	TxHash      string        `gorm:"type:char(66);uniqueIndex:idx_tx_hash"` // 添加唯一索引
+	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"`
+	TxBlockHash string        `gorm:"not null;type:char(66);index:idx_block_hash"`   // 添加普通索引
+	Rf          RFType        `gorm:"not null;type:tinyint;index:idx_rf"`            // 添加普通索引
+	TaskID      TaskHash      `gorm:"type:varchar(255);index:idx_task_id"`           // 添加普通索引
+	EpochID     int32         `gorm:"type:int;index:idx_epoch_id"`                   // 添加普通索引
+	UpchainTime time.Time     `gorm:"not null;type:datetime;index:idx_upchain_time"` // 添加普通索引
 }
 
 // CommitRecord 每个commitRecord对应一个完成finalize的commitSlotItem，对应一笔TaskProcessTransaction
@@ -92,10 +102,10 @@ type DevEpoch struct {
 	Finalizes   map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Invalids    []*Slot                      `gorm:"type:json;serializer:json"`
 	InitTasks   []*Task                      `gorm:"type:json;serializer:json"`
-	TxReceipt   *types.Receipt               `gorm:"-"` // 交易上链后会有一个对应的receipt
+	TxReceipt   *types.Receipt               `gorm:"type:json;serializer:json"` // 交易上链后会有一个对应的receipt
 	TID         int64                        `gorm:"not null"`
-	TxHash      string                       `gorm:"-"` // 交易Hash，用于在Dev中定位交易
-	TxBlockHash string                       `gorm:"-"`
+	TxHash      string                       `gorm:"type:char(66)"` // 交易Hash，用于在Dev中定位交易
+	TxBlockHash string                       `gorm:"type:char(66)"`
 	CreatedAt   time.Time                    `gorm:"type:timestamp"` // 创建时间
 }
 
