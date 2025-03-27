@@ -2,6 +2,7 @@ package Epoch
 
 import (
 	"BHLayer2Node/Tracker"
+	"BHLayer2Node/database"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
@@ -166,7 +167,11 @@ func (t *EpochManager) Start() {
 //}
 
 func (t *EpochManager) UpdateEpoch() {
+	t.mu.Lock()
 	t.currentEpoch++
+	currentEpoch := t.currentEpoch
+	t.mu.Unlock()
+
 	paradigm.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
 	//finalizedSlots, abortSlots := t.tracker.OutOfDate()
 	//validTaskMap := make(map[string]int32)
@@ -215,7 +220,7 @@ func (t *EpochManager) UpdateEpoch() {
 		// TODO @YZM
 		t.channel.PendingTransactions <- &paradigm.EpochRecordTransaction{
 			EpochRecord:   &epochRecord,
-			Id:            int32(t.currentEpoch),
+			Id:            int32(currentEpoch),
 			CommitsHash:   commits,
 			JustifiedHash: finalized,
 			Invalids:      epochRecord.Invalids,
@@ -251,13 +256,21 @@ func (t *EpochManager) buildHeartbeat() *pb.HeartbeatRequest {
 }
 func NewEpochManager(channel *paradigm.RappaChannel) *EpochManager {
 	//config := channel.Config
+	maxEpochID, err := database.GetMaxEpochID()
+	if err != nil {
+		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to get max epoch ID: %v", err))
+		return nil
+	}
+	paradigm.Log("INFO", fmt.Sprintf("System initialized with epoch ID: %d from database", maxEpochID))
+
 	return &EpochManager{
 		channel: channel,
 		//tasks:             make(map[string]*Task),
 		mu:          sync.Mutex{},
 		tracker:     Tracker.NewTracker(channel),
-		epochRecord: paradigm.NewEpochRecord(),
+		epochRecord: paradigm.NewEpochRecord(int(maxEpochID) + 1),
 		//pendingCommitSlot: make(map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack),
-		currentEpoch: -1,
+		// currentEpoch: -1,
+		currentEpoch: int(maxEpochID),
 	}
 }

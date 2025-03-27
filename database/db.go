@@ -118,3 +118,13 @@ func GetSQLDB() *sql.DB {
 	}
 	return sqlDB
 }
+
+// 从数据库里获取最大的EpochID
+func GetMaxEpochID() (int32, error) {
+	var maxEpochID int32
+	result := GetDB().Model(&paradigm.DevEpoch{}).Select("COALESCE(MAX(epoch_id), -1)").Scan(&maxEpochID)
+	if result.Error != nil {
+		return -1, result.Error
+	}
+	return maxEpochID, nil
+}

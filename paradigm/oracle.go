@@ -3,8 +3,9 @@ package paradigm
 import (
 	"fmt"
 
-	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"time"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 // =============== 以下是Reference部分==============
@@ -75,9 +76,16 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 
 // =================== 以下是epoch部分=========================
 
+/*
+TODO: EpochID在每次系统启动时自动获取上次运行的最后一个epoch编号
+数据一致性：
+
+	1.Epoch编号必须通过数据库生成/修改，确保slot等其他数据里的epochid也一致
+	2.崩溃恢复后数据一致
+*/
 type DevEpoch struct {
-	EpochID int32
 	// TODO 这里需要根据根据任务类型去分类，要不然前端这边就没办法判断出来了
+	EpochID     int32                        `gorm:"primaryKey;autoIncrement:false"` // 明确指定为主键且禁用自增
 	Process     map[SupportModelType]int32   `gorm:"type:json;serializer:json"`
 	Commits     map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Justifieds  map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
@@ -88,6 +96,7 @@ type DevEpoch struct {
 	TID         int64                        `gorm:"not null"`
 	TxHash      string                       `gorm:"-"` // 交易Hash，用于在Dev中定位交易
 	TxBlockHash string                       `gorm:"-"`
+	CreatedAt   time.Time                    `gorm:"type:timestamp"` // 创建时间
 }
 
 //func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
@@ -196,9 +205,11 @@ func (r *EpochRecord) Echo() {
 	//Print("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
 	//Print("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
 }
-func NewEpochRecord() *EpochRecord {
+
+// EpochRecord的epochID也需要从数据库中初始化
+func NewEpochRecord(initEpochID int) *EpochRecord {
 	return &EpochRecord{
-		Id:         0,
+		Id:         initEpochID,
 		Commits:    make(map[SlotHash]SlotCommitment),
 		Finalizes:  make(map[SlotHash]SlotCommitment),
 		Justifieds: make(map[SlotHash]SlotCommitment),
