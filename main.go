@@ -34,7 +34,7 @@ func main() {
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
-	oracle := Oracle.NewPersistedOracle(rappaChannel)
+	oracle := Oracle.NewOracle(rappaChannel)
 	monitir := Monitor.NewMonitor(rappaChannel)
 	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	//if err != nil {

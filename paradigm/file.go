@@ -9,7 +9,7 @@ import (
 )
 
 // DataFrameToCSV 将 Gota 的 DataFrame 转换为 CSV 格式的字节流
-func DataFrameToCSV(df dataframe.DataFrame) ([]byte, error) {
+func DataFrameToCSV(df dataframe.DataFrame) ([]byte, string, error) {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
 	// 写入列名
@@ -23,15 +23,16 @@ func DataFrameToCSV(df dataframe.DataFrame) ([]byte, error) {
 	}
 
 	writer.Flush()
-	return buf.Bytes(), writer.Error()
+	return buf.Bytes(), "csv", writer.Error()
 }
 
 // 将graph转换为json的字节流,这里直接转换即可
-func GraphToJson(graphs []Graph) ([]byte, error) {
-	return json.MarshalIndent(graphs, "", "\t")
+func GraphToJson(graphs []Graph) ([]byte, string, error) {
+	jsonBytes, err := json.MarshalIndent(graphs, "", "\t")
+	return jsonBytes, "json", err
 }
 
-func DataToFile(data interface{}) ([]byte, error) {
+func DataToFile(data interface{}) ([]byte, string, error) {
 	switch data.(type) {
 	case dataframe.DataFrame:
 		//Log("DEBUG", "Transform data to dataframe")
@@ -42,6 +43,6 @@ func DataToFile(data interface{}) ([]byte, error) {
 
 	default:
 		e := Error(ValueError, "can not convert data to file")
-		return []byte{}, fmt.Errorf(e.Error())
+		return []byte{}, "default", fmt.Errorf(e.Error())
 	}
 }

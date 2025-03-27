@@ -25,14 +25,14 @@ func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response 
 	if output == nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, "Recover Output is nil"))
 	}
-	fileByte, err := paradigm.DataToFile(output)
+	fileByte, fileType, err := paradigm.DataToFile(output)
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
 	}
 	//fmt.Println(fileByte)
 	result := make(map[string]interface{})
 	generateFileName := func() string {
-		return fmt.Sprintf("%s_%d_%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"))
+		return fmt.Sprintf("%s_%d_%s.%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"), fileType)
 	}
 	result["filename"] = generateFileName()
 	result["file"] = fileByte

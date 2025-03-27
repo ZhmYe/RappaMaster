@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/Collector"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
+	"bytes"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -40,13 +41,14 @@ func (e *HttpEngine) HandleGET(c *gin.Context) {
 		//fmt.Println(query.ToHttpJson())
 		e.channel.QueryChannel <- query
 		r := query.ReceiveResponse() // 这里会阻塞
-		//fmt.Println(r.ToHttpJson(), r.Error())
+
 		response := paradigm.HttpResponse{
 			Message: fmt.Sprintf("Query Data Successfully, query type: %s, query: %v", requestBody.Query, requestBody.Data),
 			Code:    "OK",
 			Data:    r.ToHttpJson(),
 		}
 		c.JSON(http.StatusOK, response)
+		//fmt.Println(r.ToHttpJson(), r.Error())
 	} else {
 		c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
 			Message: "Invalid Request data",
@@ -55,6 +57,39 @@ func (e *HttpEngine) HandleGET(c *gin.Context) {
 		})
 	}
 }
+
+func (e *HttpEngine) HandleDownload(c *gin.Context) {
+	var requestBody Query.HttpOracleQueryRequest
+	// 解析请求体中的 JSON 数据
+	if success, query := requestBody.BuildQueryFromGETRequest(c); success {
+		//fmt.Println(query.ToHttpJson())
+		e.channel.QueryChannel <- query
+		r := query.ReceiveResponse() // 这里会阻塞
+		fileJson := r.ToHttpJson()
+		data := fileJson["file"].([]byte)
+		filename := fileJson["filename"].(string)
+		// 将 byte 数组转换为 Reader
+		reader := bytes.NewReader(data)
+		// 设置响应头
+		c.Header("Content-Type", "application/octet-stream")
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+		// 流式传输数据
+		c.DataFromReader(
+			http.StatusOK,
+			int64(len(data)), // 数据总大小（Content-Length）
+			"application/octet-stream",
+			reader,
+			nil, // 可选的额外 headers
+		)
+	} else {
+		c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+			Message: "Invalid Request data",
+			Code:    "ERROR",
+			Data:    nil,
+		})
+	}
+}
+
 func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, error) {
 	switch service {
 	case INIT_TASK:
@@ -111,7 +146,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 		httpService := HttpService{
 			Url:     "/collect",
 			Method:  "GET",
-			Handler: e.HandleGET,
+			Handler: e.HandleDownload,
 		}
 		return &httpService, nil
 	case BLOCKCHAIN_QUERY:
