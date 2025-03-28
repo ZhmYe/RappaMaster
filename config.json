@@ -32,7 +32,7 @@
     "maxOpenConns": 100
   },
   "isRecovery": true,
-  "DEBUG": true,
+  "DEBUG": false,
   "BHNodeAddressMap": {
     "0": {
       "NodeIPAddress": "127.0.0.1",
