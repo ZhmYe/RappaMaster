@@ -1,13 +1,9 @@
 package Oracle
 
 import (
-	"BHLayer2Node/Date"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
-	"errors"
 	"fmt"
-
-	"gorm.io/gorm"
 )
 
 // TODO 这里会有很多并发读写的问题，后面要用TryLock,如果发现被锁住了，那么直接返回还未更新
@@ -19,88 +15,63 @@ func (d *PersistedOracle) processDBQuery() {
 		switch query.(type) {
 		case *Query.EvidencePreserveTaskIDQuery:
 			item := query.(*Query.EvidencePreserveTaskIDQuery)
-			task := &paradigm.Task{}
-			if err := d.db.Where("sign = ?", item.TaskID).First(task).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Task does not exist in database"))
+			task, err := d.GetTaskByID(item.TaskID)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "Task does not exist in database")
+				paradigm.Error(paradigm.ValueError, err.Error())
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(task))
-		case *Query.EvidencePreserveTaskTxQuery: // 未检测
+		case *Query.EvidencePreserveTaskTxQuery:
 			// 根据txHash查询Task
 			item := query.(*Query.EvidencePreserveTaskTxQuery)
-			ref := &paradigm.DevReference{}
-			if err := d.db.Where("tx_hash = ?", item.TxHash).First(ref).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Transaction does not exist in database"))
+			task, err := d.GetTaskByTxHash(item.TxHash)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "Transaction does not exist in database")
-				continue
-			}
-			if ref.Rf == paradigm.EpochTx {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Is a EpochRecord Transaction"))
-				item.SendResponse(errorResponse)
-				continue
-			}
-			// 查询关联的任务
-			task := &paradigm.Task{}
-			if err := d.db.Where("sign = ?", ref.TaskID).First(task).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Associated task not found"))
-				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, err.Error())
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(task))
 		case *Query.EvidencePreserveEpochIDQuery:
 			item := query.(*Query.EvidencePreserveEpochIDQuery)
-			epoch := &paradigm.DevEpoch{}
-			if err := d.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch does not exist in database"))
+			// epoch := &paradigm.DevEpoch{}
+			// if err := d.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
+			// 	errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch does not exist in database"))
+			// 	item.SendResponse(errorResponse)
+			// 	paradigm.Error(paradigm.ValueError, "Epoch does not exist in database")
+			// 	continue
+			// }
+			epoch, err := d.GetEpochByID(item.EpochID)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "Epoch does not exist in database")
+				paradigm.Error(paradigm.ValueError, err.Error())
 				continue
 			}
-			//test
-			paradigm.Log("DEBUG", fmt.Sprintf("epoch search by ID ret: %+v", epoch))
-
 			item.SendResponse(item.GenerateResponse(epoch))
 		case *Query.EvidencePreserveEpochTxQuery:
 			item := query.(*Query.EvidencePreserveEpochTxQuery)
-			ref := &paradigm.DevReference{}
-			if err := d.db.Where("tx_hash = ?", item.TxHash).First(ref).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Transaction does not exist in database"))
+			epoch, err := d.GetEpochByTxHash(item.TxHash)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
-				continue
-			}
-			if ref.Rf == paradigm.InitTaskTx {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Is a InitTask Transaction"))
-				item.SendResponse(errorResponse)
-				continue
-			}
-			if ref.EpochID == -1 {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "No EpochID found"))
-				item.SendResponse(errorResponse)
-				continue
-			}
-			// 查询关联的 epoch
-			epoch := &paradigm.DevEpoch{}
-			if err := d.db.Where("epoch_id = ?", ref.EpochID).First(epoch).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch not found"))
-				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, err.Error())
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(epoch))
 		case *Query.BlockchainLatestInfoQuery:
 			item := query.(*Query.BlockchainLatestInfoQuery)
-			// 1. 获取最新的20笔交易
-			var latestTxRefs []paradigm.DevReference
-			if err := d.db.Order("upchain_time desc").Limit(20).Find(&latestTxRefs).Error; err != nil {
+			// 获取最新交易
+			txRefs, err := d.GetLatestTransactions(20)
+			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query latest transactions: %v", err))
 				continue
 			}
-
 			// 构建 PackedTransaction 列表
 			latestTxs := make([]*paradigm.PackedTransaction, 0)
-			for _, ref := range latestTxRefs {
+			for _, ref := range txRefs {
 				packedTx := &paradigm.PackedTransaction{
 					Receipt:     &ref.TxReceipt,
 					BlockHash:   ref.TxBlockHash,
@@ -109,52 +80,31 @@ func (d *PersistedOracle) processDBQuery() {
 				}
 				latestTxs = append(latestTxs, packedTx)
 			}
-
-			// 2. 获取最新的20个epoch
-			var latestEpochs []*paradigm.DevEpoch
-			if err := d.db.Order("epoch_id desc").Limit(20).Find(&latestEpochs).Error; err != nil {
+			// 获取最新epochs
+			latestEpochs, err := d.GetLatestEpochs(20)
+			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query latest epochs: %v", err))
 				continue
 			}
-
-			// 3. 获取所有已完成(finalized)的slot数量
-			var nbFinalized int64
-			if err := d.db.Model(&paradigm.Slot{}).Where("status = ?", "finalized").Count(&nbFinalized).Error; err != nil {
+			// 获取已完成的slot数量
+			nbFinalized, err := d.GetFinalizedSlotsCount()
+			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to count finalized slots: %v", err))
 				continue
 			}
-
-			// 4. 按模型类型统计合成数据总量
-			synthData := make(map[paradigm.SupportModelType]int32)
-			var tasks []*paradigm.Task
-			if err := d.db.Find(&tasks).Error; err != nil {
-				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query tasks: %v", err))
+			// 获取合成数据统计
+			synthData, err := d.GetSynthDataByModel()
+			if err != nil {
+				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to get synth data: %v", err))
 				continue
 			}
 
-			for _, task := range tasks {
-				if task.IsFinish() {
-					if value, ok := synthData[task.Model]; ok {
-						synthData[task.Model] = value + task.Process
-					} else {
-						synthData[task.Model] = task.Process
-					}
-				}
-			}
-
-			// 5. 获取最新区块号
-			var nbBlock int32
-			if len(latestTxs) > 0 {
-				nbBlock = int32(latestTxs[0].Receipt.BlockNumber)
-			}
-
-			// 6. 获取总交易数
-			var nbTransaction int64
-			if err := d.db.Model(&paradigm.DevReference{}).Count(&nbTransaction).Error; err != nil {
+			// 获取交易总数
+			nbTransaction, err := d.GetTransactionCount()
+			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to count transactions: %v", err))
 				continue
 			}
-
 			// 构建响应信息
 			info := paradigm.LatestBlockchainInfo{
 				LatestTxs:     latestTxs,
@@ -162,8 +112,11 @@ func (d *PersistedOracle) processDBQuery() {
 				NbFinalized:   int32(nbFinalized),
 				SynthData:     synthData,
 				NbEpoch:       int32(len(latestEpochs)),
-				NbBlock:       nbBlock,
 				NbTransaction: int32(nbTransaction),
+			}
+
+			if len(latestTxs) > 0 {
+				info.NbBlock = int32(latestTxs[0].Receipt.BlockNumber)
 			}
 
 			// 发送响应
@@ -178,33 +131,20 @@ func (d *PersistedOracle) processDBQuery() {
 			d.channel.BlockchainQueryChannel <- item
 			block := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(block))
-		case *Query.BlockchainTransactionQuery: // 链上查询 未通过
+		case *Query.BlockchainTransactionQuery:
 			item := query.(*Query.BlockchainTransactionQuery)
 			// 从区块链获取交易信息
 			d.channel.BlockchainQueryChannel <- item
 			tx := item.ReceiveInfo()
 			txInfo := tx.(paradigm.TransactionInfo)
-			// 从数据库查询交易引用信息
-			ref := &paradigm.DevReference{}
-			if err := d.db.Where("tx_hash = ?", txInfo.TxHash).First(ref).Error; err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					errorResponse := paradigm.NewErrorResponse(
-						paradigm.NewRappaError(paradigm.ValueError,
-							"Transaction does not exist in database"))
-					item.SendResponse(errorResponse)
-					paradigm.Error(paradigm.ValueError,
-						fmt.Sprintf("Transaction %s does not exist in database", txInfo.TxHash))
-					continue
-				}
-				// 处理其他数据库错误
-				errorResponse := paradigm.NewErrorResponse(
-					paradigm.NewRappaError(paradigm.RuntimeError,
-						fmt.Sprintf("Database error: %v", err)))
+			// 从数据库获得交易信息
+			ref, err := d.GetTransactionByHash(txInfo.TxHash)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.ValueError, err.Error())
 				continue
 			}
-
-			// 根据引用类型设置 ABI
 			switch ref.Rf {
 			case paradigm.InitTaskTx:
 				txInfo.Abi = "InitTask"
@@ -213,14 +153,11 @@ func (d *PersistedOracle) processDBQuery() {
 			case paradigm.EpochTx:
 				txInfo.Abi = "EpochRecord"
 			default:
-				errorResponse := paradigm.NewErrorResponse(
-					paradigm.NewRappaError(paradigm.RuntimeError,
-						"Unknown transaction reference type"))
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Unknown transaction reference type"))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.RuntimeError,
-					fmt.Sprintf("Unknown transaction reference type: %v", ref.Rf))
-				continue
+				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Unknown transaction reference type: %v", ref.Rf))
 			}
+
 			item.SendResponse(item.GenerateResponse(txInfo))
 		case *Query.NodesStatusQuery:
 			item := query.(*Query.NodesStatusQuery)
@@ -229,43 +166,48 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(status))
 		case *Query.DateSynthDataQuery:
 			item := query.(*Query.DateSynthDataQuery)
-			var records []*Date.DateRecord
-			if err := d.db.Find(&records).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Failed to query date records"))
+			records, err := d.GetDateRecords()
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, fmt.Sprintf("Failed to query date records: %v", err)))
 				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Date synth data query failed: %v", err))
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(records))
 		case *Query.DateTransactionQuery:
 			item := query.(*Query.DateTransactionQuery)
-			var records []*Date.DateRecord
-			if err := d.db.Find(&records).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Failed to query date records"))
+			records, err := d.GetDateRecords()
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, fmt.Sprintf("Failed to query date records: %v", err)))
 				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Date synth data query failed: %v", err))
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(records))
 		case *Query.SynthTaskQuery:
 			item := query.(*Query.SynthTaskQuery)
-			var tasks []*paradigm.Task
-			if err := d.db.Find(&tasks).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, "Failed to query tasks"))
+			// 获取所有任务
+			tasksMap, err := d.GetAllTasks()
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(
+					paradigm.NewRappaError(paradigm.RuntimeError,
+						fmt.Sprintf("Failed to query tasks: %v", err)))
 				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.RuntimeError,
+					fmt.Sprintf("Synth task query failed: %v", err))
 				continue
-			}
-			// 转换为 map 形式
-			tasksMap := make(map[string]*paradigm.Task)
-			for _, task := range tasks {
-				tasksMap[task.Sign] = task
 			}
 			item.SendResponse(item.GenerateResponse(tasksMap))
 		case *Query.CollectTaskQuery:
 			item := query.(*Query.CollectTaskQuery)
-			task := &paradigm.Task{}
-			if err := d.db.Where("sign = ?", item.TaskID()).First(task).Error; err != nil {
-				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Task does not exist in database"))
+			task, err := d.GetTaskByID(item.TaskID())
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(
+					paradigm.NewRappaError(paradigm.RuntimeError,
+						fmt.Sprintf("Failed to query tasks: %v", err)))
 				item.SendResponse(errorResponse)
-				paradigm.Error(paradigm.ValueError, "Task does not exist in database")
+				paradigm.Error(paradigm.RuntimeError,
+					fmt.Sprintf("Synth task query failed: %v", err))
 				continue
 			}
 			go item.SendResponse(item.GenerateResponse(task.GetCollector()))

@@ -102,10 +102,10 @@ type DevEpoch struct {
 	Finalizes   map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Invalids    []*Slot                      `gorm:"type:json;serializer:json"`
 	InitTasks   []*Task                      `gorm:"type:json;serializer:json"`
-	TxReceipt   *types.Receipt               `gorm:"type:json;serializer:json"` // 交易上链后会有一个对应的receipt
+	TxReceipt   *types.Receipt               `gorm:"-"`
 	TID         int64                        `gorm:"not null"`
-	TxHash      string                       `gorm:"type:char(66)"` // 交易Hash，用于在Dev中定位交易
-	TxBlockHash string                       `gorm:"type:char(66)"`
+	TxHash      string                       `gorm:"-"`
+	TxBlockHash string                       `gorm:"-"`
 	CreatedAt   time.Time                    `gorm:"type:timestamp"` // 创建时间
 }
 

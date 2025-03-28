@@ -44,9 +44,9 @@ type Task struct {
 	Schedules      []*SynthTaskSchedule   `gorm:"type:json;serializer:json"`
 	ScheduleMap    map[ScheduleHash]int   `gorm:"type:json;serializer:json"`
 	TID            int64                  `gorm:"not null"`
-	TxHash         string                 `gorm:"type:char(66)"`
-	TxReceipt      *types.Receipt         `gorm:"type:json;serializer:json"`
-	TxBlockHash    string                 `gorm:"type:char(66)"`
+	TxHash         string                 `gorm:"-"`
+	TxReceipt      *types.Receipt         `gorm:"-"`
+	TxBlockHash    string                 `gorm:"-"`
 	HasbeenCollect bool                   `gorm:"-"`
 	StartTime      time.Time              `gorm:"type:datetime;not null;comment:任务启动时间戳"`
 	EndTime        time.Time              `gorm:"type:datetime;comment:任务结束时间戳"`
