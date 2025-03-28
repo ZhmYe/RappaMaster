@@ -4,6 +4,7 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
+        "name": "金融表格数据合成任务",
         "model": "FINKAN",
         "params": {
         },
@@ -28,9 +29,9 @@ def oracle_query_epoch():
 def oracle_query_task():
     request_data = {
         "query": "EvidencePreserveTaskIDQuery",
-        "taskID": "SynthTask-0-1743086275",
+        "taskID": "SynthTask-1-1743139204",
         # "query": "EvidencePreserveTaskTxQuery",
-        # "TxHash": "0xbb34c3e5c08770a55a2475059685dbe8691836486398bd3c72db7b21d0536029",
+        # "txHash": "0xedc67090b2136bb7d009d753c0653d9d1caf5cf612ac7c1b97021e0ccd56ba1e",
 
     }
 
@@ -46,17 +47,17 @@ def oracle_query_blockchain_latest():
 # todo 这里还有blockNumber的Query，暂时手动改，上面的epoch和task也类似
 def oracle_query_block():
     request_data = {
-        # "query": "BlockchainBlockHashQuery",
-        # "blockHash": "0xe74abcfd64034c6d9cb3665554ba52b71b2b505543a3ed3a6734121d2ac78f9d",
-        "query": "BlockchainBlockNumberQuery",
-        "blockNumber": 4110,
+        "query": "BlockchainBlockHashQuery",
+        "blockHash": "0xe74abcfd64034c6d9cb3665554ba52b71b2b505543a3ed3a6734121d2ac78f9d",
+        # "query": "BlockchainBlockNumberQuery",
+        # "blockNumber": 4110,
     }
     url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
-def oracle_query_tx(): # Error 不返回结果
+def oracle_query_tx(): 
     request_data = {
         "query": "BlockchainTransactionQuery",
-        "txHash": "0xbb34c3e5c08770a55a2475059685dbe8691836486398bd3c72db7b21d0536029"
+        "txHash": "0xedc67090b2136bb7d009d753c0653d9d1caf5cf612ac7c1b97021e0ccd56ba1e"
     }
     url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
@@ -131,11 +132,11 @@ def main():
             create_task()
         if command == 'epoch':
             oracle_query_epoch()
-        if command == 'task':
+        if command == 'task': 
             oracle_query_task()
-        if command == "bc_latest":
+        if command == "bc_latest": 
             oracle_query_blockchain_latest()
-        if command == "block":
+        if command == "block": 
             oracle_query_block()
         if command == "tx":
             oracle_query_tx()

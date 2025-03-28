@@ -2,13 +2,15 @@ package Query
 
 import (
 	"BHLayer2Node/paradigm"
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HttpInitTaskRequest struct {
 	Sign string // task sign
 	//Slot       int32                  // slot index
+	Name       string                 // 任务名称
 	Size       int32                  // data size
 	Model      string                 // 模型名称
 	Params     map[string]interface{} // 不确定的模型参数

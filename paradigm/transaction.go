@@ -42,6 +42,7 @@ func (t *InitTaskTransaction) Call() string {
 func (t *InitTaskTransaction) CallData() map[string]interface{} {
 	result := make(map[string]interface{})
 	result["Sign"] = t.Sign
+	result["Name"] = t.Name
 	result["Size"] = t.Size
 	result["Model"] = t.Model
 	result["IsReliable"] = t.IsReliable()

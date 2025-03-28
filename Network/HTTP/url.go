@@ -5,8 +5,9 @@ import (
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HttpService struct {
@@ -80,6 +81,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskID := <-e.taskIDProvider // 这里要阻塞
 				task := paradigm.NewTask(
 					taskID,
+					requestBody.Name,
 					paradigm.NameToModelType(requestBody.Model),
 					requestBody.Params,
 					requestBody.Size,
