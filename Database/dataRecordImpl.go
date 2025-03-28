@@ -1,4 +1,4 @@
-package Oracle
+package Database
 
 import (
 	"BHLayer2Node/Date"
@@ -8,7 +8,7 @@ import (
 )
 
 // 这里尝试创建或获取dates
-func (o *PersistedOracle) getDateRecord(date time.Time) *Date.DateRecord {
+func (o DatabaseService) GetDateRecord(date time.Time) *Date.DateRecord {
 	// 获取最新的datarecord
 	var count int64
 	o.db.Model(&Date.DateRecord{}).Count(&count)
@@ -28,11 +28,11 @@ func (o *PersistedOracle) getDateRecord(date time.Time) *Date.DateRecord {
 }
 
 // 更新dateRecord
-func (o *PersistedOracle) updateDateRecord(record *Date.DateRecord) {
+func (o DatabaseService) UpdateDateRecord(record *Date.DateRecord) {
 	o.db.Save(record)
 }
 
-func (o *PersistedOracle) GetDateRecords() ([]*Date.DateRecord, error) {
+func (o DatabaseService) GetDateRecords() ([]*Date.DateRecord, error) {
 	var records []*Date.DateRecord
 	err := o.db.Order("date asc").Find(&records).Error
 	if err != nil {

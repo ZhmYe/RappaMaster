@@ -1,4 +1,4 @@
-package Oracle
+package Database
 
 import (
 	"BHLayer2Node/paradigm"
@@ -9,7 +9,7 @@ import (
 )
 
 // 获取任务
-func (o *PersistedOracle) getTask(taskHash paradigm.TaskHash) (*paradigm.Task, error) {
+func (o DatabaseService) GetTask(taskHash paradigm.TaskHash) (*paradigm.Task, error) {
 	taskQuery := paradigm.Task{}
 	err := o.db.Where(paradigm.Task{Sign: taskHash}).Take(&taskQuery).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -26,8 +26,8 @@ func (o *PersistedOracle) getTask(taskHash paradigm.TaskHash) (*paradigm.Task, e
 }
 
 // 更新任务schedule
-func (o *PersistedOracle) updateScheduleInTask(schedule *paradigm.SynthTaskSchedule) {
-	task, err := o.getTask(schedule.TaskID)
+func (o DatabaseService) UpdateScheduleInTask(schedule *paradigm.SynthTaskSchedule) {
+	task, err := o.GetTask(schedule.TaskID)
 	if err != nil {
 		panic(fmt.Sprintf("task not found of %s", schedule.TaskID))
 	}
@@ -37,17 +37,17 @@ func (o *PersistedOracle) updateScheduleInTask(schedule *paradigm.SynthTaskSched
 }
 
 // 创建任务
-func (o *PersistedOracle) setTask(task *paradigm.Task) {
+func (o DatabaseService) SetTask(task *paradigm.Task) {
 	o.db.Omit("end_time").Create(task)
 }
 
 // 更新任务
-func (o *PersistedOracle) updateTask(task *paradigm.Task) {
+func (o DatabaseService) UpdateTask(task *paradigm.Task) {
 	o.db.Model(task).Updates(task)
 }
 
 // GetTaskByID 通过任务标识查询任务
-func (o *PersistedOracle) GetTaskByID(taskID string) (*paradigm.Task, error) {
+func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 	var task paradigm.Task
 	err := o.db.Where("sign = ?", taskID).First(&task).Error
 	if err != nil {
@@ -66,7 +66,7 @@ func (o *PersistedOracle) GetTaskByID(taskID string) (*paradigm.Task, error) {
 }
 
 // GetTaskByTxHash 通过交易哈希查询任务
-func (o *PersistedOracle) GetTaskByTxHash(txHash string) (*paradigm.Task, error) {
+func (o DatabaseService) GetTaskByTxHash(txHash string) (*paradigm.Task, error) {
 	tx, err := o.GetTransactionByHash(txHash)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (o *PersistedOracle) GetTaskByTxHash(txHash string) (*paradigm.Task, error)
 }
 
 // GetAllTasks 查询所有任务
-func (o *PersistedOracle) GetAllTasks() (map[string]*paradigm.Task, error) {
+func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
 	var tasks []*paradigm.Task
 	err := o.db.Find(&tasks).Error
 	if err != nil {
@@ -101,7 +101,7 @@ func (o *PersistedOracle) GetAllTasks() (map[string]*paradigm.Task, error) {
 }
 
 // GetSynthDataByModel 综合数据查询实现
-func (o *PersistedOracle) GetSynthDataByModel() (map[paradigm.SupportModelType]int32, error) {
+func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]int32, error) {
 	// 创建结果map
 	synthData := make(map[paradigm.SupportModelType]int32)
 

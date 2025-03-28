@@ -1,11 +1,10 @@
 package Epoch
 
 import (
+	"BHLayer2Node/Recovery"
 	"BHLayer2Node/Tracker"
-	"BHLayer2Node/database"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
-	"fmt"
 	"sync"
 )
 
@@ -254,23 +253,15 @@ func (t *EpochManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Epoch: int32(t.currentEpoch),
 	}
 }
-func NewEpochManager(channel *paradigm.RappaChannel) *EpochManager {
-	//config := channel.Config
-	maxEpochID, err := database.GetMaxEpochID()
-	if err != nil {
-		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to get max epoch ID: %v", err))
-		return nil
-	}
-	paradigm.Log("INFO", fmt.Sprintf("System initialized with epoch ID: %d from database", maxEpochID))
-
+func NewEpochManager(channel *paradigm.RappaChannel, recovery *Recovery.RappaRecovery) *EpochManager {
 	return &EpochManager{
 		channel: channel,
 		//tasks:             make(map[string]*Task),
 		mu:          sync.Mutex{},
 		tracker:     Tracker.NewTracker(channel),
-		epochRecord: paradigm.NewEpochRecord(int(maxEpochID) + 1),
+		epochRecord: paradigm.NewEpochRecord(int(recovery.EpochID) + 1),
 		//pendingCommitSlot: make(map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack),
 		// currentEpoch: -1,
-		currentEpoch: int(maxEpochID),
+		currentEpoch: int(recovery.EpochID),
 	}
 }

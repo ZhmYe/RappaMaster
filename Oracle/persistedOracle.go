@@ -1,18 +1,16 @@
 package Oracle
 
 import (
-	"BHLayer2Node/database"
+	"BHLayer2Node/Database"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type PersistedOracle struct {
 	channel *paradigm.RappaChannel
 	// mySQLConfig paradigm.DBConnection              //mysql连接配置
-	db         *gorm.DB                           //数据库访问对象
+	dbService  *Database.DatabaseService
 	collectors map[string]paradigm.RappaCollector //定义任务收集器
 }
 
@@ -22,9 +20,9 @@ func (o *PersistedOracle) Start() {
 			select {
 			case schedule := <-o.channel.OracleSchedules:
 				// 这些是完成的调度
-				o.updateScheduleInTask(schedule)
+				o.dbService.UpdateScheduleInTask(schedule)
 				for _, slot := range schedule.Slots {
-					o.UpdateSlotFromSchedule(slot)
+					o.dbService.UpdateSlotFromSchedule(slot)
 					//d.slotsMap[slot.SlotID] = slot // 这里记录所有的slot，todo 其实只要记录processing的
 				}
 				o.channel.MonitorOracleChannel <- schedule // 传递给monitor，更新节点未完成的任务
@@ -32,7 +30,7 @@ func (o *PersistedOracle) Start() {
 			case ptxs := <-o.channel.DevTransactionChannel:
 				for _, ptx := range ptxs {
 					ptx.SetUpchainTime(time.Now()) // 在这里统一设置上链时间
-					dateRecord := o.getDateRecord(ptx.UpchainTime)
+					dateRecord := o.dbService.GetDateRecord(ptx.UpchainTime)
 					transaction := ptx.Tx // 一笔交易，根据交易类型判断更新什么
 					switch transaction.(type) {
 					case *paradigm.EpochRecordTransaction:
@@ -46,8 +44,8 @@ func (o *PersistedOracle) Start() {
 
 						for slotHash, _ := range epochRecord.Commits {
 							//slot := d.getSlot(slotHash)
-							slot := o.getSlot(slotHash)
-							tempTask, err := o.getTask(slot.TaskID)
+							slot := o.dbService.GetSlot(slotHash)
+							tempTask, err := o.dbService.GetTask(slot.TaskID)
 							if err != nil {
 								paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("task not found of %s", slot.TaskID))
 							}
@@ -62,8 +60,8 @@ func (o *PersistedOracle) Start() {
 						}
 
 						for slotHash, _ := range epochRecord.Justifieds {
-							slot := o.getSlot(slotHash)
-							tempTask, err := o.getTask(slot.TaskID)
+							slot := o.dbService.GetSlot(slotHash)
+							tempTask, err := o.dbService.GetTask(slot.TaskID)
 							if err != nil {
 								paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("task not found of %s", slot.TaskID))
 							}
@@ -80,8 +78,8 @@ func (o *PersistedOracle) Start() {
 						epochProcess := make(map[paradigm.SupportModelType]int32)
 
 						for slotHash, _ := range epochRecord.Finalizes {
-							slot := o.getSlot(slotHash)
-							tempTask, err := o.getTask(slot.TaskID)
+							slot := o.dbService.GetSlot(slotHash)
+							tempTask, err := o.dbService.GetTask(slot.TaskID)
 							if err != nil {
 								paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("task not found of %s", slot.TaskID))
 							}
@@ -102,15 +100,15 @@ func (o *PersistedOracle) Start() {
 						}
 
 						for slotHash, e := range epochRecord.Invalids {
-							o.setSlotError(slotHash, e, int32(epochRecord.Id))
-							invalids = append(invalids, o.getSlot(slotHash))
+							o.dbService.SetSlotError(slotHash, e, int32(epochRecord.Id))
+							invalids = append(invalids, o.dbService.GetSlot(slotHash))
 						}
 						for taskID, _ := range epochRecord.Tasks {
-							if task, err := o.getTask(taskID); err != nil {
+							if task, err := o.dbService.GetTask(taskID); err != nil {
 								paradigm.Error(paradigm.RuntimeError, "Task has not been init")
 							} else {
 								initTasks = append(initTasks, task)
-								ref, err := o.getTransaction(task.TxReceipt.TransactionHash)
+								ref, err := o.dbService.GetTransaction(task.TxReceipt.TransactionHash)
 								if err != nil {
 									paradigm.Error(paradigm.RuntimeError, "TX has not been init")
 								}
@@ -129,7 +127,7 @@ func (o *PersistedOracle) Start() {
 							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
-						o.setTransaction(reference)
+						o.dbService.SetTransaction(reference)
 
 						epoch := &paradigm.DevEpoch{
 							EpochID:    int32(epochRecord.Id),
@@ -145,9 +143,12 @@ func (o *PersistedOracle) Start() {
 							// TxBlockHash: ptx.BlockHash,
 						}
 						// 记录epoch
-						o.setEpoch(epoch)
+						err := o.dbService.SetEpoch(epoch)
+						if err != nil {
+							paradigm.Error(paradigm.RuntimeError, "Failed to set epoch")
+						}
 						dateRecord.UpdateTransactions(1)
-						o.updateDateRecord(dateRecord)
+						o.dbService.UpdateDateRecord(dateRecord)
 					case *paradigm.InitTaskTransaction:
 						// 上链了一笔初始化任务的交易
 						// 那么需要在tasks更新一个任务
@@ -165,22 +166,22 @@ func (o *PersistedOracle) Start() {
 							UpchainTime: ptx.UpchainTime,
 							//ScheduleID: -1,
 						}
-						o.setTransaction(reference)
+						o.dbService.SetTransaction(reference)
 						task.TID = reference.TID
-						o.setTask(task)
+						o.dbService.SetTask(task)
 						o.collectors[task.Sign] = task.Collector
 
 						// 更新date
 						dateRecord.UpdateInitTasks(1)
 						dateRecord.UpdateDateset(task.GetDataset())
 						dateRecord.UpdateTransactions(1)
-						o.updateDateRecord(dateRecord)
+						o.dbService.UpdateDateRecord(dateRecord)
 					case *paradigm.TaskProcessTransaction:
 						// 上链了一笔任务推进交易
 						commitRecord := paradigm.NewCommitRecord(ptx)
 						// 这里就是要更新某个task
 						taskSign := commitRecord.Sign
-						if task, err := o.getTask(taskSign); err == nil {
+						if task, err := o.dbService.GetTask(taskSign); err == nil {
 							// 传递给monitor更新完成的任务
 							// TODO 这里暂时将任务的类型写入
 							task.Collector = o.collectors[task.Sign]
@@ -196,8 +197,8 @@ func (o *PersistedOracle) Start() {
 								UpchainTime: ptx.UpchainTime,
 								//ScheduleID: slot.ScheduleID,
 							}
-							o.setTransaction(reference)
-							o.setSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
+							o.dbService.SetTransaction(reference)
+							o.dbService.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
 							commitRecord.TxID = reference.TID
 							err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
 							if err != nil {
@@ -221,11 +222,11 @@ func (o *PersistedOracle) Start() {
 							//	d.synthData[task.Model] = commitRecord.Process
 							//}
 							//更新task
-							o.updateTask(task)
+							o.dbService.UpdateTask(task)
 							dateRecord.UpdateFinalized(1)
 							dateRecord.UpdateProcess(commitRecord.Process, task.Model)
 							dateRecord.UpdateTransactions(1)
-							o.updateDateRecord(dateRecord)
+							o.dbService.UpdateDateRecord(dateRecord)
 							//task.Print()
 						} else {
 							e := paradigm.Error(paradigm.RuntimeError, "Task not in Oracle")
@@ -254,50 +255,10 @@ func (o *PersistedOracle) Start() {
 	updateOracle()
 }
 
-func NewPersistedOracle(channel *paradigm.RappaChannel) *PersistedOracle {
-	// //TODO 初始化数据库连接,这个可以写到config中
-	// dbConfig := paradigm.DBConnection{
-	// 	Username: "root",
-	// 	Password: "bassword",
-	// 	// Password:      "520@111zz",
-	// 	Host:          "127.0.0.1",
-	// 	Port:          3306,
-	// 	Dbname:        "db_rappa",
-	// 	Timeout:       "5s",
-	// 	IsAutoMigrate: true,
-	// }
-
-	// // 这里使用gorm简化开发，目前打印SQL语句
-	// dsn := dbConfig.GetDsn()
-	// db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
-	// 	Logger: logger.Default.LogMode(logger.Info),
-	// })
-
-	// if err != nil {
-	// 	log.Error("DB connection is error:", "dsn", dsn, "err", err)
-	// 	return nil
-	// }
-
-	// if dbConfig.IsAutoMigrate {
-	// 	// 开启自动迁移，将根据模型自动创建和更新数据库表
-	// 	err = db.AutoMigrate(&paradigm.Slot{}, &paradigm.Task{}, &paradigm.DevEpoch{}, &paradigm.DevReference{}, &Date.DateRecord{})
-	// 	if err != nil {
-	// 		log.Error("auto migrate is wrong:", "dsn", dsn, "err", err)
-	// 		return nil
-	// 	}
-	// }
-
-	// //TODO 从数据库读取record信息
-
-	// return &PersistedOracle{
-	// 	channel:     channel,
-	// 	mySQLConfig: dbConfig,
-	// 	collectors:  make(map[string]paradigm.RappaCollector),
-	// 	db:          db,
-	// }
+func NewPersistedOracle(channel *paradigm.RappaChannel, service *Database.DatabaseService) *PersistedOracle {
 	return &PersistedOracle{
 		channel:    channel,
-		db:         database.GetDB(),
+		dbService:  service,
 		collectors: make(map[string]paradigm.RappaCollector),
 	}
 }

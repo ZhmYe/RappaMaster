@@ -1,4 +1,4 @@
-package Oracle
+package Database
 
 import (
 	"BHLayer2Node/paradigm"
@@ -12,7 +12,7 @@ import (
 // 	o.db.Create(epochRecord)
 // }
 
-func (o *PersistedOracle) saveEpochRecord(epoch *paradigm.DevEpoch) error {
+func (o DatabaseService) SaveEpochRecord(epoch *paradigm.DevEpoch) error {
 	return o.db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Create(epoch)
 		if result.Error != nil {
@@ -22,8 +22,8 @@ func (o *PersistedOracle) saveEpochRecord(epoch *paradigm.DevEpoch) error {
 	})
 }
 
-func (o *PersistedOracle) setEpoch(epochRecord *paradigm.DevEpoch) error {
-	if err := o.saveEpochRecord(epochRecord); err != nil {
+func (o DatabaseService) SetEpoch(epochRecord *paradigm.DevEpoch) error {
+	if err := o.SaveEpochRecord(epochRecord); err != nil {
 		paradigm.Error(paradigm.RuntimeError,
 			fmt.Sprintf("Failed to save epoch record: %v", err))
 		return err
@@ -32,7 +32,7 @@ func (o *PersistedOracle) setEpoch(epochRecord *paradigm.DevEpoch) error {
 }
 
 // GetEpochByID 通过纪元标识查询纪元
-func (o *PersistedOracle) GetEpochByID(epochID int32) (*paradigm.DevEpoch, error) {
+func (o DatabaseService) GetEpochByID(epochID int32) (*paradigm.DevEpoch, error) {
 	var epoch paradigm.DevEpoch
 	err := o.db.Where("epoch_id = ?", epochID).First(&epoch).Error
 	if err != nil {
@@ -50,7 +50,7 @@ func (o *PersistedOracle) GetEpochByID(epochID int32) (*paradigm.DevEpoch, error
 }
 
 // GetEpochByTxHash 通过交易哈希查询纪元
-func (o *PersistedOracle) GetEpochByTxHash(txHash string) (*paradigm.DevEpoch, error) {
+func (o DatabaseService) GetEpochByTxHash(txHash string) (*paradigm.DevEpoch, error) {
 	tx, err := o.GetTransactionByHash(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction: %v", err)
@@ -70,7 +70,7 @@ func (o *PersistedOracle) GetEpochByTxHash(txHash string) (*paradigm.DevEpoch, e
 }
 
 // GetLatestEpochs 查询 limit 条最新纪元
-func (o *PersistedOracle) GetLatestEpochs(limit int) ([]*paradigm.DevEpoch, error) {
+func (o DatabaseService) GetLatestEpochs(limit int) ([]*paradigm.DevEpoch, error) {
 	var epochs []*paradigm.DevEpoch
 	err := o.db.Order("epoch_id desc").Limit(limit).Find(&epochs).Error
 	if err != nil {
@@ -89,4 +89,14 @@ func (o *PersistedOracle) GetLatestEpochs(limit int) ([]*paradigm.DevEpoch, erro
 	}
 
 	return epochs, nil
+}
+
+// 从数据库里获取最大的EpochID
+func (o DatabaseService) GetMaxEpochID() (int32, error) {
+	var maxEpochID int32
+	result := o.db.Model(&paradigm.DevEpoch{}).Select("COALESCE(MAX(epoch_id), -1)").Scan(&maxEpochID)
+	if result.Error != nil {
+		return -1, result.Error
+	}
+	return maxEpochID, nil
 }

@@ -1,4 +1,4 @@
-package Oracle
+package Database
 
 import (
 	"BHLayer2Node/paradigm"
@@ -9,7 +9,7 @@ import (
 )
 
 // 这里定义slot的数据库操作
-func (o *PersistedOracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
+func (o DatabaseService) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	slotQuery := paradigm.Slot{}
 	err := o.db.Where(paradigm.Slot{SlotID: slot.SlotID}).Take(&slotQuery).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -24,16 +24,16 @@ func (o *PersistedOracle) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	}
 }
 
-func (o *PersistedOracle) setSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
-	slotQuery := o.getSlot(slotHash)
+func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
+	slotQuery := o.GetSlot(slotHash)
 	slotQuery.Epoch = epoch
 	slotQuery.Err = paradigm.InvalidCommitTypeToString(e)
 	//slot.CommitSlot.SetEpoch(epoch)
 	o.db.Model(slotQuery).Select("epoch", "err", "status").Updates(slotQuery)
 }
 
-func (o *PersistedOracle) setSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
-	slotQuery := o.getSlot(slotHash)
+func (o DatabaseService) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
+	slotQuery := o.GetSlot(slotHash)
 	// 更新slot状态，这里应该是指针
 	slotQuery.CommitSlot = commitSlotItem
 	slotQuery.Status = paradigm.Finished
@@ -41,14 +41,14 @@ func (o *PersistedOracle) setSlotFinish(slotHash paradigm.SlotHash, commitSlotIt
 	o.db.Model(slotQuery).Select("status", "epoch", "commit_slot").Updates(slotQuery)
 }
 
-func (o *PersistedOracle) getSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
+func (o DatabaseService) GetSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
 	slotQuery := paradigm.Slot{}
 	o.db.Where(paradigm.Slot{SlotID: slotHash}).Attrs(paradigm.NewSlotWithSlotID(slotHash)).FirstOrCreate(&slotQuery)
 	return &slotQuery
 }
 
 // GetFinalizedSlotsCount 获取已完成的slot数量
-func (o *PersistedOracle) GetFinalizedSlotsCount() (int64, error) {
+func (o DatabaseService) GetFinalizedSlotsCount() (int64, error) {
 	var count int64
 
 	err := o.db.Model(&paradigm.Slot{}).

@@ -1,4 +1,4 @@
-package Oracle
+package Database
 
 import (
 	"BHLayer2Node/paradigm"
@@ -9,7 +9,7 @@ import (
 )
 
 // 获取交易
-func (o *PersistedOracle) getTransaction(txHash string) (*paradigm.DevReference, error) {
+func (o DatabaseService) GetTransaction(txHash string) (*paradigm.DevReference, error) {
 	txQuery := paradigm.DevReference{}
 	err := o.db.Where(paradigm.DevReference{TxHash: txHash}).Take(&txQuery).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -20,12 +20,12 @@ func (o *PersistedOracle) getTransaction(txHash string) (*paradigm.DevReference,
 }
 
 // 保存交易
-func (o *PersistedOracle) setTransaction(tx *paradigm.DevReference) {
+func (o DatabaseService) SetTransaction(tx *paradigm.DevReference) {
 	o.db.Create(tx)
 }
 
 // GetTransactionByHash 通过交易哈希查询交易
-func (o *PersistedOracle) GetTransactionByHash(txHash string) (*paradigm.DevReference, error) {
+func (o DatabaseService) GetTransactionByHash(txHash string) (*paradigm.DevReference, error) {
 	var tx paradigm.DevReference
 	err := o.db.Where("tx_hash = ?", txHash).First(&tx).Error
 	if err != nil {
@@ -35,14 +35,14 @@ func (o *PersistedOracle) GetTransactionByHash(txHash string) (*paradigm.DevRefe
 }
 
 // GetLatestTransactions 查询 limit 条最新交易
-func (o *PersistedOracle) GetLatestTransactions(limit int) ([]paradigm.DevReference, error) {
+func (o DatabaseService) GetLatestTransactions(limit int) ([]paradigm.DevReference, error) {
 	var txs []paradigm.DevReference
 	err := o.db.Order("upchain_time desc").Limit(limit).Find(&txs).Error
 	return txs, err
 }
 
 // GetTransactionCount 查询交易总数
-func (o *PersistedOracle) GetTransactionCount() (int64, error) {
+func (o DatabaseService) GetTransactionCount() (int64, error) {
 	var count int64
 	err := o.db.Model(&paradigm.DevReference{}).Count(&count).Error
 	return count, err

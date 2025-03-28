@@ -13,6 +13,19 @@ type BHNodeAddress struct {
 	nodeUrl       string //节点访问url
 }
 
+type DatabaseConfig struct {
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	Dbname        string `json:"dbname"`
+	Timeout       string `json:"timeout"`
+	IsAutoMigrate bool   `json:"isAutoMigrate"`
+	MaxIdleConns  int    `json:"maxIdleConns"`
+	MaxOpenConns  int    `json:"maxOpenConns"`
+	MaxLifetime   string `json:"maxLifetime"`
+}
+
 // 返回地址字符串
 func (b *BHNodeAddress) GetAddrStr() string {
 	if b.nodeUrl == "" {
@@ -53,20 +66,9 @@ type BHLayer2NodeConfig struct {
 	QueueBufferSize int // 上链队列缓冲区大小
 	WorkerCount     int // Worker 的数量
 	BatchSize       int
+	IsRecovery      bool
 
-	// 数据库配置
-	Database struct {
-		Username      string `json:"username"`
-		Password      string `json:"password"`
-		Host          string `json:"host"`
-		Port          int    `json:"port"`
-		Dbname        string `json:"dbname"`
-		Timeout       string `json:"timeout"`
-		IsAutoMigrate bool   `json:"isAutoMigrate"`
-		MaxIdleConns  int    `json:"maxIdleConns"`
-		MaxOpenConns  int    `json:"maxOpenConns"`
-		MaxLifetime   string `json:"maxLifetime"`
-	} `json:"database"`
+	Database *DatabaseConfig
 }
 
 // DefaultBHLayer2NodeConfig 定义默认的配置值
@@ -99,19 +101,9 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	QueueBufferSize: 100000,
 	WorkerCount:     3, // 256
 	BatchSize:       1,
+	IsRecovery:      true,
 
-	Database: struct {
-		Username      string `json:"username"`
-		Password      string `json:"password"`
-		Host          string `json:"host"`
-		Port          int    `json:"port"`
-		Dbname        string `json:"dbname"`
-		Timeout       string `json:"timeout"`
-		IsAutoMigrate bool   `json:"isAutoMigrate"`
-		MaxIdleConns  int    `json:"maxIdleConns"`
-		MaxOpenConns  int    `json:"maxOpenConns"`
-		MaxLifetime   string `json:"maxLifetime"`
-	}{
+	Database: &DatabaseConfig{
 		Username:      "root",
 		Password:      "bassword",
 		Host:          "127.0.0.1",

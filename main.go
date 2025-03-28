@@ -3,13 +3,14 @@ package main
 import (
 	"BHLayer2Node/ChainUpper"
 	"BHLayer2Node/Coordinator"
+	"BHLayer2Node/Database"
 	"BHLayer2Node/Epoch"
 	"BHLayer2Node/Event"
 	"BHLayer2Node/Monitor"
 	"BHLayer2Node/Network/HTTP"
 	"BHLayer2Node/Oracle"
+	"BHLayer2Node/Recovery"
 	"BHLayer2Node/Schedule"
-	"BHLayer2Node/database"
 	"BHLayer2Node/paradigm"
 	"fmt"
 )
@@ -23,7 +24,13 @@ func catchPanic() {
 func main() {
 	defer catchPanic()
 	config := paradigm.LoadBHLayer2NodeConfig("config.json")
-
+	// 加载数据库
+	dbService, err := Database.NewDatabaseService(config)
+	if err != nil {
+		paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("Failed to init database: %v", err))
+	}
+	// 恢复数据
+	recovery := Recovery.RecoverFromDataBase(config, dbService)
 	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
@@ -32,14 +39,10 @@ func main() {
 	//httpEngine.Setup(*config)
 	httpEngine := HTTP.NewHttpEngine(rappaChannel)
 	event := Event.NewEvent(rappaChannel)
-	_, err := database.NewDatabaseService(rappaChannel, config)
-	if err != nil {
-		paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("Failed to init database: %v", err))
-	}
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
-	epochManager := Epoch.NewEpochManager(rappaChannel)
+	epochManager := Epoch.NewEpochManager(rappaChannel, recovery)
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
-	oracle := Oracle.NewPersistedOracle(rappaChannel)
+	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService)
 	monitor := Monitor.NewMonitor(rappaChannel)
 	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	//if err != nil {

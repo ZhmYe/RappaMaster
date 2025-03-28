@@ -7,15 +7,15 @@ import (
 )
 
 // TODO 这里会有很多并发读写的问题，后面要用TryLock,如果发现被锁住了，那么直接返回还未更新
-func (d *PersistedOracle) processDBQuery() {
+func (o *PersistedOracle) processDBQuery() {
 	// 来自Http的query,需要发回去，因此Query里需要有一个通道
 	// TODO 这里的txMap应该会有并发读写的问题，而且不能将这个协程合并，会影响性能
-	for query := range d.channel.QueryChannel {
+	for query := range o.channel.QueryChannel {
 		paradigm.Print("ORACLE", fmt.Sprintf("Receive a Query: %v", query.ToHttpJson()))
 		switch query.(type) {
 		case *Query.EvidencePreserveTaskIDQuery:
 			item := query.(*Query.EvidencePreserveTaskIDQuery)
-			task, err := d.GetTaskByID(item.TaskID)
+			task, err := o.dbService.GetTaskByID(item.TaskID)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
@@ -26,7 +26,7 @@ func (d *PersistedOracle) processDBQuery() {
 		case *Query.EvidencePreserveTaskTxQuery:
 			// 根据txHash查询Task
 			item := query.(*Query.EvidencePreserveTaskTxQuery)
-			task, err := d.GetTaskByTxHash(item.TxHash)
+			task, err := o.dbService.GetTaskByTxHash(item.TxHash)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
@@ -37,13 +37,13 @@ func (d *PersistedOracle) processDBQuery() {
 		case *Query.EvidencePreserveEpochIDQuery:
 			item := query.(*Query.EvidencePreserveEpochIDQuery)
 			// epoch := &paradigm.DevEpoch{}
-			// if err := d.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
+			// if err := o.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
 			// 	errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch does not exist in database"))
 			// 	item.SendResponse(errorResponse)
 			// 	paradigm.Error(paradigm.ValueError, "Epoch does not exist in database")
 			// 	continue
 			// }
-			epoch, err := d.GetEpochByID(item.EpochID)
+			epoch, err := o.dbService.GetEpochByID(item.EpochID)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
@@ -53,7 +53,7 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(epoch))
 		case *Query.EvidencePreserveEpochTxQuery:
 			item := query.(*Query.EvidencePreserveEpochTxQuery)
-			epoch, err := d.GetEpochByTxHash(item.TxHash)
+			epoch, err := o.dbService.GetEpochByTxHash(item.TxHash)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
@@ -64,7 +64,7 @@ func (d *PersistedOracle) processDBQuery() {
 		case *Query.BlockchainLatestInfoQuery:
 			item := query.(*Query.BlockchainLatestInfoQuery)
 			// 获取最新交易
-			txRefs, err := d.GetLatestTransactions(20)
+			txRefs, err := o.dbService.GetLatestTransactions(20)
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query latest transactions: %v", err))
 				continue
@@ -81,26 +81,26 @@ func (d *PersistedOracle) processDBQuery() {
 				latestTxs = append(latestTxs, packedTx)
 			}
 			// 获取最新epochs
-			latestEpochs, err := d.GetLatestEpochs(20)
+			latestEpochs, err := o.dbService.GetLatestEpochs(20)
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query latest epochs: %v", err))
 				continue
 			}
 			// 获取已完成的slot数量
-			nbFinalized, err := d.GetFinalizedSlotsCount()
+			nbFinalized, err := o.dbService.GetFinalizedSlotsCount()
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to count finalized slots: %v", err))
 				continue
 			}
 			// 获取合成数据统计
-			synthData, err := d.GetSynthDataByModel()
+			synthData, err := o.dbService.GetSynthDataByModel()
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to get synth data: %v", err))
 				continue
 			}
 
 			// 获取交易总数
-			nbTransaction, err := d.GetTransactionCount()
+			nbTransaction, err := o.dbService.GetTransactionCount()
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to count transactions: %v", err))
 				continue
@@ -123,22 +123,22 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(info))
 		case *Query.BlockchainBlockNumberQuery: // 链上查询
 			item := query.(*Query.BlockchainBlockNumberQuery)
-			d.channel.BlockchainQueryChannel <- item
+			o.channel.BlockchainQueryChannel <- item
 			block := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(block))
 		case *Query.BlockchainBlockHashQuery: // 链上查询
 			item := query.(*Query.BlockchainBlockHashQuery)
-			d.channel.BlockchainQueryChannel <- item
+			o.channel.BlockchainQueryChannel <- item
 			block := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(block))
 		case *Query.BlockchainTransactionQuery:
 			item := query.(*Query.BlockchainTransactionQuery)
 			// 从区块链获取交易信息
-			d.channel.BlockchainQueryChannel <- item
+			o.channel.BlockchainQueryChannel <- item
 			tx := item.ReceiveInfo()
 			txInfo := tx.(paradigm.TransactionInfo)
 			// 从数据库获得交易信息
-			ref, err := d.GetTransactionByHash(txInfo.TxHash)
+			ref, err := o.dbService.GetTransactionByHash(txInfo.TxHash)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
 				item.SendResponse(errorResponse)
@@ -161,12 +161,12 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(txInfo))
 		case *Query.NodesStatusQuery:
 			item := query.(*Query.NodesStatusQuery)
-			d.channel.MonitorQueryChannel <- item
+			o.channel.MonitorQueryChannel <- item
 			status := item.ReceiveInfo()
 			item.SendResponse(item.GenerateResponse(status))
 		case *Query.DateSynthDataQuery:
 			item := query.(*Query.DateSynthDataQuery)
-			records, err := d.GetDateRecords()
+			records, err := o.dbService.GetDateRecords()
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, fmt.Sprintf("Failed to query date records: %v", err)))
 				item.SendResponse(errorResponse)
@@ -176,7 +176,7 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(records))
 		case *Query.DateTransactionQuery:
 			item := query.(*Query.DateTransactionQuery)
-			records, err := d.GetDateRecords()
+			records, err := o.dbService.GetDateRecords()
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, fmt.Sprintf("Failed to query date records: %v", err)))
 				item.SendResponse(errorResponse)
@@ -187,7 +187,7 @@ func (d *PersistedOracle) processDBQuery() {
 		case *Query.SynthTaskQuery:
 			item := query.(*Query.SynthTaskQuery)
 			// 获取所有任务
-			tasksMap, err := d.GetAllTasks()
+			tasksMap, err := o.dbService.GetAllTasks()
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,
@@ -200,7 +200,7 @@ func (d *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(tasksMap))
 		case *Query.CollectTaskQuery:
 			item := query.(*Query.CollectTaskQuery)
-			task, err := d.GetTaskByID(item.TaskID())
+			task, err := o.dbService.GetTaskByID(item.TaskID())
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,
