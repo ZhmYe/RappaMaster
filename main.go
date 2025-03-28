@@ -38,13 +38,13 @@ func main() {
 	}
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel)
-	// chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
+	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewPersistedOracle(rappaChannel)
-	monitir := Monitor.NewMonitor(rappaChannel)
-	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
-	if err != nil {
-		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	}
+	monitor := Monitor.NewMonitor(rappaChannel)
+	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
+	//if err != nil {
+	//	paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	//}
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(rappaChannel)
@@ -60,7 +60,7 @@ func main() {
 	go coordinator.Start()
 	//定时，如果大于10s,EpochEvent队列里放置一个true
 	go event.Start()
-	go monitir.Start()
+	go monitor.Start()
 	go chainUpper.Start()
 	//go collector.Start()
 	// 启动 Scheduler
