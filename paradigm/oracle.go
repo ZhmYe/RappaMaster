@@ -3,8 +3,9 @@ package paradigm
 import (
 	"fmt"
 
-	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"time"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 // =============== 以下是Reference部分==============
@@ -33,15 +34,25 @@ const (
 //	//ScheduleID ScheduleHash
 //}
 
+//	type DevReference struct {
+//		TID         int64         `gorm:"primaryKey;autoIncrement"`
+//		TxHash      string        `gorm:"type:char(66)"`
+//		TxReceipt   types.Receipt `gorm:"type:json;serializer:json"` // JSON 类型需要数据库支持
+//		TxBlockHash string        `gorm:"not null;type:char(66)"`
+//		Rf          RFType        `gorm:"not null;type:tinyint"` // 枚举存储为整数类型
+//		TaskID      TaskHash      `gorm:"type:varchar(255)"`     // 假设 TaskHash 是字符串类型
+//		EpochID     int32         `gorm:"type:int"`
+//		UpchainTime time.Time     `gorm:"not null;type:datetime"`
+//	}
 type DevReference struct {
 	TID         int64         `gorm:"primaryKey;autoIncrement"`
-	TxHash      string        `gorm:"type:char(66)"`
-	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"` // JSON 类型需要数据库支持
-	TxBlockHash string        `gorm:"not null;type:char(66)"`
-	Rf          RFType        `gorm:"not null;type:tinyint"` // 枚举存储为整数类型
-	TaskID      TaskHash      `gorm:"type:varchar(255)"`     // 假设 TaskHash 是字符串类型
-	EpochID     int32         `gorm:"type:int"`
-	UpchainTime time.Time     `gorm:"not null;type:datetime"`
+	TxHash      string        `gorm:"type:char(66);uniqueIndex:idx_tx_hash"` // 添加唯一索引
+	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"`
+	TxBlockHash string        `gorm:"not null;type:char(66);index:idx_block_hash"`   // 添加普通索引
+	Rf          RFType        `gorm:"not null;type:tinyint;index:idx_rf"`            // 添加普通索引
+	TaskID      TaskHash      `gorm:"type:varchar(255);index:idx_task_id"`           // 添加普通索引
+	EpochID     int32         `gorm:"type:int;index:idx_epoch_id"`                   // 添加普通索引
+	UpchainTime time.Time     `gorm:"not null;type:datetime;index:idx_upchain_time"` // 添加普通索引
 }
 
 // CommitRecord 每个commitRecord对应一个完成finalize的commitSlotItem，对应一笔TaskProcessTransaction
@@ -75,19 +86,27 @@ func NewCommitRecord(ptx *PackedTransaction) *CommitRecord {
 
 // =================== 以下是epoch部分=========================
 
+/*
+TODO: EpochID在每次系统启动时自动获取上次运行的最后一个epoch编号
+数据一致性：
+
+	1.Epoch编号必须通过数据库生成/修改，确保slot等其他数据里的epochid也一致
+	2.崩溃恢复后数据一致
+*/
 type DevEpoch struct {
-	EpochID int32
 	// TODO 这里需要根据根据任务类型去分类，要不然前端这边就没办法判断出来了
+	EpochID     int32                        `gorm:"primaryKey;autoIncrement:false"` // 明确指定为主键且禁用自增
 	Process     map[SupportModelType]int32   `gorm:"type:json;serializer:json"`
 	Commits     map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Justifieds  map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Finalizes   map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
 	Invalids    []*Slot                      `gorm:"type:json;serializer:json"`
 	InitTasks   []*Task                      `gorm:"type:json;serializer:json"`
-	TxReceipt   *types.Receipt               `gorm:"-"` // 交易上链后会有一个对应的receipt
+	TxReceipt   *types.Receipt               `gorm:"-"`
 	TID         int64                        `gorm:"not null"`
-	TxHash      string                       `gorm:"-"` // 交易Hash，用于在Dev中定位交易
+	TxHash      string                       `gorm:"-"`
 	TxBlockHash string                       `gorm:"-"`
+	CreatedAt   time.Time                    `gorm:"type:timestamp"` // 创建时间
 }
 
 //func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {
@@ -196,9 +215,11 @@ func (r *EpochRecord) Echo() {
 	//Print("EPOCH", fmt.Sprintf("	Finalizeds: %v", r.Finalizes))
 	//Print("EPOCH", fmt.Sprintf("	Invalids: %v", r.Invalids))
 }
-func NewEpochRecord() *EpochRecord {
+
+// EpochRecord的epochID也需要从数据库中初始化
+func NewEpochRecord(initEpochID int) *EpochRecord {
 	return &EpochRecord{
-		Id:         0,
+		Id:         initEpochID,
 		Commits:    make(map[SlotHash]SlotCommitment),
 		Finalizes:  make(map[SlotHash]SlotCommitment),
 		Justifieds: make(map[SlotHash]SlotCommitment),

@@ -21,6 +21,16 @@
   "BatchSize": 1,
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
+  "database": {
+    "username": "root",
+    "password": "bassword",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "dbname": "db_rappa",
+    "timeout": "5s",
+    "maxIdleConns": 10,
+    "maxOpenConns": 100
+  },
   "DEBUG": false ,
   "BHNodeAddressMap": {
     "0": {

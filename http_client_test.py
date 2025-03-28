@@ -4,6 +4,7 @@ import json
 def create_task():
     # 请求体数据
     request_data = {
+        "name": "金融表格数据合成任务",
         "model": "FINKAN",
         "params": {
         },
@@ -28,7 +29,10 @@ def oracle_query_epoch():
 def oracle_query_task():
     request_data = {
         "query": "EvidencePreserveTaskIDQuery",
-        "taskID": "SynthTask-0-1739767757",
+        "taskID": "SynthTask-1-1743139204",
+        # "query": "EvidencePreserveTaskTxQuery",
+        # "txHash": "0xedc67090b2136bb7d009d753c0653d9d1caf5cf612ac7c1b97021e0ccd56ba1e",
+
     }
 
     # 发送 POST 请求
@@ -44,16 +48,16 @@ def oracle_query_blockchain_latest():
 def oracle_query_block():
     request_data = {
         "query": "BlockchainBlockHashQuery",
-        "blockHash": "0x1ca92b9f55a9f977f85f7d4a0f07c31ba2b8e75a903d7e0fe0999e15a351b19c",
+        "blockHash": "0xe74abcfd64034c6d9cb3665554ba52b71b2b505543a3ed3a6734121d2ac78f9d",
         # "query": "BlockchainBlockNumberQuery",
-        # "blockNumber": 88,
+        # "blockNumber": 4110,
     }
     url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
-def oracle_query_tx():
+def oracle_query_tx(): 
     request_data = {
         "query": "BlockchainTransactionQuery",
-        "txHash": "0xdb8674759ea3e56ad0b5d40e2cc1b6fb724ae657d2277dc11bc23e4c68f4ffa9"
+        "txHash": "0xedc67090b2136bb7d009d753c0653d9d1caf5cf612ac7c1b97021e0ccd56ba1e"
     }
     url = "http://127.0.0.1:8081/blockchain"
     send_GET_request(url, request_data)
@@ -128,11 +132,11 @@ def main():
             create_task()
         if command == 'epoch':
             oracle_query_epoch()
-        if command == 'task':
+        if command == 'task': 
             oracle_query_task()
-        if command == "bc_latest":
+        if command == "bc_latest": 
             oracle_query_blockchain_latest()
-        if command == "block":
+        if command == "block": 
             oracle_query_block()
         if command == "tx":
             oracle_query_tx()

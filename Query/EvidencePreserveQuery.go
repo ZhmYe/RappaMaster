@@ -21,6 +21,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	// 1.任务的基本信息
 	info := make(map[string]interface{})
 	info["taskID"] = task.Sign             // 任务标识
+	info["taskName"] = task.Name           // 任务名称
 	info["total"] = task.Size              // 任务合成总量
 	info["process"] = task.Process         // 已合成的数量
 	info["schedule"] = len(task.Schedules) // 调度数量
@@ -275,6 +276,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	for _, task := range epoch.InitTasks {
 		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
+		taskInfo["taskName"] = task.Name
 		taskInfo["TxHash"] = task.TxReceipt.TransactionHash
 		taskInfo["Total"] = task.Size
 		taskInfo["Process"] = task.Process

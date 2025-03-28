@@ -2,9 +2,10 @@ package paradigm
 
 import (
 	"fmt"
-	"github.com/FISCO-BCOS/go-sdk/v3/types"
 	"strings"
 	"time"
+
+	"github.com/FISCO-BCOS/go-sdk/v3/types"
 )
 
 // Task 描述一个合成任务
@@ -33,6 +34,7 @@ import (
 
 type Task struct {
 	Sign           string                 `gorm:"primaryKey;type:varchar(256);not null;comment:唯一任务标识符（必填）"`
+	Name           string                 `gorm:"type:varchar(256)"`
 	Slot           int32                  `gorm:"type:int;not null"`
 	Model          SupportModelType       `gorm:"type:tinyint;not null;comment:支持的模型类型（必填，0=CTGAN, 1=BAED, 2=FINKAN, 3=ABM）"`
 	Params         map[string]interface{} `gorm:"type:json;serializer:json"`
@@ -56,6 +58,7 @@ func (t *Task) Print() {
 	var sb strings.Builder
 	sb.WriteString("Task Details:\n")
 	sb.WriteString(fmt.Sprintf("Sign: %s\n", t.Sign))
+	sb.WriteString(fmt.Sprintf("Name: %s\n", t.Name))
 	sb.WriteString(fmt.Sprintf("Slot: %d\n", t.Slot))
 	sb.WriteString(fmt.Sprintf("Model: %v\n", t.Model))
 	sb.WriteString("Params:\n")
@@ -192,7 +195,7 @@ func (t *Task) GetDataset() string {
 		return ""
 	}
 }
-func NewTask(sign string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
+func NewTask(sign string, name string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {
 	case CTGAN:
@@ -209,6 +212,7 @@ func NewTask(sign string, model SupportModelType, params map[string]interface{},
 	}
 	return &Task{
 		Sign:        sign,
+		Name:        name,
 		Slot:        -1,
 		Model:       model,
 		OutputType:  outputType,

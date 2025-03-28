@@ -3,6 +3,7 @@ package Oracle
 import (
 	"BHLayer2Node/Date"
 	"BHLayer2Node/paradigm"
+	"fmt"
 	"time"
 )
 
@@ -29,4 +30,13 @@ func (o *PersistedOracle) getDateRecord(date time.Time) *Date.DateRecord {
 // 更新dateRecord
 func (o *PersistedOracle) updateDateRecord(record *Date.DateRecord) {
 	o.db.Save(record)
+}
+
+func (o *PersistedOracle) GetDateRecords() ([]*Date.DateRecord, error) {
+	var records []*Date.DateRecord
+	err := o.db.Order("date asc").Find(&records).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to query date records: %v", err)
+	}
+	return records, nil
 }

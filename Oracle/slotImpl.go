@@ -3,6 +3,8 @@ package Oracle
 import (
 	"BHLayer2Node/paradigm"
 	"errors"
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -43,4 +45,22 @@ func (o *PersistedOracle) getSlot(slotHash paradigm.SlotHash) *paradigm.Slot {
 	slotQuery := paradigm.Slot{}
 	o.db.Where(paradigm.Slot{SlotID: slotHash}).Attrs(paradigm.NewSlotWithSlotID(slotHash)).FirstOrCreate(&slotQuery)
 	return &slotQuery
+}
+
+// GetFinalizedSlotsCount 获取已完成的slot数量
+func (o *PersistedOracle) GetFinalizedSlotsCount() (int64, error) {
+	var count int64
+
+	err := o.db.Model(&paradigm.Slot{}).
+		Where("status = ?", paradigm.Finished). // 使用 Finished 状态筛选
+		Count(&count).Error
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count finalized slots: %v", err)
+	}
+
+	// 添加日志记录
+	paradigm.Log("DEBUG", fmt.Sprintf("Found %d finalized slots", count))
+
+	return count, nil
 }

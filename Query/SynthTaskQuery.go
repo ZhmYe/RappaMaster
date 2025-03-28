@@ -74,6 +74,7 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	for _, task := range info {
 		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
+		taskInfo["taskName"] = task.Name
 		taskInfo["txHash"] = task.TxReceipt.TransactionHash
 		taskInfo["total"] = task.Size // 数据总量
 		//taskInfo["process"] = min(task.Process, task.Size) // 已合成
