@@ -65,10 +65,10 @@ func (o DatabaseService) GetFinalizedSlotsCount() (int64, error) {
 	return count, nil
 }
 
-func (o DatabaseService) DownUnFinishedSlotsByTaskID(epoch int32, taskhash paradigm.TaskHash) {
+func (o DatabaseService) DownUnFinishedSlots(epoch int32) error {
 	updateMap := make(map[string]interface{})
 	updateMap["epoch"] = epoch
 	updateMap["err"] = paradigm.InvalidCommitTypeToString(paradigm.DOWN_FAILED)
 	updateMap["status"] = paradigm.Failed
-	o.db.Where("task_id = ? and status = ?", taskhash, paradigm.Processing).Updates(updateMap)
+	return o.db.Where("status = ?", paradigm.Processing).Updates(updateMap).Error
 }

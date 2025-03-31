@@ -25,8 +25,8 @@ func RecoverFromDataBase(config *paradigm.BHLayer2NodeConfig, service *Database.
 			return nil
 		}
 		paradigm.Print("INFO", fmt.Sprintf("System initialized with epoch ID: %d from database", maxEpochID))
-		// 将之前未完成的任务设置成失败
-		err = processUnFinished(maxEpochID, service)
+		// 将之前未完成的任务和slot设置成失败
+		err = service.DownUnFinishedSlots(maxEpochID)
 		if err != nil {
 			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to process unFinishedTask: %v", err))
 			return nil
@@ -41,19 +41,4 @@ func RecoverFromDataBase(config *paradigm.BHLayer2NodeConfig, service *Database.
 		paradigm.Print("INFO", "clear database successfully")
 		return &RappaRecovery{EpochID: -1}
 	}
-}
-
-func processUnFinished(epoch int32, service *Database.DatabaseService) error {
-	newestTime, err := service.GetNewestDateTime()
-	if err != nil {
-		return err
-	}
-	tasks, err := service.GetTasksAfter(newestTime)
-	if err != nil {
-		return err
-	}
-	for _, task := range tasks {
-		service.DownUnFinishedSlotsByTaskID(epoch, task.Sign)
-	}
-	return nil
 }

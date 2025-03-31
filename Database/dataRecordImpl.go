@@ -40,9 +40,3 @@ func (o DatabaseService) GetDateRecords() ([]*Date.DateRecord, error) {
 	}
 	return records, nil
 }
-
-func (o DatabaseService) GetNewestDateTime() (time.Time, error) {
-	dateRecord := Date.DateRecord{}
-	o.db.Last(&dateRecord)
-	return dateRecord.Date, nil
-}

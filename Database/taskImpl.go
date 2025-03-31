@@ -4,8 +4,6 @@ import (
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -126,11 +124,4 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 	}
 
 	return synthData, nil
-}
-
-// 查询在之后时间的task数组
-func (o DatabaseService) GetTasksAfter(time time.Time) ([]*paradigm.Task, error) {
-	var tasks []*paradigm.Task
-	o.db.Where("start_time > ?", time).Find(&tasks)
-	return tasks, nil
 }
