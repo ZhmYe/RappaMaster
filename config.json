@@ -29,9 +29,11 @@
     "dbname": "db_rappa",
     "timeout": "5s",
     "maxIdleConns": 10,
-    "maxOpenConns": 100
+    "maxOpenConns": 100,
+    "maxLifetime": "1h"
   },
-  "isRecovery": true,
+  "IsAutoMigrate": true,
+  "IsRecovery": true,
   "DEBUG": false,
   "BHNodeAddressMap": {
     "0": {

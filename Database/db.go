@@ -13,7 +13,7 @@ import (
 
 type DatabaseService struct {
 	db     *gorm.DB
-	config *paradigm.BHLayer2NodeConfig
+	dbConf *paradigm.DatabaseConfig
 }
 
 // 全局单例
@@ -25,13 +25,7 @@ type DatabaseService struct {
 func NewDatabaseService(config *paradigm.BHLayer2NodeConfig) (*DatabaseService, error) {
 	var initErr error
 	// 构建DSN
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=%s",
-		config.Database.Username,
-		config.Database.Password,
-		config.Database.Host,
-		config.Database.Port,
-		config.Database.Dbname,
-		config.Database.Timeout)
+	dsn := config.Database.BuildDSN()
 
 	// 初始化GORM
 	gormConfig := gorm.Config{}
@@ -55,26 +49,22 @@ func NewDatabaseService(config *paradigm.BHLayer2NodeConfig) (*DatabaseService, 
 	maxLifetime, _ := time.ParseDuration(config.Database.MaxLifetime)
 	sqlDB.SetConnMaxLifetime(maxLifetime)
 
-	// 自动迁移
-	if config.Database.IsAutoMigrate {
-		if err := autoMigrate(gormDB); err != nil {
-			initErr = fmt.Errorf("auto migrate failed: %v", err)
-			return nil, err
-		}
-	}
-
 	return &DatabaseService{
 		db:     gormDB,
-		config: config,
+		dbConf: config.Database,
 	}, initErr
 }
 
-func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
+func (o DatabaseService) AutoMigrate() error {
+	return o.db.AutoMigrate(
 		&paradigm.Slot{},
 		&paradigm.Task{},
 		&paradigm.DevEpoch{},
 		&paradigm.DevReference{},
 		&Date.DateRecord{},
 	)
+}
+
+func (o DatabaseService) TruncateAll() error {
+	return o.db.Exec("truncate table data_records,dev_epoches,dev_reference,data_record").Error
 }

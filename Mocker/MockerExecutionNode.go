@@ -15,7 +15,7 @@ type MockerExecutionNode struct {
 	nodeID   int
 	ip       string
 	slotData map[string]string // 模拟当前节点的任务分配情况
-	service.UnimplementedCoordinatorServer
+	service.UnimplementedRappaExecutorServer
 	mu         sync.Mutex                   // 保护 slotData 的并发访问
 	commitSlot chan paradigm.CommitSlotItem // 这里模拟直接commit
 }
@@ -32,7 +32,7 @@ func NewMockerExecutionNode(nodeID int, ip string, commitSlot chan paradigm.Comm
 
 func (m *MockerExecutionNode) Start() {
 	server := grpc.NewServer()
-	service.RegisterCoordinatorServer(server, m)
+	service.RegisterRappaExecutorServer(server, m)
 
 	listener, err := net.Listen("tcp", m.ip) // 监听端口
 	if err != nil {

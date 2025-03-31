@@ -38,8 +38,7 @@ const (
 	EXPIRE_SLOT                                 // 过期的slot
 	INVALID_COMMITMENT                          // 承诺不通过
 	VERIFIED_FAILED                             // 异常的存储状态
-	// TODO
-
+	DOWN_FAILED                                 //宕机无法恢复
 	UNKNOWN
 	NONE
 )
@@ -54,6 +53,8 @@ func InvalidCommitTypeToString(i InvalidCommitType) string {
 		return "INVALID_COMMITMENT"
 	case VERIFIED_FAILED:
 		return "VERIFIED_FAILED"
+	case DOWN_FAILED:
+		return "DOWN_FAILED"
 	case UNKNOWN:
 		return "UNKNOWN"
 	case NONE:

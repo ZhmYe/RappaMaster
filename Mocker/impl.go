@@ -35,32 +35,28 @@ func (m *MockerExecutionNode) Schedule(ctx context.Context, req *service.Schedul
 	}
 
 	// 如果接受任务，将其存储到 slotData
-	m.slotData[req.Sign] = req.Slot
+	m.slotData[req.Sign] = strconv.Itoa(int(req.Slot))
 
 	paradigm.Log("DEBUG", fmt.Sprintf("Node %d accepted task %s for slot %s", m.nodeID, req.Sign, req.Slot))
-	for idStr, sizeStr := range req.Schedule {
-		id, _ := strconv.Atoi(idStr)
-		size := sizeStr
-		slot, _ := strconv.Atoi(req.Slot)
-		if id == m.nodeID {
-			go func() {
-				//time.Sleep(2 * time.Second)
-				process := size - 1
-				if process <= 0 {
-					process = 1
-				}
-				paradigm.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Epoch %s Slot %d", id, size-1, req.Sign, slot))
-				// todo 这里现在是直接提交的，没有走grpc
-				m.commitSlot <- paradigm.NewCommitSlotItem(&service.JustifiedSlot{
-					Nid:     int32(id),
-					Process: int32(process),
-					Sign:    req.Sign,
-					Slot:    int32(slot),
-					Epoch:   -1,
-				})
-			}()
+	id, _ := strconv.Atoi(req.Sign)
+	size := req.Size
+	slot := req.Slot
+	go func() {
+		//time.Sleep(2 * time.Second)
+		process := size - 1
+		if process <= 0 {
+			process = 1
 		}
-	}
+		paradigm.Log("DEBUG", fmt.Sprintf("Node %d finished %d in Epoch %s Slot %d", id, size-1, req.Sign, slot))
+		// todo 这里现在是直接提交的，没有走grpc
+		m.commitSlot <- paradigm.NewCommitSlotItem(&service.JustifiedSlot{
+			Nid:     int32(id),
+			Process: process,
+			Sign:    req.Sign,
+			Slot:    slot,
+			Epoch:   -1,
+		})
+	}()
 	return &service.ScheduleResponse{
 		Sign:   req.Sign,
 		NodeId: strconv.Itoa(m.nodeID),

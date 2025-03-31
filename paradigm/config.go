@@ -2,6 +2,7 @@ package paradigm
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -13,25 +14,35 @@ type BHNodeAddress struct {
 	nodeUrl       string //节点访问url
 }
 
-type DatabaseConfig struct {
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	Host          string `json:"host"`
-	Port          int    `json:"port"`
-	Dbname        string `json:"dbname"`
-	Timeout       string `json:"timeout"`
-	IsAutoMigrate bool   `json:"isAutoMigrate"`
-	MaxIdleConns  int    `json:"maxIdleConns"`
-	MaxOpenConns  int    `json:"maxOpenConns"`
-	MaxLifetime   string `json:"maxLifetime"`
-}
-
 // 返回地址字符串
-func (b *BHNodeAddress) GetAddrStr() string {
+func (b BHNodeAddress) GetAddrStr() string {
 	if b.nodeUrl == "" {
 		b.nodeUrl = b.NodeIPAddress + ":" + strconv.Itoa(b.NodeGrpcPort)
 	}
 	return b.nodeUrl
+}
+
+type DatabaseConfig struct {
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Dbname       string `json:"dbname"`
+	Timeout      string `json:"timeout"`
+	MaxIdleConns int    `json:"maxIdleConns"`
+	MaxOpenConns int    `json:"maxOpenConns"`
+	MaxLifetime  string `json:"maxLifetime"`
+}
+
+// 返回dsn字符串
+func (d DatabaseConfig) BuildDSN() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&timeout=%s",
+		d.Username,
+		d.Password,
+		d.Host,
+		d.Port,
+		d.Dbname,
+		d.Timeout)
 }
 
 // BHLayer2NodeConfig 定义 Layer2 节点的配置
@@ -66,6 +77,7 @@ type BHLayer2NodeConfig struct {
 	QueueBufferSize int // 上链队列缓冲区大小
 	WorkerCount     int // Worker 的数量
 	BatchSize       int
+	IsAutoMigrate   bool
 	IsRecovery      bool
 
 	Database *DatabaseConfig
@@ -102,18 +114,18 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 	WorkerCount:     3, // 256
 	BatchSize:       1,
 	IsRecovery:      true,
+	IsAutoMigrate:   true,
 
 	Database: &DatabaseConfig{
-		Username:      "root",
-		Password:      "bassword",
-		Host:          "127.0.0.1",
-		Port:          3306,
-		Dbname:        "db_rappa",
-		Timeout:       "5s",
-		IsAutoMigrate: true,
-		MaxIdleConns:  10,
-		MaxOpenConns:  100,
-		MaxLifetime:   "1h",
+		Username:     "root",
+		Password:     "bassword",
+		Host:         "127.0.0.1",
+		Port:         3306,
+		Dbname:       "db_rappa",
+		Timeout:      "5s",
+		MaxIdleConns: 10,
+		MaxOpenConns: 100,
+		MaxLifetime:  "1h",
 	},
 }
 
