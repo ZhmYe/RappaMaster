@@ -51,6 +51,7 @@ type Task struct {
 	HasbeenCollect bool                   `gorm:"-"`
 	StartTime      time.Time              `gorm:"type:datetime;not null;comment:任务启动时间戳"`
 	EndTime        time.Time              `gorm:"type:datetime;comment:任务结束时间戳"`
+	Status         SlotStatus             `gorm:"type:tinyint;not null;comment:完成状态"`
 	Collector      RappaCollector         `gorm:"-"`
 }
 

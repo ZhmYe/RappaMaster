@@ -83,7 +83,7 @@ func NewErrorResponse(err RappaError) *ErrorResponse {
 }
 
 type LatestBlockchainInfo struct {
-	LatestTxs     []*PackedTransaction
+	LatestTxs     []*DevReference
 	LatestEpoch   []*DevEpoch
 	NbFinalized   int32
 	SynthData     map[SupportModelType]int32

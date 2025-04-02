@@ -64,21 +64,10 @@ func (o *PersistedOracle) processDBQuery() {
 		case *Query.BlockchainLatestInfoQuery:
 			item := query.(*Query.BlockchainLatestInfoQuery)
 			// 获取最新交易
-			txRefs, err := o.dbService.GetLatestTransactions(20)
+			latestTxs, err := o.dbService.GetLatestTransactions(20)
 			if err != nil {
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to query latest transactions: %v", err))
 				continue
-			}
-			// 构建 PackedTransaction 列表
-			latestTxs := make([]*paradigm.PackedTransaction, 0)
-			for _, ref := range txRefs {
-				packedTx := &paradigm.PackedTransaction{
-					Receipt:     &ref.TxReceipt,
-					BlockHash:   ref.TxBlockHash,
-					UpchainTime: ref.UpchainTime,
-					Id:          int(ref.TID),
-				}
-				latestTxs = append(latestTxs, packedTx)
 			}
 			// 获取最新epochs
 			latestEpochs, err := o.dbService.GetLatestEpochs(20)
@@ -116,7 +105,7 @@ func (o *PersistedOracle) processDBQuery() {
 			}
 
 			if len(latestTxs) > 0 {
-				info.NbBlock = int32(latestTxs[0].Receipt.BlockNumber)
+				info.NbBlock = int32(latestTxs[0].TxReceipt.BlockNumber)
 			}
 
 			// 发送响应
