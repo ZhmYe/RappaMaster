@@ -41,13 +41,13 @@ func main() {
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel, recovery)
-	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
+	//chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService)
 	monitor := Monitor.NewMonitor(rappaChannel)
-	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
-	//if err != nil {
-	//	paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	//}
+	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
+	if err != nil {
+		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	}
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(rappaChannel)

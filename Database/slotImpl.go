@@ -70,5 +70,5 @@ func (o DatabaseService) DownUnFinishedSlots(epoch int32) error {
 	updateMap["epoch"] = epoch
 	updateMap["err"] = paradigm.InvalidCommitTypeToString(paradigm.DOWN_FAILED)
 	updateMap["status"] = paradigm.Failed
-	return o.db.Where("status = ?", paradigm.Processing).Updates(updateMap).Error
+	return o.db.Model(&paradigm.Slot{}).Where("status = ?", paradigm.Processing).Updates(updateMap).Error
 }
