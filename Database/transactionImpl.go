@@ -35,8 +35,8 @@ func (o DatabaseService) GetTransactionByHash(txHash string) (*paradigm.DevRefer
 }
 
 // GetLatestTransactions 查询 limit 条最新交易
-func (o DatabaseService) GetLatestTransactions(limit int) ([]paradigm.DevReference, error) {
-	var txs []paradigm.DevReference
+func (o DatabaseService) GetLatestTransactions(limit int) ([]*paradigm.DevReference, error) {
+	var txs []*paradigm.DevReference
 	err := o.db.Order("upchain_time desc").Limit(limit).Find(&txs).Error
 	return txs, err
 }

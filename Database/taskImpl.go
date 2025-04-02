@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
+
 	"gorm.io/gorm"
 )
 
@@ -81,7 +82,7 @@ func (o DatabaseService) GetTaskByTxHash(txHash string) (*paradigm.Task, error) 
 // GetAllTasks 查询所有任务
 func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
 	var tasks []*paradigm.Task
-	err := o.db.Find(&tasks).Error
+	err := o.db.Order("start_time DESC").Find(&tasks).Error
 	if err != nil {
 		return nil, err
 	}

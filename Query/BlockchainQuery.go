@@ -55,22 +55,22 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 	response["LatestEpoch"] = le
 	lt := make([]map[string]interface{}, 0)
 	for _, tx := range info.LatestTxs {
-		txType := "InitTask"
-		switch tx.Tx.(type) {
-		case *paradigm.InitTaskTransaction:
+		txType := ""
+		switch tx.Rf {
+		case paradigm.InitTaskTx:
 			txType = "InitTask"
-		case *paradigm.TaskProcessTransaction:
+		case paradigm.SlotTX:
 			txType = "TaskProcess"
-		case *paradigm.EpochRecordTransaction:
+		case paradigm.EpochTx:
 			txType = "EpochRecord"
 		default:
 			continue
 		}
 		lt = append(lt, map[string]interface{}{
-			"txHash":      tx.Receipt.TransactionHash,
+			"txHash":      tx.TxReceipt.TransactionHash,
 			"txType":      txType,
-			"blockHash":   tx.BlockHash, // TODO @XQ 这里能否有区块哈希，如果没有，就改成blockHeight
-			"contract":    tx.Receipt.To,
+			"blockHash":   tx.TxBlockHash,
+			"contract":    tx.TxReceipt.To,
 			"upchainTime": paradigm.TimeFormat(tx.UpchainTime),
 		})
 	}
