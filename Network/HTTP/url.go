@@ -55,6 +55,9 @@ func (e *HttpEngine) HandleGET(c *gin.Context) {
 		})
 	}
 }
+
+func (e *HttpEngine) HandlePOST(c *gin.Context) {}
+
 func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, error) {
 	switch service {
 	case INIT_TASK:

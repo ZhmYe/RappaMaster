@@ -23,7 +23,7 @@
   "ErasureCodeParamK": 6,
   "DEBUG": false ,
   "BHNodeAddressMap": {
-    "0": {
+     "0": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1234
     },
@@ -38,54 +38,6 @@
     "3": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1240
-    },
-    "4": {
-      "NodeIPAddress": "127.0.0.1",
-      "NodeGrpcPort": 1242
-    },
-    "5": {
-      "NodeIPAddress": "127.0.0.1",
-      "NodeGrpcPort": 1244
-    },
-    "6": {
-      "NodeIPAddress": "127.0.0.1",
-      "NodeGrpcPort": 1246
-    },
-    "7": {
-      "NodeIPAddress": "127.0.0.1",
-      "NodeGrpcPort": 1248
-    },
-    "8": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31234
-    },
-    "9": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31235
-    },
-    "10": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31236
-    },
-    "11": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31237
-    },
-    "12": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31238
-    },
-    "13": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31239
-    },
-    "14": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31240
-    },
-    "15": {
-      "NodeIPAddress": "172.23.166.113",
-      "NodeGrpcPort": 31241
     }
   }
 }

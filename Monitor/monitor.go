@@ -78,7 +78,8 @@ func (m *Monitor) processQuery() {
 
 // advice
 func (m *Monitor) advice(request *paradigm.AdviceRequest) {
-	// TODO 调度方式，目前就写成所有节点，均分
+	// TODO 调度方式，目前就写成所有节点，均分,这里暂时图数据只启动前两个节点
+
 	nodeIDs := make([]int32, len(m.nodeStatus))
 	scheduleSize := make([]int32, len(m.nodeStatus))
 	for i := 0; i < len(m.nodeStatus); i++ {
