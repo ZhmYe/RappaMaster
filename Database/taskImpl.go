@@ -55,7 +55,7 @@ func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 	}
 
 	tx := paradigm.DevReference{}
-	if err := o.db.Take(&tx, task.TID).Error; err != nil {
+	if err = o.db.Where("task_id = ? AND rf = ?", taskID, paradigm.InitTaskTx).First(&tx).Error; err != nil {
 		return nil, fmt.Errorf("failed to get associated transaction: %v", err)
 	}
 	task.TxReceipt = &tx.TxReceipt

@@ -46,7 +46,7 @@ const (
 //	}
 type DevReference struct {
 	TID         int64         `gorm:"primaryKey;autoIncrement"`
-	TxHash      string        `gorm:"type:char(66);uniqueIndex:idx_tx_hash"` // 添加唯一索引
+	TxHash      string        `gorm:"type:char(66);Index:idx_tx_hash"` // 添加普通索引
 	TxReceipt   types.Receipt `gorm:"type:json;serializer:json"`
 	TxBlockHash string        `gorm:"not null;type:char(66);index:idx_block_hash"`   // 添加普通索引
 	Rf          RFType        `gorm:"not null;type:tinyint;index:idx_rf"`            // 添加普通索引
