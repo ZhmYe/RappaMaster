@@ -62,6 +62,31 @@ func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 	task.TxBlockHash = tx.TxBlockHash
 	task.TxHash = tx.TxHash
 
+	// 更新每个schedule中的slots信息
+	for i, schedule := range task.Schedules {
+		// 为每个schedule创建新的slots切片
+		var updatedSlots []*paradigm.Slot
+
+		// 查询该schedule下的所有slots
+		for _, slot := range schedule.Slots {
+			var dbSlot paradigm.Slot
+			if err := o.db.Where("slot_id = ?", slot.SlotID).First(&dbSlot).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					// 如果slot不存在，保留原有slot
+					updatedSlots = append(updatedSlots, slot)
+				} else {
+					return nil, fmt.Errorf("failed to query slot %s: %v", slot.SlotID, err)
+				}
+			} else {
+				// 使用数据库中的最新slot信息
+				updatedSlots = append(updatedSlots, &dbSlot)
+			}
+		}
+
+		// 更新schedule的slots
+		task.Schedules[i].Slots = updatedSlots
+	}
+
 	return &task, nil
 }
 
