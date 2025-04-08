@@ -66,5 +66,11 @@ func (o DatabaseService) AutoMigrate() error {
 }
 
 func (o DatabaseService) TruncateAll() error {
-	return o.db.Exec("truncate table data_records,dev_epoches,dev_reference,data_record").Error
+	tables := []string{"date_records", "dev_epoches", "dev_references", "slots", "tasks"}
+	for _, table := range tables {
+		if err := o.db.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table)).Error; err != nil {
+			return fmt.Errorf("failed to truncate table %s: %v", table, err)
+		}
+	}
+	return nil
 }
