@@ -308,7 +308,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 		taskInfo["Total"] = task.Size
 		taskInfo["Process"] = task.Process
 		taskInfo["Model"] = task.Model
-		taskInfo["Status"] = task.IsFinish()
+		taskInfo["Status"] = task.Status
 		initTaskInfo = append(initTaskInfo, taskInfo)
 	}
 	// 5. 可视化图表1：各种slot的组成饼图，即上面的nbCommit, nbJustified, nbFinalized, nbInvalid

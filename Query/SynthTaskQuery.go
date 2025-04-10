@@ -82,7 +82,7 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		taskInfo["status"] = task.Status
 		taskInfo["model"] = paradigm.ModelTypeToString(task.Model)
 		taskInfo["startTime"] = paradigm.TimeFormat(task.StartTime)
-		if task.IsFinish() {
+		if task.Status == paradigm.Finished {
 			taskInfo["endTime"] = paradigm.TimeFormat(task.EndTime)
 		} else {
 			taskInfo["endTime"] = ""

@@ -137,8 +137,7 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 
 	// 按模型类型统计已完成任务的处理量
 	for _, task := range tasks {
-		// 使用 IsFinish() 方法判断任务是否完成
-		if task.IsFinish() {
+		if task.Status == paradigm.Finished {
 			if currentValue, exists := synthData[task.Model]; exists {
 				synthData[task.Model] = currentValue + task.Process
 			} else {
