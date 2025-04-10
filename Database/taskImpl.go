@@ -43,7 +43,7 @@ func (o DatabaseService) SetTask(task *paradigm.Task) {
 
 // 更新任务
 func (o DatabaseService) UpdateTask(task *paradigm.Task) {
-	o.db.Model(task).Select("status", "end_time").Updates(task) // 显示指定字段，GORM的updates方法会忽略0值(Finished=0)
+	o.db.Model(task).Select("*").Updates(task)
 }
 
 // GetTaskByID 通过任务标识查询任务
