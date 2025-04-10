@@ -43,7 +43,7 @@ func (o DatabaseService) SetTask(task *paradigm.Task) {
 
 // 更新任务
 func (o DatabaseService) UpdateTask(task *paradigm.Task) {
-	o.db.Model(task).Select("status", "end_time").Updates(task) // 显示指定字段，GORM的updates方法会忽略0值(Finished=0)
+	o.db.Model(task).Select("*").Updates(task)
 }
 
 // GetTaskByID 通过任务标识查询任务
@@ -105,14 +105,13 @@ func (o DatabaseService) GetTaskByTxHash(txHash string) (*paradigm.Task, error) 
 }
 
 // GetAllTasks 查询所有任务
-func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
+func (o DatabaseService) GetAllTasks() ([]*paradigm.Task, error) {
 	var tasks []*paradigm.Task
 	err := o.db.Order("start_time DESC").Find(&tasks).Error
 	if err != nil {
 		return nil, err
 	}
 
-	tasksMap := make(map[string]*paradigm.Task)
 	for _, task := range tasks {
 		tx := paradigm.DevReference{}
 		if err := o.db.Take(&tx, task.TID).Error; err == nil {
@@ -120,9 +119,8 @@ func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
 			task.TxBlockHash = tx.TxBlockHash
 			task.TxHash = tx.TxHash
 		}
-		tasksMap[task.Sign] = task
 	}
-	return tasksMap, nil
+	return tasks, nil
 }
 
 // GetSynthDataByModel 综合数据查询实现
@@ -139,8 +137,7 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 
 	// 按模型类型统计已完成任务的处理量
 	for _, task := range tasks {
-		// 使用 IsFinish() 方法判断任务是否完成
-		if task.IsFinish() {
+		if task.Status == paradigm.Finished {
 			if currentValue, exists := synthData[task.Model]; exists {
 				synthData[task.Model] = currentValue + task.Process
 			} else {
