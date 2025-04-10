@@ -68,9 +68,9 @@ type SynthTaskQuery struct {
 }
 
 func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
-	info := data.(map[string]*paradigm.Task)
+	info := data.([]*paradigm.Task)
 	response := make(map[string]interface{})
-	tasks := make([]map[string]interface{}, 0)
+	tasks := make([]map[string]interface{}, 0, len(info))
 	for _, task := range info {
 		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
@@ -79,7 +79,7 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		taskInfo["total"] = task.Size // 数据总量
 		//taskInfo["process"] = min(task.Process, task.Size) // 已合成
 		taskInfo["process"] = task.Process
-		taskInfo["status"] = task.IsFinish() // 是否完成
+		taskInfo["status"] = task.Status
 		taskInfo["model"] = paradigm.ModelTypeToString(task.Model)
 		taskInfo["startTime"] = paradigm.TimeFormat(task.StartTime)
 		if task.IsFinish() {

@@ -29,6 +29,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["params"] = task.Params           // 任务的一些参数，包括模型、输入、数据集等，待定 todo
 	info["model"] = paradigm.ModelTypeToString(task.Model)
 	info["dataset"] = task.GetDataset()
+	info["status"] = task.Status
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
 	tx["txHash"] = task.TxReceipt.TransactionHash                   // 交易哈希
