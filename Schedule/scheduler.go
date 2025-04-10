@@ -81,16 +81,17 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	slots := make([]*paradigm.Slot, 0)
 	nodeIDMap := make(map[int]int)
 
-	// TODO 这里暂时特殊处理，图数据只调度两个节点
-	if task.Model == paradigm.BAED {
-		nodeIDMap[int(nIDs[0])] = 0
-		nodeIDMap[int(nIDs[1])] = 1
-		allSized := int32(0)
-		for i := 0; i < len(nIDs); i++ {
-			allSized += size[i]
+	// TODO 这里暂时特殊处理，ABM数据只调度两个节点
+	if task.Model == paradigm.ABM {
+		if len(nIDs) == 1 {
+			nodeIDMap[int(nIDs[0])] = 0
+			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[0])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
+		} else {
+			nodeIDMap[int(nIDs[0])] = 0
+			nodeIDMap[int(nIDs[1])] = 1
+			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[0])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
+			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[1])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
 		}
-		slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[0])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), (allSized/2)+(allSized%2)))
-		slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[1])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), allSized/2))
 	} else {
 		for i := 0; i < len(nIDs); i++ {
 			nID, scheduleSize := nIDs[i], size[i]
