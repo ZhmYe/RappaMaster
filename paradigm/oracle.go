@@ -95,18 +95,19 @@ TODO: EpochID在每次系统启动时自动获取上次运行的最后一个epoc
 */
 type DevEpoch struct {
 	// TODO 这里需要根据根据任务类型去分类，要不然前端这边就没办法判断出来了
-	EpochID     int32                        `gorm:"primaryKey;autoIncrement:false"` // 明确指定为主键且禁用自增
-	Process     map[SupportModelType]int32   `gorm:"type:json;serializer:json"`
-	Commits     map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
-	Justifieds  map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
-	Finalizes   map[SupportModelType][]*Slot `gorm:"type:json;serializer:json"`
-	Invalids    []*Slot                      `gorm:"type:json;serializer:json"`
-	InitTasks   []*Task                      `gorm:"type:json;serializer:json"`
-	TxReceipt   *types.Receipt               `gorm:"-"`
-	TID         int64                        `gorm:"not null"`
-	TxHash      string                       `gorm:"-"`
-	TxBlockHash string                       `gorm:"-"`
-	CreatedAt   time.Time                    `gorm:"type:timestamp"` // 创建时间
+	EpochID     int32                           `gorm:"primaryKey;autoIncrement:false"` // 明确指定为主键且禁用自增
+	Process     map[SupportModelType]int32      `gorm:"type:json;serializer:json"`
+	Commits     map[SupportModelType][]SlotHash `gorm:"type:json;serializer:json"` // Epoch里只存储SlotHash，溯源时从数据库里查Slot By SlotHash
+	Justifieds  map[SupportModelType][]SlotHash `gorm:"type:json;serializer:json"`
+	Finalizes   map[SupportModelType][]SlotHash `gorm:"type:json;serializer:json"`
+	Invalids    []*Slot                         `gorm:"type:json;serializer:json"`
+	InitTasks   []*Task                         `gorm:"type:json;serializer:json"`
+	TxReceipt   *types.Receipt                  `gorm:"-"`
+	TID         int64                           `gorm:"not null"`
+	TxHash      string                          `gorm:"-"`
+	TxBlockHash string                          `gorm:"-"`
+	CreatedAt   time.Time                       `gorm:"type:timestamp"` // 创建时间
+	SlotMap     map[SlotHash]*Slot              `gorm:"-"`              // 临时字段，用于查询时存储需要的Slots完整信息
 }
 
 //func NewDevEpoch(ptx *PackedTransaction) *DevEpoch {

@@ -184,6 +184,7 @@ func (t *Task) SetCollected() {
 }
 func (t *Task) SetEndTime() {
 	t.EndTime = time.Now()
+	t.Status = Finished
 }
 func (t *Task) SetCollector(c RappaCollector) {
 	t.Collector = c
@@ -222,6 +223,7 @@ func NewTask(sign string, name string, model SupportModelType, params map[string
 		Params:      params,
 		Size:        total,
 		Process:     0,
+		Status:      Processing,
 		//records:    make([]paradigm.SlotRecord, 0),
 		isReliable:     isReliable,
 		HasbeenCollect: false,

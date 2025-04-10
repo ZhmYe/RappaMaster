@@ -43,7 +43,7 @@ func (o DatabaseService) SetTask(task *paradigm.Task) {
 
 // 更新任务
 func (o DatabaseService) UpdateTask(task *paradigm.Task) {
-	o.db.Model(task).Updates(task)
+	o.db.Model(task).Select("status", "end_time").Updates(task) // 显示指定字段，GORM的updates方法会忽略0值(Finished=0)
 }
 
 // GetTaskByID 通过任务标识查询任务
@@ -150,4 +150,20 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 	}
 
 	return synthData, nil
+}
+
+// 未完成的任务设置为失败
+func (o DatabaseService) DownUnFinishedTasks() error {
+	result := o.db.Model(&paradigm.Task{}).
+		Where("status = ?", paradigm.Processing).
+		Updates(map[string]interface{}{
+			"status": paradigm.Failed,
+		})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to reset processing tasks: %w", result.Error)
+	}
+
+	paradigm.Log("ORACLE", fmt.Sprintf("Reset %d processing tasks to failed status", result.RowsAffected))
+	return nil
 }

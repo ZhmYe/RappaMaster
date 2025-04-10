@@ -36,13 +36,6 @@ func (o *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(task))
 		case *Query.EvidencePreserveEpochIDQuery:
 			item := query.(*Query.EvidencePreserveEpochIDQuery)
-			// epoch := &paradigm.DevEpoch{}
-			// if err := o.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
-			// 	errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch does not exist in database"))
-			// 	item.SendResponse(errorResponse)
-			// 	paradigm.Error(paradigm.ValueError, "Epoch does not exist in database")
-			// 	continue
-			// }
 			epoch, err := o.dbService.GetEpochByID(item.EpochID)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))

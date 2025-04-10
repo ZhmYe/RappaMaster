@@ -28,6 +28,11 @@ func RecoverFromDataBase(config *paradigm.BHLayer2NodeConfig, service *Database.
 		// 将之前未完成的任务和slot设置成失败
 		err = service.DownUnFinishedSlots(maxEpochID)
 		if err != nil {
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to process unFinishedSlot: %v", err))
+			return nil
+		}
+		err = service.DownUnFinishedTasks()
+		if err != nil {
 			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to process unFinishedTask: %v", err))
 			return nil
 		}
