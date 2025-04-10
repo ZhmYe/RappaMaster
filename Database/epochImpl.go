@@ -46,6 +46,31 @@ func (o DatabaseService) GetEpochByID(epochID int32) (*paradigm.DevEpoch, error)
 	epoch.TxBlockHash = tx.TxBlockHash
 	epoch.TxReceipt = &tx.TxReceipt
 
+	epoch.SlotMap = make(map[paradigm.SlotHash]*paradigm.Slot)
+
+	var allHashes []paradigm.SlotHash
+	for _, slotHashes := range epoch.Commits {
+		allHashes = append(allHashes, slotHashes...)
+	}
+	for _, slotHashes := range epoch.Justifieds {
+		allHashes = append(allHashes, slotHashes...)
+	}
+	for _, slotHashes := range epoch.Finalizes {
+		allHashes = append(allHashes, slotHashes...)
+	}
+
+	if len(allHashes) > 0 {
+		var slots []*paradigm.Slot
+		err = o.db.Where("slot_id IN ?", allHashes).Find(&slots).Error
+		if err != nil {
+			return nil, fmt.Errorf("failed to query slots: %v", err)
+		}
+
+		for _, slot := range slots {
+			epoch.SlotMap[slot.SlotID] = slot
+		}
+	}
+
 	return &epoch, nil
 }
 

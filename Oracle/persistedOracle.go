@@ -38,7 +38,7 @@ func (o *PersistedOracle) Start() {
 						// 那么需要新建一个epoch
 						epochRecord := ptx.Tx.Blob().(*paradigm.EpochRecord)
 						//fmt.Println(222, epochRecord)
-						commits, justifieds, finalizeds := make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0)
+						commits, justifieds, finalizeds := make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0), make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0), make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0)
 						invalids := make([]*paradigm.Slot, 0)
 						initTasks := make([]*paradigm.Task, 0)
 
@@ -51,10 +51,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := commits[slotType]; ok {
-								commits[slotType] = append(value, slot)
+								commits[slotType] = append(value, slotHash)
 							} else {
-								commitOfType := make([]*paradigm.Slot, 0)
-								commitOfType = append(commitOfType, slot)
+								commitOfType := make([]paradigm.SlotHash, 0)
+								commitOfType = append(commitOfType, slotHash)
 								commits[slotType] = commitOfType
 							}
 						}
@@ -67,10 +67,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := justifieds[slotType]; ok {
-								justifieds[slotType] = append(value, slot)
+								justifieds[slotType] = append(value, slotHash)
 							} else {
-								justifiedOfType := make([]*paradigm.Slot, 0)
-								justifiedOfType = append(justifiedOfType, slot)
+								justifiedOfType := make([]paradigm.SlotHash, 0)
+								justifiedOfType = append(justifiedOfType, slotHash)
 								justifieds[slotType] = justifiedOfType
 							}
 						}
@@ -85,10 +85,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := finalizeds[slotType]; ok {
-								finalizeds[slotType] = append(value, slot)
+								finalizeds[slotType] = append(value, slotHash)
 							} else {
-								finalizedOfType := make([]*paradigm.Slot, 0)
-								finalizedOfType = append(finalizedOfType, slot)
+								finalizedOfType := make([]paradigm.SlotHash, 0)
+								finalizedOfType = append(finalizedOfType, slotHash)
 								finalizeds[slotType] = finalizedOfType
 							}
 							if value, ok := epochProcess[slotType]; ok {

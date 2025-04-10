@@ -241,31 +241,57 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	//commitInfo := make(map[interface{}]interface{})
 
 	commitInfo := make([]map[string]interface{}, 0)
-	for modelType, slots := range epoch.Commits {
-		for _, slot := range slots {
-			slotView := slot.Json()
-			slotView["model"] = paradigm.ModelTypeToString(modelType)
-			commitInfo = append(commitInfo, slotView)
+	for modelType, slotHashes := range epoch.Commits {
+		for _, slotHash := range slotHashes {
+			if slot, exists := epoch.SlotMap[slotHash]; exists {
+				slotView := slot.Json()
+				slotView["model"] = paradigm.ModelTypeToString(modelType)
+				commitInfo = append(commitInfo, slotView)
+			}
 		}
 	}
+	// for modelType, slots := range epoch.Commits {
+	// 	for _, slot := range slots {
+	// 		slotView := slot.Json()
+	// 		slotView["model"] = paradigm.ModelTypeToString(modelType)
+	// 		commitInfo = append(commitInfo, slotView)
+	// 	}
+	// }
 	taskProcessDistribution := make(map[paradigm.TaskHash]map[string]interface{})
 	finalizedInfo := make([]map[string]interface{}, 0)
+	for modelType, slotHashes := range epoch.Finalizes {
+		for _, slotHash := range slotHashes {
+			if slot, exists := epoch.SlotMap[slotHash]; exists {
+				slotView := slot.Json()
+				slotView["model"] = paradigm.ModelTypeToString(modelType)
+				finalizedInfo = append(finalizedInfo, slotView)
 
-	for modelType, slots := range epoch.Finalizes {
-		for _, slot := range slots {
-			slotView := slot.Json()
-			slotView["model"] = paradigm.ModelTypeToString(modelType)
-			finalizedInfo = append(finalizedInfo, slotView)
-			if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
-				taskProcess := make(map[string]interface{})
-				taskProcess["model"] = paradigm.ModelTypeToString(modelType)
-				taskProcess["schedule"] = int32(0)
-				taskProcessDistribution[slot.TaskID] = taskProcess
+				if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
+					taskProcess := make(map[string]interface{})
+					taskProcess["model"] = paradigm.ModelTypeToString(modelType)
+					taskProcess["schedule"] = int32(0)
+					taskProcessDistribution[slot.TaskID] = taskProcess
+				}
+
+				taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
 			}
-			// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
-			taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
 		}
 	}
+	// for modelType, slots := range epoch.Finalizes {
+	// 	for _, slot := range slots {
+	// 		slotView := slot.Json()
+	// 		slotView["model"] = paradigm.ModelTypeToString(modelType)
+	// 		finalizedInfo = append(finalizedInfo, slotView)
+	// 		if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
+	// 			taskProcess := make(map[string]interface{})
+	// 			taskProcess["model"] = paradigm.ModelTypeToString(modelType)
+	// 			taskProcess["schedule"] = int32(0)
+	// 			taskProcessDistribution[slot.TaskID] = taskProcess
+	// 		}
+	// 		// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
+	// 		taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
+	// 	}
+	// }
 
 	invalidSlot := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Invalids {
