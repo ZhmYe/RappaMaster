@@ -33,7 +33,7 @@
     "maxLifetime": "1h"
   },
   "IsAutoMigrate": true,
-  "IsRecovery": true,
+  "IsRecovery": false,
   "DEBUG": false,
   "BHNodeAddressMap": {
     "0": {

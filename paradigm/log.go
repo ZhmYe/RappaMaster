@@ -92,7 +92,7 @@ func (lw *LogWriter) Log(level, message string) {
 	//if logFunc, exists := lw.LogLevels[level]; exists {
 	//	logFunc(message) // 只写入日志
 	//} else {
-	//	lw.Logger.Printf("[UNKNOWN] %s", message) // 只写入日志
+	//	lw.Log.Printf("[UNKNOWN] %s", message) // 只写入日志
 	//}
 	lw.Logger.Printf("[%s] %s", level, message) // 只写入日志
 }
@@ -103,7 +103,7 @@ func (lw *LogWriter) Print(level, message string) {
 	//	logFunc(message)     // 写入日志文件
 	//	fmt.Println(message) // 同时打印到控制台
 	//} else {
-	//	lw.Logger.Printf("[UNKNOWN] %s", message) // 写入日志文件
+	//	lw.Log.Printf("[UNKNOWN] %s", message) // 写入日志文件
 	//	fmt.Println(message)                      // 同时打印到控制台
 	//}
 	lw.Printer.Printf("[%s] %s", level, message)
