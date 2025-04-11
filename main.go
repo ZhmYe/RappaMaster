@@ -24,14 +24,14 @@ func catchPanic() {
 func main() {
 	defer catchPanic()
 	config := paradigm.LoadBHLayer2NodeConfig("config.json")
+	rappaChannel := paradigm.NewRappaChannel(config)
 	// 加载数据库
-	dbService, err := Database.NewDatabaseService(config)
+	dbService, err := Database.NewDatabaseService(config, rappaChannel)
 	if err != nil {
 		paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("Failed to init database: %v", err))
 	}
 	// 恢复数据
 	recovery := Recovery.RecoverFromDataBase(config, dbService)
-	rappaChannel := paradigm.NewRappaChannel(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
@@ -44,10 +44,10 @@ func main() {
 	chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService)
 	monitor := Monitor.NewMonitor(rappaChannel)
-	//chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
-	//if err != nil {
-	//	paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
-	//}
+	// chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
+	// if err != nil {
+	// 	paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))
+	// }
 
 	// 初始化 Scheduler
 	scheduler := Schedule.NewScheduler(rappaChannel)

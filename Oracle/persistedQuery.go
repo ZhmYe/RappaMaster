@@ -183,7 +183,9 @@ func (o *PersistedOracle) processDBQuery() {
 		case *Query.CollectTaskQuery:
 			item := query.(*Query.CollectTaskQuery)
 			task, err := o.dbService.GetTaskByID(item.TaskID())
-			task.SetCollector(o.collectors[task.Sign])
+			// task.SetCollector(o.collectors[task.Sign])
+			// 从数据库中恢复Collector
+			err = o.dbService.RecoverCollector(task)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,

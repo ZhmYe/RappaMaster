@@ -12,8 +12,9 @@ import (
 )
 
 type DatabaseService struct {
-	db     *gorm.DB
-	dbConf *paradigm.DatabaseConfig
+	db      *gorm.DB
+	dbConf  *paradigm.DatabaseConfig
+	channel *paradigm.RappaChannel
 }
 
 // 全局单例
@@ -22,7 +23,7 @@ type DatabaseService struct {
 //	dbServiceOnce sync.Once
 //)
 
-func NewDatabaseService(config *paradigm.BHLayer2NodeConfig) (*DatabaseService, error) {
+func NewDatabaseService(config *paradigm.BHLayer2NodeConfig, channel *paradigm.RappaChannel) (*DatabaseService, error) {
 	var initErr error
 	// 构建DSN
 	dsn := config.Database.BuildDSN()
@@ -50,8 +51,9 @@ func NewDatabaseService(config *paradigm.BHLayer2NodeConfig) (*DatabaseService, 
 	sqlDB.SetConnMaxLifetime(maxLifetime)
 
 	return &DatabaseService{
-		db:     gormDB,
-		dbConf: config.Database,
+		db:      gormDB,
+		dbConf:  config.Database,
+		channel: channel,
 	}, initErr
 }
 

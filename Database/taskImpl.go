@@ -1,6 +1,7 @@
 package Database
 
 import (
+	"BHLayer2Node/Collector"
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
@@ -149,7 +150,7 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 	return synthData, nil
 }
 
-// 未完成的任务设置为失败
+// DownUnFinishedTasks 未完成的任务设置为失败
 func (o DatabaseService) DownUnFinishedTasks() error {
 	result := o.db.Model(&paradigm.Task{}).
 		Where("status = ?", paradigm.Processing).
@@ -161,6 +162,32 @@ func (o DatabaseService) DownUnFinishedTasks() error {
 		return fmt.Errorf("failed to reset processing tasks: %w", result.Error)
 	}
 
-	paradigm.Log("ORACLE", fmt.Sprintf("Reset %d processing tasks to failed status", result.RowsAffected))
+	paradigm.Log("INFO", fmt.Sprintf("Reset %d processing tasks to failed status", result.RowsAffected))
+	return nil
+}
+
+// RecoverCollector 恢复任务的Collector
+func (o DatabaseService) RecoverCollector(task *paradigm.Task) error {
+	if task.Status != paradigm.Finished {
+		return fmt.Errorf("task is not finished, cannot be downloaded")
+	}
+	if task.Collector == nil {
+		task.Collector = Collector.NewCollector(task.Sign, task.OutputType, o.channel)
+	}
+	var slots []*paradigm.Slot
+	err := o.db.Where("task_id = ? AND status = ?", task.Sign, paradigm.Finished).Find(&slots).Error
+	if err != nil {
+		return fmt.Errorf("failed to query slots table: %w", err)
+	}
+	for _, slot := range slots {
+		collectSlot := paradigm.CollectSlotItem{
+			Sign:        task.Sign,
+			Hash:        slot.SlotID,
+			Size:        slot.ScheduleSize,
+			PaddingSize: slot.CommitSlot.GetPadding(),
+			StoreMethod: slot.CommitSlot.GetStore(),
+		}
+		task.Collector.ProcessSlotUpdate(collectSlot)
+	}
 	return nil
 }
