@@ -47,6 +47,33 @@ func (o DatabaseService) UpdateTask(task *paradigm.Task) {
 	o.db.Model(task).Select("*").Updates(task)
 }
 
+func (o DatabaseService) IncrementTaskProcess(taskSign string, slot *paradigm.CommitRecord) error {
+	// 使用原子操作增加任务进度
+	if slot.State() != paradigm.FINALIZE {
+		return fmt.Errorf("the commit Slot is not finalized") // 只能提交finalized的，因为已经通过投票了所以不需要check
+	}
+	query := "UPDATE tasks SET process = process + ? WHERE sign = ?"
+	result := o.db.Exec(query, slot.Process, taskSign)
+	if result.Error != nil {
+		return fmt.Errorf("failed to increment task process: %v", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("task with sign %s not found or no update needed", taskSign)
+	}
+	// debug
+	paradigm.Log("DEBUG", fmt.Sprintf("Atomically incremented task %s process by %d", taskSign, slot.Process))
+	return nil
+}
+
+// 增量更新并返回更新后的任务
+func (o DatabaseService) IncrementTaskProcessAndGet(taskSign string, slot *paradigm.CommitRecord) (*paradigm.Task, error) {
+	err := o.IncrementTaskProcess(taskSign, slot)
+	if err != nil {
+		return nil, err
+	}
+	return o.GetTask(taskSign)
+}
+
 // GetTaskByID 通过任务标识查询任务
 func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 	var task paradigm.Task
