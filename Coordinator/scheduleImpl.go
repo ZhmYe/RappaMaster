@@ -92,6 +92,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			//nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
 				//paradigm.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
+				//这里记录slot发给了哪个节点
+				nID, _ := strconv.Atoi(resp.NodeId)
+				slot.NodeID = int32(nID)
 				successChannel <- slot
 
 			} else {

@@ -87,6 +87,19 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		} else {
 			taskInfo["endTime"] = ""
 		}
+		// 这里添加展示并行结果
+		slots := make(map[paradigm.SlotHash]interface{})
+		for _, schedule := range task.Schedules {
+			for _, slot := range schedule.Slots {
+				if slot.Status == paradigm.Finished {
+					slots[slot.SlotID] = map[string]interface{}{
+						"nodeId": slot.NodeID,
+						"size":   slot.ScheduleSize,
+					}
+				}
+			}
+		}
+		taskInfo["slots"] = slots
 		tasks = append(tasks, taskInfo)
 	}
 	response["tasks"] = tasks
