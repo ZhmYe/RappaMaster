@@ -110,7 +110,6 @@ func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 				updatedSlots = append(updatedSlots, &dbSlot)
 			}
 		}
-
 		// 更新schedule的slots
 		task.Schedules[i].Slots = updatedSlots
 	}
@@ -148,6 +147,7 @@ func (o DatabaseService) GetAllTasks() ([]*paradigm.Task, error) {
 			task.TxHash = tx.TxHash
 		}
 	}
+
 	return tasks, nil
 }
 

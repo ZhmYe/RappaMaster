@@ -55,6 +55,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			if err != nil {
 				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				slot.SetError(e.Error())
+				c.channel.UnScheduledSlotChannel <- slot
 				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
@@ -117,6 +118,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	////acceptSchedules := make([]*paradigm.Slot, 0)
 	for item := range successChannel {
 		acceptedSize += item.ScheduleSize
+		// 这里更新slot的node_id
+		index := schedule.NodeIDMap[int(item.NodeID)]
+		schedule.Slots[index].NodeID = item.NodeID
 		//	//acceptSchedules = append(acceptSchedules, item)
 	}
 	rejectNumber := 0
@@ -126,6 +130,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 		//schedule.Slots[nID]
 		index := schedule.NodeIDMap[nID]
 		schedule.Slots[index].SetError(errorMessage) // 更新失败的slot
+		c.channel.UnScheduledSlotChannel <- schedule.Slots[index]
 	}
 	remainingSize := schedule.Size - acceptedSize
 	if remainingSize < 0 {

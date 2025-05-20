@@ -110,6 +110,14 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewDateTransactionQuery()
 	case "SynthTaskQuery":
 		return true, NewSynthTaskQuery()
+	case "TaskOnNodesQuery":
+		taskID := c.DefaultQuery("taskID", "")
+		if taskID == "" {
+			return false, nil
+		}
+		return true, NewTaskOnNodesQuery(map[interface{}]interface{}{
+			"taskID": taskID,
+		})
 	case "CollectTaskQuery":
 		taskID := c.DefaultQuery("taskID", "")
 		if taskID == "" {

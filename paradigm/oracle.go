@@ -132,10 +132,10 @@ type EpochRecord struct {
 	Id         int                         // Epoch id
 	Commits    map[SlotHash]SlotCommitment // 在这个epoch里commit的slot，目前状态为undetermined, map的内容为commitment
 	Justifieds map[SlotHash]SlotCommitment
-	Finalizes  map[SlotHash]SlotCommitment    // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
-	Invalids   map[SlotHash]InvalidCommitType // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
-	Tasks      map[string]int32               // 新收到的任务sign, 对应的数据量
-	Process    int32                          // 一共处理了多少
+	Finalizes  map[SlotHash]SlotCommitment     // 在这个epoch里已经确认finalized的，节点在收到这个后可以确认落盘
+	Invalids   map[SlotHash]InvalidCommitError // 在这个epoch里被检测出的问题slot, 节点可以根据这个删、改
+	Tasks      map[string]int32                // 新收到的任务sign, 对应的数据量
+	Process    int32                           // 一共处理了多少
 }
 
 func (r *EpochRecord) UpdateTask(task *Task) {
@@ -195,19 +195,29 @@ func (r *EpochRecord) Abort(slot *CommitSlotItem, reason InvalidCommitType) {
 	}
 	if check() {
 		slot.SetInvalid(reason)
-		r.Invalids[slot.SlotHash()] = reason
+		r.Invalids[slot.SlotHash()] = NewInvalidCommitError(reason, InvalidCommitTypeToString(reason))
 	} else {
 		// TODO
 	}
 
 }
+
+// TODO 这里临时写成这样用来适配
+func (r *EpochRecord) SampleInvalids() map[SlotHash]InvalidCommitType {
+	res := make(map[SlotHash]InvalidCommitType)
+	for k, v := range r.Invalids {
+		res[k] = v.Error
+	}
+	return res
+}
+
 func (r *EpochRecord) Refresh() {
 	r.Id++
 	r.Process = 0
 	r.Commits = make(map[SlotHash]SlotCommitment)
 	r.Justifieds = make(map[SlotHash]SlotCommitment)
 	r.Finalizes = make(map[SlotHash]SlotCommitment)
-	r.Invalids = make(map[SlotHash]InvalidCommitType)
+	r.Invalids = make(map[SlotHash]InvalidCommitError)
 }
 func (r *EpochRecord) Echo() {
 	Print("EPOCH", fmt.Sprintf("Epoch %d Record, Commits: %d, Justified: %d, Finalized: %d, Invalid: %d", r.Id, len(r.Commits), len(r.Justifieds), len(r.Finalizes), len(r.Invalids)))
@@ -224,7 +234,7 @@ func NewEpochRecord(initEpochID int) *EpochRecord {
 		Commits:    make(map[SlotHash]SlotCommitment),
 		Finalizes:  make(map[SlotHash]SlotCommitment),
 		Justifieds: make(map[SlotHash]SlotCommitment),
-		Invalids:   make(map[SlotHash]InvalidCommitType),
+		Invalids:   make(map[SlotHash]InvalidCommitError),
 		Tasks:      make(map[string]int32),
 	}
 }

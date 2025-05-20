@@ -154,6 +154,7 @@ func (o *PersistedOracle) Start() {
 						// 那么需要在tasks更新一个任务
 						task := transaction.(*paradigm.InitTaskTransaction).Task
 						//task.UpdateTxInfo(ptx)
+						o.channel.EpochInitTaskChannel <- task  // 将task记录到epoch中
 						o.channel.InitTasks <- task.InitTrack() // 上链后，发起新的任务，这样scheduler能接受到
 						// 更新txMap，对应的rf是InitTaskTx
 						reference := &paradigm.DevReference{

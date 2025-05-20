@@ -28,6 +28,7 @@ func (s *Slot) Json() map[string]interface{} {
 	json["scheduleSize"] = s.ScheduleSize
 	json["status"] = s.Status
 	json["Err"] = s.Err
+	json["nodeID"] = s.NodeID
 	if s.CommitSlot != nil {
 		json["store"] = s.CommitSlot.Store
 		json["commitment"] = s.CommitSlot.Commitment

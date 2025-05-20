@@ -87,23 +87,44 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		} else {
 			taskInfo["endTime"] = ""
 		}
-		// 这里添加展示并行结果
-		slots := make(map[paradigm.SlotHash]interface{})
-		for _, schedule := range task.Schedules {
-			for _, slot := range schedule.Slots {
-				if slot.Status == paradigm.Finished {
-					slots[slot.SlotID] = map[string]interface{}{
-						"nodeId": slot.NodeID,
-						"size":   slot.ScheduleSize,
-					}
-				}
-			}
-		}
-		taskInfo["slots"] = slots
 		tasks = append(tasks, taskInfo)
 	}
 	response["tasks"] = tasks
 
+	return paradigm.NewSuccessResponse(response)
+}
+
+func (q *TaskOnNodesQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
+	if s, ok := rawData["taskID"].(string); ok {
+		q.Sign = s
+	} else {
+		return false
+	}
+	return true
+}
+
+func (q *TaskOnNodesQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "TaskOnNodesQuery", "taskId": q.Sign}
+}
+
+// TaskOnNodesQuery 查询task在不同节点上的并行合成数
+type TaskOnNodesQuery struct {
+	Sign string
+	paradigm.BasicChannelQuery
+}
+
+func (q *TaskOnNodesQuery) GenerateResponse(data interface{}) paradigm.Response {
+	slots := data.([]*paradigm.Slot)
+	nodeInfo := make(map[int32]int32)
+	response := make(map[string]interface{})
+	for _, slot := range slots {
+		if data, exist := nodeInfo[slot.NodeID]; exist {
+			nodeInfo[slot.NodeID] = data + slot.ScheduleSize
+		} else {
+			nodeInfo[slot.NodeID] = slot.ScheduleSize
+		}
+	}
+	response["nodeInfo"] = nodeInfo
 	return paradigm.NewSuccessResponse(response)
 }
 func (q *SynthTaskQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
@@ -123,6 +144,13 @@ func NewSynthTaskQuery() *SynthTaskQuery {
 	query := new(SynthTaskQuery)
 	//query.ParseRawDataFromHttpEngine(rawData)
 	//query.responseChannel = responseChannel
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+	return query
+}
+
+func NewTaskOnNodesQuery(rawData map[interface{}]interface{}) *TaskOnNodesQuery {
+	query := new(TaskOnNodesQuery)
+	query.ParseRawDataFromHttpEngine(rawData)
 	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query
 }

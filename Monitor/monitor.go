@@ -76,7 +76,7 @@ func (m *Monitor) processQuery() {
 	}
 }
 
-// advice
+// TODO 这里调度还得改下，不能给标记为失败的Node一直发送调度
 func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	nodeIDs := make([]int32, len(m.nodeStatus))
 	scheduleSize := make([]int32, len(m.nodeStatus))

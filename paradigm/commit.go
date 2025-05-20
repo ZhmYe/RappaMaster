@@ -33,6 +33,12 @@ type CommitSlotItem struct {
 
 type InvalidCommitType = int32
 
+// 用于定义无效提交的错误及错误消息
+type InvalidCommitError struct {
+	Error        InvalidCommitType
+	ErrorMessage string
+}
+
 const (
 	INVALID_SLOT       InvalidCommitType = iota // 不合法（负数或过大）的slot
 	EXPIRE_SLOT                                 // 过期的slot
@@ -142,4 +148,11 @@ func NewFakeCommitSlotItem(hash SlotHash) CommitSlotItem {
 		InvalidType:   NONE,
 	}
 	return s
+}
+
+func NewInvalidCommitError(t InvalidCommitType, errorMessage string) InvalidCommitError {
+	return InvalidCommitError{
+		Error:        t,
+		ErrorMessage: errorMessage,
+	}
 }

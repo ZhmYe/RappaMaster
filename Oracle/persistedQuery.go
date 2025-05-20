@@ -180,6 +180,10 @@ func (o *PersistedOracle) processDBQuery() {
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(tasksMap))
+		case *Query.TaskOnNodesQuery:
+			item := query.(*Query.TaskOnNodesQuery)
+			slots := o.dbService.QueryFinishedSlotsByTask(item.Sign)
+			item.SendResponse(item.GenerateResponse(slots))
 		case *Query.CollectTaskQuery:
 			item := query.(*Query.CollectTaskQuery)
 			task, err := o.dbService.GetTaskByID(item.TaskID())
