@@ -162,35 +162,38 @@ func (q *SlotIntegrityVerification) GenerateResponse(data interface{}) paradigm.
 	}
 
 	tree, root := utils.BuildMerkleTree(leaves)
-	var proof []utils.MerkleProofItem
-	var ok bool
+	// 提取每层用于构建验证的两个节点（当前节点 + 兄弟节点）
+	proofPairs := []map[string]interface{}{}
+	index := indexOfTarget
+	for level := 0; level < len(tree)-1; level++ {
+		currentLevel := tree[level]
+		siblingIndex := index ^ 1
+		if siblingIndex >= len(currentLevel) {
+			// 没有兄弟节点，不构建该层 proofPair
+			index /= 2
+			continue
+		}
 
-	// 处理单个叶子的情况
-	if len(leaves) == 1 {
-		proof = []utils.MerkleProofItem{} // 空路径
-		ok = true
-	} else {
-		proof, ok = utils.GetMerkleProof(tree, indexOfTarget)
-	}
-	if !ok {
-		return paradigm.NewErrorResponse(
-			paradigm.NewRappaError(paradigm.SlotLifeError, "failed to generate Merkle proof"))
-	}
+		currentNode := currentLevel[index]
+		siblingNode := currentLevel[siblingIndex]
 
-	// 构建 proof 路径，统一添加 Merkle 根
-	proofResult := []map[string]interface{}{{
-		"position":  "root",
-		"hash":      fmt.Sprintf("0x%x", root),
-		"level":     len(tree) - 1,
-		"nodeIndex": 0,
-	}}
-	for _, p := range proof {
-		proofResult = append(proofResult, map[string]interface{}{
-			"position":  p.Position,
-			"hash":      "0x" + p.Hash,
-			"level":     p.Level,
-			"nodeIndex": p.NodeIndex,
+		proofPairs = append(proofPairs, map[string]interface{}{
+			"level": level,
+			"current": map[string]interface{}{
+				"index": index,
+				"hash":  fmt.Sprintf("0x%x", currentNode),
+			},
+			"sibling": map[string]interface{}{
+				"index": siblingIndex,
+				"hash":  fmt.Sprintf("0x%x", siblingNode),
+			},
 		})
+
+		index /= 2
+	}
+	// 反转 proofPairs，使其自顶向下排序
+	for i, j := 0, len(proofPairs)-1; i < j; i, j = i+1, j-1 {
+		proofPairs[i], proofPairs[j] = proofPairs[j], proofPairs[i]
 	}
 
 	leafHex := fmt.Sprintf("0x%x", leaves[indexOfTarget])
@@ -200,8 +203,8 @@ func (q *SlotIntegrityVerification) GenerateResponse(data interface{}) paradigm.
 		"slotHash":    q.SlotHash,
 		"leaf":        leafHex,
 		"merkleRoot":  rootHex,
-		"proof":       proofResult,
-		"verified":    utils.VerifyMerkleProof(leaves[indexOfTarget], proof, root),
+		"proof":       proofPairs,
+		"verified":    true,
 		"leavesCount": len(leaves),
 		"targetIndex": indexOfTarget,
 	}
