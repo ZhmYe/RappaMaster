@@ -200,6 +200,10 @@ func (o *PersistedOracle) processDBQuery() {
 				continue
 			}
 			go item.SendResponse(item.GenerateResponse(task.GetCollector()))
+		case *Query.SlotIntegrityVerification: // 完整性验证
+			item := query.(*Query.SlotIntegrityVerification)
+			slots := o.dbService.QueryFinishedSlotsBySlot(item.SlotHash)
+			item.SendResponse(item.GenerateResponse(slots))
 		default:
 			panic("Unsupported Query Type!!!")
 		}

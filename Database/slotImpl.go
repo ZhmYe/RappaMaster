@@ -79,3 +79,10 @@ func (o DatabaseService) QueryFinishedSlotsByTask(taskId paradigm.TaskHash) []*p
 	o.db.Where(map[string]interface{}{"task_id": taskId, "status": paradigm.Finished}).Find(&slots)
 	return slots
 }
+
+// 查询slot所属task的所有slots
+func (o DatabaseService) QueryFinishedSlotsBySlot(slotHash paradigm.SlotHash) []*paradigm.Slot {
+	slotQuery := o.GetSlot(slotHash)
+	slots := o.QueryFinishedSlotsByTask(slotQuery.TaskID)
+	return slots
+}

@@ -135,6 +135,14 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 			"taskID": taskID,
 			"size":   s,
 		})
+	case "SlotIntegrityVerification":
+		slotHash := c.DefaultQuery("slotHash", "")
+		if slotHash == "" {
+			return false, nil
+		}
+		return true, NewSlotIntegrityVerification(map[interface{}]interface{}{
+			"slotHash": slotHash,
+		})
 	default:
 		return false, nil
 	}

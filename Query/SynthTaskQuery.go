@@ -2,6 +2,7 @@ package Query
 
 import (
 	"BHLayer2Node/paradigm"
+	"BHLayer2Node/utils"
 	"fmt"
 	"time"
 )
@@ -134,6 +135,71 @@ func (q *SynthTaskQuery) ToHttpJson() map[string]interface{} {
 	return map[string]interface{}{"query": "SynthTaskQuery"}
 }
 
+// SlotIntegrityVerification 对slot进行完整性验证, 目前使用Merkle Tree结构
+type SlotIntegrityVerification struct {
+	SlotHash string
+	paradigm.BasicChannelQuery
+}
+
+func (q *SlotIntegrityVerification) GenerateResponse(data interface{}) paradigm.Response {
+	slots := data.([]*paradigm.Slot)
+	var leaves [][]byte
+	var indexOfTarget int = -1
+	for _, slot := range slots {
+		if slot.CommitSlot == nil || len(slot.CommitSlot.Commitment) == 0 {
+			continue
+		}
+		leaves = append(leaves, slot.CommitSlot.Commitment)
+		if string(slot.SlotID) == q.SlotHash {
+			indexOfTarget = len(leaves) - 1 // 找到目标 slot 在 leaves 中的位置
+		}
+	}
+	if indexOfTarget == -1 {
+		return paradigm.NewErrorResponse(
+			paradigm.NewRappaError(paradigm.SlotLifeError, "target slot not found or no valid commitments"))
+	}
+
+	tree, root := utils.BuildMerkleTree(leaves)
+	proof, ok := utils.GetMerkleProof(tree, indexOfTarget)
+	if !ok {
+		return paradigm.NewErrorResponse(
+			paradigm.NewRappaError(paradigm.SlotLifeError, "failed to generate Merkle proof"))
+	}
+	proofResult := []map[string]string{}
+	for _, p := range proof {
+		proofResult = append(proofResult, map[string]string{
+			"position": p.Position,
+			"hash":     "0x" + p.Hash,
+		})
+	}
+
+	leafHex := fmt.Sprintf("0x%x", leaves[indexOfTarget])
+	rootHex := fmt.Sprintf("0x%x", root)
+
+	response := map[string]interface{}{
+		"slotHash":    q.SlotHash,
+		"leaf":        leafHex,
+		"merkleRoot":  rootHex,
+		"proof":       proofResult,
+		"verified":    utils.VerifyMerkleProof(leaves[indexOfTarget], proof, root),
+		"leavesCount": len(leaves),
+		"targetIndex": indexOfTarget,
+	}
+
+	return paradigm.NewSuccessResponse(response)
+}
+func (q *SlotIntegrityVerification) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
+	if s, ok := rawData["slotHash"].(string); ok {
+		q.SlotHash = s
+	} else {
+		return false
+	}
+	return true
+}
+func (q *SlotIntegrityVerification) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{"query": "SlotIntegrityVerification", "slotHash": q.SlotHash}
+}
+
 func NewCollectTaskQuery(rawData map[interface{}]interface{}) *CollectTaskQuery {
 	query := new(CollectTaskQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
@@ -147,9 +213,14 @@ func NewSynthTaskQuery() *SynthTaskQuery {
 	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query
 }
-
 func NewTaskOnNodesQuery(rawData map[interface{}]interface{}) *TaskOnNodesQuery {
 	query := new(TaskOnNodesQuery)
+	query.ParseRawDataFromHttpEngine(rawData)
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+	return query
+}
+func NewSlotIntegrityVerification(rawData map[interface{}]interface{}) *SlotIntegrityVerification {
+	query := new(SlotIntegrityVerification)
 	query.ParseRawDataFromHttpEngine(rawData)
 	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query
