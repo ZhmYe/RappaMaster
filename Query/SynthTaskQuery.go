@@ -144,32 +144,52 @@ type SlotIntegrityVerification struct {
 func (q *SlotIntegrityVerification) GenerateResponse(data interface{}) paradigm.Response {
 	slots := data.([]*paradigm.Slot)
 	var leaves [][]byte
-	var indexOfTarget int = -1
+	indexOfTarget := -1
+
 	for _, slot := range slots {
 		if slot.CommitSlot == nil || len(slot.CommitSlot.Commitment) == 0 {
 			continue
 		}
 		leaves = append(leaves, slot.CommitSlot.Commitment)
 		if string(slot.SlotID) == q.SlotHash {
-			indexOfTarget = len(leaves) - 1 // 找到目标 slot 在 leaves 中的位置
+			indexOfTarget = len(leaves) - 1
 		}
 	}
+
 	if indexOfTarget == -1 {
 		return paradigm.NewErrorResponse(
 			paradigm.NewRappaError(paradigm.SlotLifeError, "target slot not found or no valid commitments"))
 	}
 
 	tree, root := utils.BuildMerkleTree(leaves)
-	proof, ok := utils.GetMerkleProof(tree, indexOfTarget)
+	var proof []utils.MerkleProofItem
+	var ok bool
+
+	// 处理单个叶子的情况
+	if len(leaves) == 1 {
+		proof = []utils.MerkleProofItem{} // 空路径
+		ok = true
+	} else {
+		proof, ok = utils.GetMerkleProof(tree, indexOfTarget)
+	}
 	if !ok {
 		return paradigm.NewErrorResponse(
 			paradigm.NewRappaError(paradigm.SlotLifeError, "failed to generate Merkle proof"))
 	}
-	proofResult := []map[string]string{}
+
+	// 构建 proof 路径，统一添加 Merkle 根
+	proofResult := []map[string]interface{}{{
+		"position":  "root",
+		"hash":      fmt.Sprintf("0x%x", root),
+		"level":     len(tree) - 1,
+		"nodeIndex": 0,
+	}}
 	for _, p := range proof {
-		proofResult = append(proofResult, map[string]string{
-			"position": p.Position,
-			"hash":     "0x" + p.Hash,
+		proofResult = append(proofResult, map[string]interface{}{
+			"position":  p.Position,
+			"hash":      "0x" + p.Hash,
+			"level":     p.Level,
+			"nodeIndex": p.NodeIndex,
 		})
 	}
 

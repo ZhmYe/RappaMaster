@@ -7,30 +7,25 @@ import (
 	"fmt"
 )
 
-type MerkleProofItem struct {
-	Position string `json:"position"` // "left" or "right"
-	Hash     string `json:"hash"`     // hex string
-}
-
-// 构造 Merkle Tree，返回每层节点与 Merkle Root
 func BuildMerkleTree(leaves [][]byte) ([][][]byte, []byte) {
 	if len(leaves) == 0 {
 		return nil, nil
 	}
+
 	tree := [][][]byte{leaves}
 	currentLevel := leaves
+
 	for len(currentLevel) > 1 {
 		var nextLevel [][]byte
 		for i := 0; i < len(currentLevel); i += 2 {
-			var left = currentLevel[i]
-			var right []byte
 			if i+1 < len(currentLevel) {
-				right = currentLevel[i+1]
+				combined := append(currentLevel[i], currentLevel[i+1]...)
+				hash := sha256.Sum256(combined)
+				nextLevel = append(nextLevel, hash[:])
 			} else {
-				right = left
+				// odd node gets promoted
+				nextLevel = append(nextLevel, currentLevel[i])
 			}
-			h := sha256.Sum256(append(left, right...))
-			nextLevel = append(nextLevel, h[:])
 		}
 		tree = append(tree, nextLevel)
 		currentLevel = nextLevel
@@ -38,47 +33,59 @@ func BuildMerkleTree(leaves [][]byte) ([][][]byte, []byte) {
 	return tree, tree[len(tree)-1][0]
 }
 
-// 生成某个叶子节点的 Proof 路径
-func GetMerkleProof(tree [][][]byte, index int) ([]MerkleProofItem, bool) {
-	if len(tree) == 0 || index < 0 || index >= len(tree[0]) {
+type MerkleProofItem struct {
+	Hash      string
+	Position  string
+	Level     int
+	NodeIndex int
+}
+
+func GetMerkleProof(tree [][][]byte, targetIndex int) ([]MerkleProofItem, bool) {
+	if len(tree) == 0 {
 		return nil, false
 	}
-	var proof []MerkleProofItem
-	for level := 0; level < len(tree)-1; level++ {
-		layer := tree[level]
-		siblingIndex := index ^ 1
-		if siblingIndex >= len(layer) {
-			index /= 2
-			continue
-		}
-		position := "left"
-		if index%2 == 0 {
-			position = "right"
-		}
-		proof = append(proof, MerkleProofItem{
-			Position: position,
-			Hash:     fmt.Sprintf("%x", layer[siblingIndex]),
-		})
 
+	proof := []MerkleProofItem{}
+	index := targetIndex
+
+	for level := 0; level < len(tree)-1; level++ {
+		currentLevel := tree[level]
+		siblingIndex := index ^ 1
+
+		if siblingIndex < len(currentLevel) {
+			position := "left"
+			if index%2 == 0 {
+				position = "right"
+			}
+			proof = append([]MerkleProofItem{{
+				Hash:      fmt.Sprintf("%x", currentLevel[siblingIndex]),
+				Position:  position,
+				Level:     level,
+				NodeIndex: siblingIndex,
+			}}, proof...)
+		}
 		index /= 2
 	}
+
 	return proof, true
 }
 
 func VerifyMerkleProof(leaf []byte, proof []MerkleProofItem, root []byte) bool {
-	hash := leaf
+	computedHash := leaf
 	for _, p := range proof {
-		siblingHashBytes, err := hex.DecodeString(p.Hash)
+		sibling, err := hex.DecodeString(p.Hash)
 		if err != nil {
 			return false
 		}
 		if p.Position == "left" {
-			h := sha256.Sum256(append(siblingHashBytes, hash...))
-			hash = h[:]
-		} else {
-			h := sha256.Sum256(append(hash, siblingHashBytes...))
-			hash = h[:]
+			computed := append(sibling, computedHash...)
+			sum := sha256.Sum256(computed)
+			computedHash = sum[:]
+		} else if p.Position == "right" {
+			computed := append(computedHash, sibling...)
+			sum := sha256.Sum256(computed)
+			computedHash = sum[:]
 		}
 	}
-	return bytes.Equal(hash, root)
+	return bytes.Equal(computedHash, root)
 }
