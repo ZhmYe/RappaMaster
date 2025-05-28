@@ -142,6 +142,7 @@ func NewNodeStatus(nodeID int32, address BHNodeAddress) *NodeStatus {
 // TODO 这里细节有待思考
 type AdviceRequest struct {
 	Size     int32 // 全量的大小
+	SlotSize int32 //指定的大小
 	response chan AdviceResponse
 }
 
@@ -151,8 +152,10 @@ func (r *AdviceRequest) SendResponse(resp AdviceResponse) {
 func (r *AdviceRequest) ReceiveResponse() AdviceResponse {
 	return <-r.response
 }
-func NewAdviceRequest(size int32) *AdviceRequest {
+
+func NewAdviceRequest(size int32, slotSize int32) *AdviceRequest {
 	return &AdviceRequest{
+		SlotSize: slotSize,
 		Size:     size,
 		response: make(chan AdviceResponse, 1),
 	}

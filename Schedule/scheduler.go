@@ -47,7 +47,7 @@ func (s *Scheduler) process(task paradigm.UnprocessedTask) {
 	//	LogWriter.Log("ERROR", "No connected nodes available for scheduling")
 	//	return
 	//}
-	adviceRequest := paradigm.NewAdviceRequest(task.Size)
+	adviceRequest := paradigm.NewAdviceRequest(task.Size, task.SlotSize)
 	s.channel.MonitorAdviceChannel <- adviceRequest
 	resp := adviceRequest.ReceiveResponse()
 	//allocSizes := s.monitor.Advice(nIDs, task.Size) // todo
@@ -73,6 +73,7 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	schedule := paradigm.SynthTaskSchedule{
 		TaskID:     task.TaskID,
 		ScheduleID: paradigm.ScheduleHash(scheduleIndex),
+		SlotSize:   task.SlotSize,
 		Size:       task.Size,
 		Model:      task.Model,
 		Params:     task.Params,
@@ -81,25 +82,12 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	slots := make([]*paradigm.Slot, 0)
 	nodeIDMap := make(map[int]int)
 
-	// TODO 这里暂时特殊处理，ABM数据只调度两个节点
-	if task.Model == paradigm.ABM {
-		if len(nIDs) == 1 {
-			nodeIDMap[int(nIDs[0])] = 0
-			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[0])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
-		} else {
-			nodeIDMap[int(nIDs[0])] = 0
-			nodeIDMap[int(nIDs[1])] = 1
-			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[0])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
-			slots = append(slots, paradigm.NewSlot(computeSlotHash(int(nIDs[1])), task.TaskID, paradigm.ScheduleHash(scheduleIndex), 1))
-		}
-	} else {
-		for i := 0; i < len(nIDs); i++ {
-			nID, scheduleSize := nIDs[i], size[i]
-			nodeIDMap[int(nID)] = i
-			slot := paradigm.NewSlot(computeSlotHash(int(nID)), task.TaskID, paradigm.ScheduleHash(scheduleIndex), scheduleSize)
-			//slots = append(slots, slot)
-			slots = append(slots, slot)
-		}
+	for i := 0; i < len(nIDs); i++ {
+		nID, scheduleSize := nIDs[i], size[i]
+		nodeIDMap[int(nID)] = i
+		slot := paradigm.NewSlot(computeSlotHash(int(nID)), task.TaskID, paradigm.ScheduleHash(scheduleIndex), scheduleSize)
+		//slots = append(slots, slot)
+		slots = append(slots, slot)
 	}
 	schedule.NodeIDMap = nodeIDMap
 	schedule.Slots = slots

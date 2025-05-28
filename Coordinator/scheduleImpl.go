@@ -129,6 +129,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 		rejectNumber++
 		//schedule.Slots[nID]
 		index := schedule.NodeIDMap[nID]
+		schedule.Slots[index].NodeID = int32(nID)
 		schedule.Slots[index].SetError(errorMessage) // 更新失败的slot
 		c.channel.UnScheduledSlotChannel <- schedule.Slots[index]
 	}
@@ -144,10 +145,11 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	if remainingSize == schedule.Size {
 		// 如果所有节点都不接受，直接重新调度
 		c.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
-			TaskID: schedule.TaskID,
-			Size:   schedule.Size,
-			Model:  schedule.Model,
-			Params: schedule.Params,
+			TaskID:   schedule.TaskID,
+			SlotSize: schedule.SlotSize,
+			Size:     schedule.Size,
+			Model:    schedule.Model,
+			Params:   schedule.Params,
 		}
 		paradigm.Print("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s scheduling...", schedule.TaskID))
 	} else {

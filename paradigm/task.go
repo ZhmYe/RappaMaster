@@ -33,8 +33,9 @@ import (
 //}
 
 type Task struct {
-	Sign           string                 `gorm:"primaryKey;type:varchar(256);not null;comment:唯一任务标识符（必填）"`
-	Name           string                 `gorm:"type:varchar(256)"`
+	Sign string `gorm:"primaryKey;type:varchar(256);not null;comment:唯一任务标识符（必填）"`
+	Name string `gorm:"type:varchar(256)"`
+	// TODO 这里我改成指定slot的大小
 	Slot           int32                  `gorm:"type:int;not null"`
 	Model          SupportModelType       `gorm:"type:tinyint;not null;comment:支持的模型类型（必填，0=CTGAN, 1=BAED, 2=FINKAN, 3=ABM）"`
 	Params         map[string]interface{} `gorm:"type:json;serializer:json"`
@@ -104,10 +105,11 @@ func (t *Task) UpdateTxInfo(ptx *PackedTransaction) {
 }
 func (t *Task) InitTrack() *SynthTaskTrackItem {
 	unprocessedTask := &UnprocessedTask{
-		TaskID: t.Sign,
-		Size:   t.Size,
-		Model:  t.Model,
-		Params: t.Params,
+		TaskID:   t.Sign,
+		SlotSize: t.Slot,
+		Size:     t.Size,
+		Model:    t.Model,
+		Params:   t.Params,
 	}
 	return &SynthTaskTrackItem{
 		UnprocessedTask: unprocessedTask,
@@ -197,7 +199,7 @@ func (t *Task) GetDataset() string {
 		return ""
 	}
 }
-func NewTask(sign string, name string, model SupportModelType, params map[string]interface{}, total int32, isReliable bool) *Task {
+func NewTask(sign string, name string, model SupportModelType, slotSize int32, params map[string]interface{}, total int32, isReliable bool) *Task {
 	outputType := DATAFRAME
 	switch model {
 	case CTGAN:
@@ -215,7 +217,7 @@ func NewTask(sign string, name string, model SupportModelType, params map[string
 	return &Task{
 		Sign:        sign,
 		Name:        name,
-		Slot:        -1,
+		Slot:        slotSize,
 		Model:       model,
 		OutputType:  outputType,
 		ScheduleMap: make(map[ScheduleHash]int),

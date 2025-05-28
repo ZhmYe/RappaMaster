@@ -114,10 +114,17 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 				e.taskIDConsumer <- 1        // 获取ID
 				taskID := <-e.taskIDProvider // 这里要阻塞
+
+				//如果没有指定，设置默认值
+				if requestBody.SlotSize == 0 {
+					requestBody.SlotSize = 3000
+				}
+
 				task := paradigm.NewTask(
 					taskID,
 					requestBody.Name,
 					paradigm.NameToModelType(requestBody.Model),
+					requestBody.SlotSize,
 					requestBody.Params,
 					requestBody.Size,
 					requestBody.IsReliable,

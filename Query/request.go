@@ -12,6 +12,7 @@ type HttpInitTaskRequest struct {
 	//Slot       int32                  // slot index
 	Name       string                 // 任务名称
 	Size       int32                  // data size
+	SlotSize   int32                  // 可选参数，自定义slot大小
 	Model      string                 // 模型名称
 	Params     map[string]interface{} // 不确定的模型参数
 	IsReliable bool                   // 是否需要可信证明
