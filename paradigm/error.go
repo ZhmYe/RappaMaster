@@ -31,6 +31,7 @@ const (
 	ExecutorError
 	SlotLifeError
 	DatabaseError
+	UpchainError
 )
 
 func ErrorToString(error ErrorEnum) string {
