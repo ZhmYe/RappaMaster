@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"bytes"
+	// "bytes"
 	"crypto/sha256"
-	"encoding/hex"
+	// "encoding/hex"
 	"fmt"
 )
 
@@ -70,22 +70,22 @@ func GetMerkleProof(tree [][][]byte, targetIndex int) ([]MerkleProofItem, bool) 
 	return proof, true
 }
 
-func VerifyMerkleProof(leaf []byte, proof []MerkleProofItem, root []byte) bool {
-	computedHash := leaf
-	for _, p := range proof {
-		sibling, err := hex.DecodeString(p.Hash)
-		if err != nil {
-			return false
-		}
-		if p.Position == "left" {
-			computed := append(sibling, computedHash...)
-			sum := sha256.Sum256(computed)
-			computedHash = sum[:]
-		} else if p.Position == "right" {
-			computed := append(computedHash, sibling...)
-			sum := sha256.Sum256(computed)
-			computedHash = sum[:]
-		}
-	}
-	return bytes.Equal(computedHash, root)
-}
+// func VerifyMerkleProof(leaf []byte, proof []MerkleProofItem, root []byte) bool {
+// 	computedHash := leaf
+// 	for _, p := range proof {
+// 		sibling, err := hex.DecodeString(p.Hash)
+// 		if err != nil {
+// 			return false
+// 		}
+// 		if p.Position == "left" {
+// 			computed := append(sibling, computedHash...)
+// 			sum := sha256.Sum256(computed)
+// 			computedHash = sum[:]
+// 		} else if p.Position == "right" {
+// 			computed := append(computedHash, sibling...)
+// 			sum := sha256.Sum256(computed)
+// 			computedHash = sum[:]
+// 		}
+// 	}
+// 	return bytes.Equal(computedHash, root)
+// }
