@@ -71,7 +71,6 @@ func (m *Monitor) processQuery() {
 			item.SendInfo(m.nodeStatus)
 		default:
 			paradigm.Error(paradigm.RuntimeError, "Unsupported Query Type In Monitor")
-
 		}
 	}
 }
@@ -83,13 +82,15 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	for i := 0; i < len(m.nodeStatus); i++ {
 		nodeIDs[i] = int32(i)
 		adviceSize := request.Size / int32(len(nodeIDs))
-		// 慢点来 后续考虑维护一个全局的均值
-		if adviceSize > 3000 {
-			adviceSize = 3000
+
+		// 这里设置一个指定的均值
+		if adviceSize > request.SlotSize {
+			adviceSize = request.SlotSize
 		}
 		if adviceSize == 0 {
 			adviceSize = 1
 		}
+
 		scheduleSize[i] = adviceSize
 	}
 
@@ -97,6 +98,7 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	response := paradigm.NewAdviceResponse(nodeIDs, scheduleSize)
 	request.SendResponse(*response)
 }
+
 func (m *Monitor) Start() {
 	go m.processHeartbeatResponse()
 	go m.processOracleInfo()

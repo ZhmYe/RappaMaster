@@ -32,9 +32,10 @@ func (t *SynthTaskTrackItem) Next() UnprocessedTask {
 type UnprocessedTask struct {
 	TaskID TaskHash // 任务标识
 	// 这里不需要记录scheduleID，记录在Scheduler内部即可
-	Size   int32                  // data size
-	Model  SupportModelType       // 模型名称
-	Params map[string]interface{} // 不确定的模型参数
+	Size     int32                  // data size
+	SlotSize int32                  //指定slot的大小
+	Model    SupportModelType       // 模型名称
+	Params   map[string]interface{} // 不确定的模型参数
 }
 
 func (t *UnprocessedTask) Process(size int32) {
