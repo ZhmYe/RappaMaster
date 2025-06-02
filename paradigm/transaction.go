@@ -1,9 +1,14 @@
 package paradigm
 
 import (
+	"BHLayer2Node/utils"
+	"encoding/hex"
+	"encoding/json"
+	"math/big"
 	"time"
 
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 /*** Transaction相关内容 ***/
@@ -19,9 +24,10 @@ const (
 // TODO @YZM 这里的CallData可以改成遍历结构体中的所有成员变量，然后结合reflect变成map里的内容,这样新定义的transaction无需写CallData()
 
 type Transaction interface {
-	Call() string                     // 调用合约哪个函数
-	CallData() map[string]interface{} // 调用合约函数时候的参数
-	Blob() interface{}                // 提供额外的附属内容
+	Call() string                        // 调用合约哪个函数
+	CallData() map[string]interface{}    // 调用合约函数时候的参数
+	Blob() interface{}                   // 提供额外的附属内容
+	StoreParams() ([]interface{}, error) // 返回上链函数需要的参数列表
 }
 
 // InitTaskTransaction 表示RappaMaster新收到了一个合成任务，将任务的一些相关参数传上去，同时在合约里其他一些和任务相关的地方准备新建这个相关的字段
@@ -51,6 +57,40 @@ func (t *InitTaskTransaction) CallData() map[string]interface{} {
 }
 func (t *InitTaskTransaction) Blob() interface{} {
 	return t.Task
+}
+func (t *InitTaskTransaction) StoreParams() ([]interface{}, error) {
+	// 1) sign -> [32]byte
+	sign := utils.StringToBytes32(t.Sign)
+	// 2) name
+	name := t.Name
+	// 3) size -> uint32
+	size := uint32(t.Size)
+	// 4) model -> bytes32
+	model := utils.IntToBytes32(int(t.Model))
+	// 5) isReliable
+	reliable := t.IsReliable()
+	// 6) params -> JSON bytes 允许 nil 或 empty map
+	var paramsJSON []byte
+	if t.Params == nil {
+		paramsJSON = []byte("{}")
+	} else {
+		b, err := json.Marshal(t.Params)
+		if err != nil {
+			// 这里不直接返回错误，而是降级成 empty JSON
+			paramsJSON = []byte("{}")
+		} else {
+			paramsJSON = b
+		}
+	}
+
+	return []interface{}{
+		sign,
+		name,
+		size,
+		model,
+		reliable,
+		paramsJSON,
+	}, nil
 }
 func NewInitTaskTransaction(task *Task) *InitTaskTransaction {
 	return &InitTaskTransaction{task}
@@ -87,6 +127,54 @@ func (t *TaskProcessTransaction) CallData() map[string]interface{} {
 func (t *TaskProcessTransaction) Blob() interface{} {
 	return t.CommitSlotItem // 将整个commitSlot返回
 }
+func (t *TaskProcessTransaction) StoreParams() ([]interface{}, error) {
+	sign := utils.StringToBytes32(t.Sign)
+	var hash [32]byte
+	if bs, err := hex.DecodeString(t.hash); err == nil {
+		hash = common.BytesToHash(bs)
+	} else {
+		hash = utils.StringToBytes32(t.hash)
+	}
+	slot, process, id, epoch :=
+		uint32(t.Slot), uint32(t.Process), uint32(t.Nid), uint32(t.Epoch)
+	commitment := common.BytesToHash(t.Commitment)
+	var proof []byte
+	switch p := t.Proof.(type) {
+	case nil:
+		proof = []byte{}
+	case []byte:
+		proof = p
+	case string:
+		if bs, err := hex.DecodeString(p); err == nil {
+			proof = bs
+		} else {
+			proof = []byte(p)
+		}
+	default:
+		// 任意可 JSON 序列化的类型
+		if b, err := json.Marshal(p); err == nil {
+			proof = b
+		} else {
+			proof = []byte{}
+		}
+	}
+	signatures := t.Signatures
+	if signatures == nil {
+		signatures = make([][]byte, 0)
+	}
+
+	return []interface{}{
+		sign,
+		hash,
+		slot,
+		process,
+		id,
+		epoch,
+		commitment,
+		proof,
+		signatures,
+	}, nil
+}
 
 // EpochRecordTransaction
 /* 交易类型三：epoch记录交易 */
@@ -118,6 +206,52 @@ func (t *EpochRecordTransaction) CallData() map[string]interface{} {
 }
 func (t *EpochRecordTransaction) Blob() interface{} {
 	return t.EpochRecord // 返回epochRecord
+}
+func (t *EpochRecordTransaction) StoreParams() ([]interface{}, error) {
+	// 1) id -> *big.Int
+	idBig := big.NewInt(int64(t.Id))
+
+	// 2) justifiedHash -> [][32]byte
+	justs := make([][32]byte, len(t.JustifiedHash))
+	for i, h := range t.JustifiedHash {
+		if bs, err := hex.DecodeString(h); err == nil {
+			copy(justs[i][:], bs)
+		} else {
+			justs[i] = utils.StringToBytes32(h)
+		}
+	}
+
+	// 3) commitsHash -> [][32]byte
+	comms := make([][32]byte, len(t.CommitsHash))
+	for i, h := range t.CommitsHash {
+		if bs, err := hex.DecodeString(h); err == nil {
+			copy(comms[i][:], bs)
+		} else {
+			comms[i] = utils.StringToBytes32(h)
+		}
+	}
+
+	// 4) invalids -> 2个切片
+	invHashes := make([][32]byte, 0, len(t.Invalids))
+	invReasons := make([]uint8, 0, len(t.Invalids))
+	for h, r := range t.Invalids {
+		var b [32]byte
+		if bs, err := hex.DecodeString(h); err == nil {
+			copy(b[:], bs)
+		} else {
+			b = utils.StringToBytes32(h)
+		}
+		invHashes = append(invHashes, b)
+		invReasons = append(invReasons, uint8(r))
+	}
+
+	return []interface{}{
+		idBig,
+		justs,
+		comms,
+		invHashes,
+		invReasons,
+	}, nil
 }
 
 type PackedTransaction struct {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	Store "BHLayer2Node/ChainUpper/contract/store"
+	Store "BHLayer2Node/ChainUpper/contract/storeData"
 	"context"
 	"encoding/hex"
 	"log"
@@ -24,7 +24,7 @@ type ChainUpper struct {
 	//queue               chan map[string]interface{} // 用于异步上链的队列
 	queue    chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
 	client   *client.Client            // FISCO-BCOS 客户端
-	instance *Store.Store
+	instance *Store.StoreData
 	count    int // add by zhmye, 这里是用来给每笔交易赋予一个id的
 }
 
@@ -136,7 +136,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2Node
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to load contract: %v", err)
 	// }
-	address, receipt, instance, err := Store.DeployStore(client.GetTransactOpts(), client)
+	address, receipt, instance, err := Store.DeployStoreData(client.GetTransactOpts(), client)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2Node
 	// 初始化队列和 Worker
 	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
 	for i := 0; i < config.WorkerCount; i++ {
-		worker := service.NewUpchainWorker(i, config.BatchSize, queue, channel.DevTransactionChannel, instance, client)
+		worker := service.NewUpchainWorker(i, queue, channel.DevTransactionChannel, instance, client)
 		go worker.Process()
 		//go service. (i, queue, instance, client)
 	}
