@@ -27,6 +27,7 @@ const (
 	INIT_TASK = iota
 	ORACLE_QUERY
 	COLLECT_TASK
+	UPLOAD_TASK
 	BLOCKCHAIN_QUERY
 	DATASYNTH_QUERY
 )
@@ -156,6 +157,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:     "/collect",
 			Method:  "GET",
 			Handler: e.HandleDownload,
+		}
+		return &httpService, nil
+	case UPLOAD_TASK:
+		httpService := HttpService{
+			Url:     "/upload",
+			Method:  "GET",
+			Handler: e.HandleGET,
 		}
 		return &httpService, nil
 	case BLOCKCHAIN_QUERY:

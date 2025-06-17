@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/utils"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -13,10 +14,125 @@ type CollectTaskQuery struct {
 	paradigm.BasicChannelQuery
 }
 
+type UploadTaskQuery struct {
+	request HttpUploadTaskRequest
+	paradigm.BasicChannelQuery
+}
+
+func (q *UploadTaskQuery) TaskID() paradigm.TaskHash {
+	return q.request.TaskID
+}
+
 func (q *CollectTaskQuery) TaskID() paradigm.TaskHash {
 	return q.request.Sign
 }
 
+func (q *UploadTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
+	task := data.(paradigm.Task)
+	collector := task.GetCollector()
+	request := paradigm.HttpCollectRequest{
+		Sign: task.Sign,
+		Size: task.Size,
+	}
+	// 先创建收集任务
+	output, err := collector.ProcessCollect(request)
+	if err != nil {
+		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
+	}
+	if output == nil {
+		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, "Recover Output is nil"))
+	}
+	fileByte, fileType, err := paradigm.DataToFile(output)
+	if err != nil {
+		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
+	}
+	//fmt.Println(fileByte)
+
+	result := make(map[string]interface{})
+	generateFileName := func() string {
+		return fmt.Sprintf("%s_%d_%s.%s", request.Sign, request.Size, time.Now().Format("2006-01-02_15-04-05"), fileType)
+	}
+	result["fileupload"] = true
+
+	datasetType := ""
+
+	switch task.Model {
+	case paradigm.FINKAN:
+		datasetType = "表格数据"
+	case paradigm.ABM:
+		datasetType = "时序数据"
+	case paradigm.BAED:
+		datasetType = "图数据"
+	default:
+		break
+	}
+	//发送上传请求
+	err = utils.UploadFile("http://oneplatbank.i2soft.cn:19195/jeecaboot/datap/uploadFile", map[string]string{
+		"dataType":    "用户画像",
+		"datasetCode": fmt.Sprintf("%d", task.Model),
+		"datasetName": task.GetDataset(),
+		"datasetType": datasetType,
+		"dataCnt":     strconv.Itoa(int(task.Size)),
+		"purpose":     task.Name,
+		"description": "说明:测试数据",
+		"createBy":    "User02",
+	}, fileByte, generateFileName(), "file")
+	if err != nil {
+		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.NetworkError, err.Error()))
+	}
+	return paradigm.NewSuccessResponse(result)
+}
+
+func (q *UploadTaskQuery) ToHttpJson() map[string]interface{} {
+	return map[string]interface{}{
+		"query": "UploadTaskQuery", // 建议用方法获取类型名，比如 "UploadTaskQuery"
+		"request": HttpUploadTaskRequest{
+			TaskID:      q.request.TaskID, // 假设 UploadTaskQuery 中有 taskID 字段
+			Purpose:     q.request.Purpose,
+			Description: q.request.Description,
+			CreateBy:    q.request.CreateBy,
+		},
+	}
+}
+
+func (q *UploadTaskQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool {
+	r := HttpUploadTaskRequest{
+		TaskID:      "",
+		Purpose:     "",
+		Description: "",
+		CreateBy:    "",
+	}
+
+	if taskID, ok := rawData["taskID"].(string); ok {
+		r.TaskID = taskID
+	} else {
+		return false
+	}
+
+	if purpose, ok := rawData["purpose"].(string); ok {
+		r.Purpose = purpose
+	} else {
+		return false
+	}
+
+	if description, ok := rawData["description"].(string); ok {
+		r.Description = description
+	} else {
+		return false
+	}
+
+	if createBy, ok := rawData["createBy"].(string); ok {
+		r.CreateBy = createBy
+	} else {
+		return false
+	}
+
+	// 如果都成功，则赋值给 q.request
+	q.request = r
+	return true
+}
+
+// 上传任务
 func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	collector := data.(paradigm.RappaCollector)
 	output, err := collector.ProcessCollect(q.request)
@@ -244,6 +360,13 @@ func NewTaskOnNodesQuery(rawData map[interface{}]interface{}) *TaskOnNodesQuery 
 }
 func NewSlotIntegrityVerification(rawData map[interface{}]interface{}) *SlotIntegrityVerification {
 	query := new(SlotIntegrityVerification)
+	query.ParseRawDataFromHttpEngine(rawData)
+	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
+	return query
+}
+
+func NewUploadTaskQuery(rawData map[interface{}]interface{}) *UploadTaskQuery {
+	query := new(UploadTaskQuery)
 	query.ParseRawDataFromHttpEngine(rawData)
 	query.BasicChannelQuery = paradigm.NewBasicChannelQuery()
 	return query

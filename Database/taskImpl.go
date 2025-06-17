@@ -177,6 +177,16 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 	return synthData, nil
 }
 
+// CountTaskByStatus 统计任务状态
+func (o DatabaseService) CountTaskByStatus(status paradigm.SlotStatus) int32 {
+	var count int64
+	result := o.db.Model(&paradigm.Task{}).Where("status = ?", status).Count(&count)
+	if result.Error != nil {
+		return -1
+	}
+	return int32(count)
+}
+
 // DownUnFinishedTasks 未完成的任务设置为失败
 func (o DatabaseService) DownUnFinishedTasks() error {
 	result := o.db.Model(&paradigm.Task{}).

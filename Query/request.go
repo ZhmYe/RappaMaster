@@ -23,6 +23,13 @@ type HttpOracleQueryRequest struct {
 	Data  map[interface{}]interface{} // 查询内容rawData
 }
 
+type HttpUploadTaskRequest struct {
+	TaskID      string
+	Purpose     string
+	Description string
+	CreateBy    string
+}
+
 func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool, paradigm.Query) {
 	query := c.DefaultQuery("query", "")
 	if query == "" {
@@ -135,6 +142,21 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewCollectTaskQuery(map[interface{}]interface{}{
 			"taskID": taskID,
 			"size":   s,
+		})
+	case "UploadTaskQuery":
+		taskID := c.DefaultQuery("taskID", "")
+		purpose := c.DefaultQuery("purpose", "")
+		description := c.DefaultQuery("description", "")
+		createBy := c.DefaultQuery("createBy", "")
+		if taskID == "" {
+			return false, nil
+		}
+		// 构造 UploadTaskQuery 对象
+		return true, NewUploadTaskQuery(map[interface{}]interface{}{
+			"taskID":      taskID,
+			"purpose":     purpose,
+			"description": description,
+			"createBy":    createBy,
 		})
 	case "SlotIntegrityVerification":
 		slotHash := c.DefaultQuery("slotHash", "")
