@@ -16,7 +16,7 @@ type MerkleProofItem struct {
 	NodeIndex int
 }
 
-func (m MerkleTree) Build(leaves [][]byte) error {
+func (m *MerkleTree) Build(leaves [][]byte) error {
 	if len(leaves) == 0 {
 		return fmt.Errorf("no leaves")
 	}
@@ -43,7 +43,7 @@ func (m MerkleTree) Build(leaves [][]byte) error {
 	return nil
 }
 
-func (m MerkleTree) GetProof(targetIndex int) (interface{}, bool) {
+func (m *MerkleTree) GetProof(targetIndex int) (interface{}, bool) {
 	if len(m.tree) == 0 {
 		return nil, false
 	}
@@ -74,6 +74,6 @@ func (m MerkleTree) GetProof(targetIndex int) (interface{}, bool) {
 }
 
 // todo 这里没有实现
-func (m MerkleTree) Verify(targetIndex int, proof interface{}) bool {
+func (m *MerkleTree) Verify(targetHash []byte, proof interface{}) bool {
 	return true
 }

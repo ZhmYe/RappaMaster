@@ -10,7 +10,7 @@ import (
 type Validatable interface {
 	Build(leaves [][]byte) error
 	GetProof(targetIndex int) (interface{}, bool)
-	Verify(targetIndex int, proof interface{}) bool
+	Verify(targetHash []byte, proof interface{}) bool
 }
 
 type StructType int
