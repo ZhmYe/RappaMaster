@@ -9,11 +9,11 @@ type MerkleTree struct {
 	tree [][][]byte
 }
 
-type MerkleProofItem struct {
-	Hash      string
-	Position  string
-	Level     int
-	NodeIndex int
+func (m *MerkleTree) GetRoot() []byte {
+	if m.tree == nil {
+		return nil
+	}
+	return m.tree[len(m.tree)-1][0]
 }
 
 func (m *MerkleTree) Build(leaves [][]byte) error {
@@ -44,33 +44,41 @@ func (m *MerkleTree) Build(leaves [][]byte) error {
 }
 
 func (m *MerkleTree) GetProof(targetIndex int) (interface{}, bool) {
-	if len(m.tree) == 0 {
-		return nil, false
-	}
-
-	proof := []MerkleProofItem{}
+	// 提取每层用于构建验证的两个节点（当前节点 + 兄弟节点）
+	proofPairs := []map[string]interface{}{}
 	index := targetIndex
-
 	for level := 0; level < len(m.tree)-1; level++ {
 		currentLevel := m.tree[level]
 		siblingIndex := index ^ 1
-
-		if siblingIndex < len(currentLevel) {
-			position := "left"
-			if index%2 == 0 {
-				position = "right"
-			}
-			proof = append([]MerkleProofItem{{
-				Hash:      fmt.Sprintf("%x", currentLevel[siblingIndex]),
-				Position:  position,
-				Level:     level,
-				NodeIndex: siblingIndex,
-			}}, proof...)
+		if siblingIndex >= len(currentLevel) {
+			// 没有兄弟节点，不构建该层 proofPair
+			index /= 2
+			continue
 		}
+
+		currentNode := currentLevel[index]
+		siblingNode := currentLevel[siblingIndex]
+
+		proofPairs = append(proofPairs, map[string]interface{}{
+			"level": level,
+			"current": map[string]interface{}{
+				"index": index,
+				"hash":  fmt.Sprintf("0x%x", currentNode),
+			},
+			"sibling": map[string]interface{}{
+				"index": siblingIndex,
+				"hash":  fmt.Sprintf("0x%x", siblingNode),
+			},
+		})
+
 		index /= 2
 	}
+	// 反转 proofPairs，使其自顶向下排序
+	for i, j := 0, len(proofPairs)-1; i < j; i, j = i+1, j-1 {
+		proofPairs[i], proofPairs[j] = proofPairs[j], proofPairs[i]
+	}
 
-	return proof, true
+	return proofPairs, true
 }
 
 // todo 这里没有实现

@@ -1,6 +1,9 @@
 package Query
 
 import (
+	"BHLayer2Node/Validatable"
+	"BHLayer2Node/Validatable/merkle"
+	"BHLayer2Node/Validatable/verkle"
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/utils"
 	"fmt"
@@ -254,6 +257,7 @@ func (q *SynthTaskQuery) ToHttpJson() map[string]interface{} {
 // SlotIntegrityVerification 对slot进行完整性验证, 目前使用Merkle Tree结构
 type SlotIntegrityVerification struct {
 	SlotHash string
+	Type     Validatable.StructType
 	paradigm.BasicChannelQuery
 }
 
@@ -277,52 +281,38 @@ func (q *SlotIntegrityVerification) GenerateResponse(data interface{}) paradigm.
 			paradigm.NewRappaError(paradigm.SlotLifeError, "target slot not found or no valid commitments"))
 	}
 
-	tree, root := utils.BuildMerkleTree(leaves)
-	// 提取每层用于构建验证的两个节点（当前节点 + 兄弟节点）
-	proofPairs := []map[string]interface{}{}
-	index := indexOfTarget
-	for level := 0; level < len(tree)-1; level++ {
-		currentLevel := tree[level]
-		siblingIndex := index ^ 1
-		if siblingIndex >= len(currentLevel) {
-			// 没有兄弟节点，不构建该层 proofPair
-			index /= 2
-			continue
+	tree, err := Validatable.NewValidatable(leaves, q.Type)
+	if err != nil {
+		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, err.Error()))
+	}
+
+	var response map[string]interface{}
+
+	if q.Type == Validatable.Merkle {
+		merkleTree := tree.(*merkle.MerkleTree)
+		proof, _ := tree.GetProof(indexOfTarget)
+
+		leafHex := fmt.Sprintf("0x%x", leaves[indexOfTarget])
+		rootHex := fmt.Sprintf("0x%x", merkleTree.GetRoot())
+		response = map[string]interface{}{
+			"slotHash":    q.SlotHash,
+			"leaf":        leafHex,
+			"merkleRoot":  rootHex,
+			"proof":       proof,
+			"verified":    true,
+			"leavesCount": len(leaves),
+			"targetIndex": indexOfTarget,
 		}
-
-		currentNode := currentLevel[index]
-		siblingNode := currentLevel[siblingIndex]
-
-		proofPairs = append(proofPairs, map[string]interface{}{
-			"level": level,
-			"current": map[string]interface{}{
-				"index": index,
-				"hash":  fmt.Sprintf("0x%x", currentNode),
-			},
-			"sibling": map[string]interface{}{
-				"index": siblingIndex,
-				"hash":  fmt.Sprintf("0x%x", siblingNode),
-			},
-		})
-
-		index /= 2
-	}
-	// 反转 proofPairs，使其自顶向下排序
-	for i, j := 0, len(proofPairs)-1; i < j; i, j = i+1, j-1 {
-		proofPairs[i], proofPairs[j] = proofPairs[j], proofPairs[i]
-	}
-
-	leafHex := fmt.Sprintf("0x%x", leaves[indexOfTarget])
-	rootHex := fmt.Sprintf("0x%x", root)
-
-	response := map[string]interface{}{
-		"slotHash":    q.SlotHash,
-		"leaf":        leafHex,
-		"merkleRoot":  rootHex,
-		"proof":       proofPairs,
-		"verified":    true,
-		"leavesCount": len(leaves),
-		"targetIndex": indexOfTarget,
+	} else if q.Type == Validatable.Verkle {
+		verkleTree := tree.(*verkle.VerkleTree)
+		proof, _ := verkleTree.GetProof(indexOfTarget)
+		verkleProof := proof.(verkle.VerkleSerializedProof)
+		response = map[string]interface{}{
+			"slotHash":  q.SlotHash,
+			"proof":     verkleProof.Vp,
+			"stateDiff": verkleProof.Diff,
+			"verified":  true,
+		}
 	}
 
 	return paradigm.NewSuccessResponse(response)
@@ -333,10 +323,21 @@ func (q *SlotIntegrityVerification) ParseRawDataFromHttpEngine(rawData map[inter
 	} else {
 		return false
 	}
+	if s, ok := rawData["type"].(string); ok {
+		if s == "merkle" {
+			q.Type = Validatable.Merkle
+		} else if s == "verkle" {
+			q.Type = Validatable.Verkle
+		} else {
+			return false
+		}
+	} else {
+		return false
+	}
 	return true
 }
 func (q *SlotIntegrityVerification) ToHttpJson() map[string]interface{} {
-	return map[string]interface{}{"query": "SlotIntegrityVerification", "slotHash": q.SlotHash}
+	return map[string]interface{}{"query": "SlotIntegrityVerification", "slotHash": q.SlotHash, "type": q.Type}
 }
 
 func NewCollectTaskQuery(rawData map[interface{}]interface{}) *CollectTaskQuery {

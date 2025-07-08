@@ -160,11 +160,13 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		})
 	case "SlotIntegrityVerification":
 		slotHash := c.DefaultQuery("slotHash", "")
+		structType := c.DefaultQuery("type", "merkle")
 		if slotHash == "" {
 			return false, nil
 		}
 		return true, NewSlotIntegrityVerification(map[interface{}]interface{}{
 			"slotHash": slotHash,
+			"type":     structType,
 		})
 	default:
 		return false, nil
