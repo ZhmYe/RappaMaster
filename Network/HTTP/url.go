@@ -5,6 +5,7 @@ import (
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -29,10 +30,11 @@ const (
 	COLLECT_TASK
 	BLOCKCHAIN_QUERY
 	DATASYNTH_QUERY
+	COMMIT_PROOF
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, COMMIT_PROOF}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -88,6 +90,34 @@ func (e *HttpEngine) HandleDownload(c *gin.Context) {
 			Code:    "ERROR",
 			Data:    nil,
 		})
+	}
+}
+
+func (e *HttpEngine) HandleCommitProof(c *gin.Context) {
+	var req Query.CommitProofRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	proofBytes, err := base64.StdEncoding.DecodeString(req.Proof)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid base64 proof data"})
+		return
+	}
+
+	paradigm.Log("HTTP", fmt.Sprintf("Received proof for slot: %s", req.SlotHash))
+
+	proofReceipt := paradigm.ProofReceipt{
+		SlotHash: req.SlotHash,
+		Proof:    proofBytes,
+	}
+
+	select {
+	case e.channel.ProofReceivedChannel <- proofReceipt:
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Proof received and queued for processing."})
+	default:
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Server is busy, please try again later."})
 	}
 }
 
@@ -163,6 +193,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:     "/dataSynth",
 			Method:  "GET",
 			Handler: e.HandleGET,
+		}
+		return &httpService, nil
+	case COMMIT_PROOF:
+		httpService := HttpService{
+			Url:     "/commit_proof",
+			Method:  "POST",
+			Handler: e.HandleCommitProof,
 		}
 		return &httpService, nil
 	default:

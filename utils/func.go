@@ -48,6 +48,12 @@ func StringToBytes32(s string) [32]byte {
 	return b
 }
 
+// func IntToBytes32(n int) [32]byte {
+// 	var b [32]byte
+// 	copy(b[:], n)
+// 	return b
+// }
+
 // serializeParams 将 map[string]interface{} 转化为[32]byte
 func SerializeParams(params map[string]interface{}) [32]byte {
 	bytes, _ := json.Marshal(params)

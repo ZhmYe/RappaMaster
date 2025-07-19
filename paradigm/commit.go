@@ -26,6 +26,7 @@ type CommitSlotItem struct {
 	state       CommitState
 	hash        SlotHash
 	InvalidType InvalidCommitType
+	Proof       []byte
 	//epoch int // 在哪个epoch被提交
 	//Commitment SimpleCommitment // 这里简单做一下 todo
 	//votes map[int]string // 投票，暂时先不要这个，后续要加上 todo

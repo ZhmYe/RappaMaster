@@ -91,12 +91,13 @@ func (t *Tracker) CheckFinalized(slot paradigm.PendingCommitSlotTrack) {
 		t.channel.CommitSlots <- *commitSlot
 	}
 }
-func (t *Tracker) ReceiveProof(slotHash string) {
+func (t *Tracker) ReceiveProof(slotHash string, proof []byte) {
 	if slot, exist := t.pendingCommitSlot[slotHash]; exist {
 		if atomic.LoadInt32(&slot.IsFinalized) == 1 {
 			return // 如果已经提交过，直接跳过
 		}
 		slot.ReceiveProof()
+		slot.CommitSlotItem.Proof = proof
 		t.CheckFinalized(*slot)
 	}
 
@@ -228,7 +229,8 @@ func (t *Tracker) Start() {
 			t.InitTask(initTask)
 		case scheduledTask := <-t.channel.ScheduledTasks:
 			t.UpdateTask(scheduledTask.TaskID) // 开始计时
-
+		case proofReceipt := <-t.channel.ProofReceivedChannel:
+			t.ReceiveProof(proofReceipt.SlotHash, proofReceipt.Proof)
 		}
 	}
 }

@@ -73,7 +73,7 @@ func (t *EpochManager) Start() {
 						t.channel.PendingTransactions <- transaction
 					}(&paradigm.TaskProcessTransaction{
 						CommitSlotItem: &commitSlotItem,
-						Proof:          nil,
+						Proof:          commitSlotItem.Proof,
 						Signatures:     nil,
 					})
 				case paradigm.INVALID:
