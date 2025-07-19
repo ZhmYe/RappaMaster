@@ -10,6 +10,7 @@ type SynthTaskSchedule struct {
 	TaskID     TaskHash         // 任务标识
 	ScheduleID ScheduleHash     // 第几次调度
 	Size       int32            // 调度总量
+	SlotSize   int32            // 调度指定的slot大小
 	Model      SupportModelType // 模型名称
 	Params     map[string]interface{}
 	Slots      []*Slot // 调度的Slot

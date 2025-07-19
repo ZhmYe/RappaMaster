@@ -28,6 +28,7 @@ const (
 	INIT_TASK = iota
 	ORACLE_QUERY
 	COLLECT_TASK
+	UPLOAD_TASK
 	BLOCKCHAIN_QUERY
 	DATASYNTH_QUERY
 	COMMIT_PROOF
@@ -144,10 +145,17 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 				e.taskIDConsumer <- 1        // 获取ID
 				taskID := <-e.taskIDProvider // 这里要阻塞
+
+				//如果没有指定，设置默认值
+				if requestBody.SlotSize == 0 {
+					requestBody.SlotSize = 3000
+				}
+
 				task := paradigm.NewTask(
 					taskID,
 					requestBody.Name,
 					paradigm.NameToModelType(requestBody.Model),
+					requestBody.SlotSize,
 					requestBody.Params,
 					requestBody.Size,
 					requestBody.IsReliable,
@@ -179,6 +187,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:     "/collect",
 			Method:  "GET",
 			Handler: e.HandleDownload,
+		}
+		return &httpService, nil
+	case UPLOAD_TASK:
+		httpService := HttpService{
+			Url:     "/upload",
+			Method:  "GET",
+			Handler: e.HandleGET,
 		}
 		return &httpService, nil
 	case BLOCKCHAIN_QUERY:

@@ -55,6 +55,7 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			if err != nil {
 				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				slot.SetError(e.Error())
+				c.channel.UnScheduledSlotChannel <- slot
 				rejectChannel <- [2]interface{}{nodeID, e.Error()}
 				return
 			}
@@ -92,6 +93,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 			//nID, _ := strconv.Atoi(resp.NodeId)
 			if resp.Accept {
 				//paradigm.Log("COORDINATOR", fmt.Sprintf("Node %s accepted schedule: %v", resp.NodeId, resp.Sign))
+				//这里记录slot发给了哪个节点
+				nID, _ := strconv.Atoi(resp.NodeId)
+				slot.NodeID = int32(nID)
 				successChannel <- slot
 
 			} else {
@@ -114,6 +118,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	////acceptSchedules := make([]*paradigm.Slot, 0)
 	for item := range successChannel {
 		acceptedSize += item.ScheduleSize
+		// 这里更新slot的node_id
+		index := schedule.NodeIDMap[int(item.NodeID)]
+		schedule.Slots[index].NodeID = item.NodeID
 		//	//acceptSchedules = append(acceptSchedules, item)
 	}
 	rejectNumber := 0
@@ -122,7 +129,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 		rejectNumber++
 		//schedule.Slots[nID]
 		index := schedule.NodeIDMap[nID]
+		schedule.Slots[index].NodeID = int32(nID)
 		schedule.Slots[index].SetError(errorMessage) // 更新失败的slot
+		c.channel.UnScheduledSlotChannel <- schedule.Slots[index]
 	}
 	remainingSize := schedule.Size - acceptedSize
 	if remainingSize < 0 {
@@ -136,10 +145,11 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	if remainingSize == schedule.Size {
 		// 如果所有节点都不接受，直接重新调度
 		c.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
-			TaskID: schedule.TaskID,
-			Size:   schedule.Size,
-			Model:  schedule.Model,
-			Params: schedule.Params,
+			TaskID:   schedule.TaskID,
+			SlotSize: schedule.SlotSize,
+			Size:     schedule.Size,
+			Model:    schedule.Model,
+			Params:   schedule.Params,
 		}
 		paradigm.Print("WARNING", fmt.Sprintf("No node accept schedules, restart the task %s scheduling...", schedule.TaskID))
 	} else {

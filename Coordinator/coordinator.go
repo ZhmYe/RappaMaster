@@ -4,9 +4,11 @@ import (
 	"BHLayer2Node/Network/Grpc"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
+	"BHLayer2Node/utils"
 	"fmt"
 	"google.golang.org/grpc"
 	"net"
+	"path/filepath"
 	"strconv"
 	"sync"
 )
@@ -65,7 +67,10 @@ func (c *Coordinator) Start() {
 		if err != nil {
 			paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to listen: %v", err))
 		}
-		server := grpc.NewServer(grpc.MaxSendMsgSize(1024*1024*1024), grpc.MaxRecvMsgSize(1024*1024*1024))
+		filename, _ := utils.GetProjectRoot()
+		logger := Grpc.GrpcLogger{FileName: filepath.Join(filename, "grpc.log")}
+		monitoringInterceptor := Grpc.NewMonitoringInterceptor(&logger)
+		server := grpc.NewServer(grpc.UnaryInterceptor(monitoringInterceptor.ServerInterceptor), grpc.MaxSendMsgSize(1024*1024*1024), grpc.MaxRecvMsgSize(1024*1024*1024))
 		pb.RegisterRappaMasterServer(server, c)
 		paradigm.Print("INFO", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
 		if err := server.Serve(lis); err != nil {

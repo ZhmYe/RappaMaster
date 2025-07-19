@@ -1,3 +1,8 @@
 logs
 *.uuid
 *.pid
+*.pdf
+*.svg
+*.temp
+*.csv
+*.log

@@ -95,7 +95,10 @@ type DateSynthDataQuery struct {
 
 func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Response {
 	// 传入的数据是dateRecords
-	records := data.([]*Date.DateRecord)
+	dataMap := data.(map[string]interface{})
+	records := dataMap["records"].([]*Date.DateRecord)
+	proccessTaskNum := dataMap["proccessTaskNum"].(int32)
+	finishTaskNum := dataMap["finishTaskNum"].(int32)
 	response := make(map[string]interface{})
 	dates := make([]string, 0)               // 按序存储时间，便于前端排序,go的map无序
 	synthData := make([]map[string]int32, 0) // 合成数据
@@ -130,8 +133,8 @@ func (q *DateSynthDataQuery) GenerateResponse(data interface{}) paradigm.Respons
 	response["finish"] = finishTasks
 	response["synthData"] = synthData
 	response["taskDistribution"] = map[string]interface{}{
-		"processing": totalTasks - totalFinish,
-		"finish":     totalFinish,
+		"processing": proccessTaskNum,
+		"finish":     finishTaskNum,
 	}
 	response["datasetDistribution"] = datasetDistribution
 	return paradigm.NewSuccessResponse(response)

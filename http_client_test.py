@@ -93,6 +93,13 @@ def oracle_query_collect():
     }
     url = "http://127.0.0.1:8081/collect"
     send_GET_request(url, request_data)
+def oracle_query_slot():
+    request_data = {
+        "query": "SlotIntegrityVerification",
+        "slotHash": "SynthTask-0-1747658044_0_0"
+    }
+    url = "http://127.0.0.1:8081/dataSynth"
+    send_GET_request(url, request_data)
 def send_POST_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
 
@@ -150,6 +157,8 @@ def main():
             oracle_query_tasks()
         if command == "collect":
             oracle_query_collect()
+        if command == "slot":
+            oracle_query_slot()
         if command == 'exit':
             print("Exiting the client...")
             break

@@ -1,6 +1,7 @@
 package Database
 
 import (
+	"BHLayer2Node/Collector"
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
@@ -43,7 +44,34 @@ func (o DatabaseService) SetTask(task *paradigm.Task) {
 
 // 更新任务
 func (o DatabaseService) UpdateTask(task *paradigm.Task) {
-	o.db.Model(task).Updates(task)
+	o.db.Model(task).Select("*").Updates(task)
+}
+
+func (o DatabaseService) IncrementTaskProcess(taskSign string, slot *paradigm.CommitRecord) error {
+	// 使用原子操作增加任务进度
+	if slot.State() != paradigm.FINALIZE {
+		return fmt.Errorf("the commit Slot is not finalized") // 只能提交finalized的，因为已经通过投票了所以不需要check
+	}
+	query := "UPDATE tasks SET process = process + ? WHERE sign = ?"
+	result := o.db.Exec(query, slot.Process, taskSign)
+	if result.Error != nil {
+		return fmt.Errorf("failed to increment task process: %v", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("task with sign %s not found or no update needed", taskSign)
+	}
+	// debug
+	paradigm.Log("DEBUG", fmt.Sprintf("Atomically incremented task %s process by %d", taskSign, slot.Process))
+	return nil
+}
+
+// 增量更新并返回更新后的任务
+func (o DatabaseService) IncrementTaskProcessAndGet(taskSign string, slot *paradigm.CommitRecord) (*paradigm.Task, error) {
+	err := o.IncrementTaskProcess(taskSign, slot)
+	if err != nil {
+		return nil, err
+	}
+	return o.GetTask(taskSign)
 }
 
 // GetTaskByID 通过任务标识查询任务
@@ -82,7 +110,6 @@ func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 				updatedSlots = append(updatedSlots, &dbSlot)
 			}
 		}
-
 		// 更新schedule的slots
 		task.Schedules[i].Slots = updatedSlots
 	}
@@ -105,14 +132,13 @@ func (o DatabaseService) GetTaskByTxHash(txHash string) (*paradigm.Task, error) 
 }
 
 // GetAllTasks 查询所有任务
-func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
+func (o DatabaseService) GetAllTasks() ([]*paradigm.Task, error) {
 	var tasks []*paradigm.Task
 	err := o.db.Order("start_time DESC").Find(&tasks).Error
 	if err != nil {
 		return nil, err
 	}
 
-	tasksMap := make(map[string]*paradigm.Task)
 	for _, task := range tasks {
 		tx := paradigm.DevReference{}
 		if err := o.db.Take(&tx, task.TID).Error; err == nil {
@@ -120,9 +146,9 @@ func (o DatabaseService) GetAllTasks() (map[string]*paradigm.Task, error) {
 			task.TxBlockHash = tx.TxBlockHash
 			task.TxHash = tx.TxHash
 		}
-		tasksMap[task.Sign] = task
 	}
-	return tasksMap, nil
+
+	return tasks, nil
 }
 
 // GetSynthDataByModel 综合数据查询实现
@@ -139,8 +165,7 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 
 	// 按模型类型统计已完成任务的处理量
 	for _, task := range tasks {
-		// 使用 IsFinish() 方法判断任务是否完成
-		if task.IsFinish() {
+		if task.Status == paradigm.Finished {
 			if currentValue, exists := synthData[task.Model]; exists {
 				synthData[task.Model] = currentValue + task.Process
 			} else {
@@ -150,4 +175,56 @@ func (o DatabaseService) GetSynthDataByModel() (map[paradigm.SupportModelType]in
 	}
 
 	return synthData, nil
+}
+
+// CountTaskByStatus 统计任务状态
+func (o DatabaseService) CountTaskByStatus(status paradigm.SlotStatus) int32 {
+	var count int64
+	result := o.db.Model(&paradigm.Task{}).Where("status = ?", status).Count(&count)
+	if result.Error != nil {
+		return -1
+	}
+	return int32(count)
+}
+
+// DownUnFinishedTasks 未完成的任务设置为失败
+func (o DatabaseService) DownUnFinishedTasks() error {
+	result := o.db.Model(&paradigm.Task{}).
+		Where("status = ?", paradigm.Processing).
+		Updates(map[string]interface{}{
+			"status": paradigm.Failed,
+		})
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to reset processing tasks: %w", result.Error)
+	}
+
+	paradigm.Log("INFO", fmt.Sprintf("Reset %d processing tasks to failed status", result.RowsAffected))
+	return nil
+}
+
+// RecoverCollector 恢复任务的Collector
+func (o DatabaseService) RecoverCollector(task *paradigm.Task) error {
+	if task.Status != paradigm.Finished {
+		return fmt.Errorf("task is not finished, cannot be downloaded")
+	}
+	if task.Collector == nil {
+		task.Collector = Collector.NewCollector(task.Sign, task.OutputType, o.channel)
+	}
+	var slots []*paradigm.Slot
+	err := o.db.Where("task_id = ? AND status = ?", task.Sign, paradigm.Finished).Find(&slots).Error
+	if err != nil {
+		return fmt.Errorf("failed to query slots table: %w", err)
+	}
+	for _, slot := range slots {
+		collectSlot := paradigm.CollectSlotItem{
+			Sign:        task.Sign,
+			Hash:        slot.SlotID,
+			Size:        slot.ScheduleSize,
+			PaddingSize: slot.CommitSlot.GetPadding(),
+			StoreMethod: slot.CommitSlot.GetStore(),
+		}
+		task.Collector.ProcessSlotUpdate(collectSlot)
+	}
+	return nil
 }

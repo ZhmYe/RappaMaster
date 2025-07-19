@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // GetProjectRoot 查找包含特定标识文件的项目根目录
@@ -73,6 +75,13 @@ func BigIntToBytes32(n *big.Int) []byte {
 	return padded
 }
 
+// 把一个小于 256 的数字放在 bytes32 最低位
+func IntToBytes32(i int) [32]byte {
+	var b [32]byte
+	b[31] = byte(i)
+	return b
+}
+
 func FlattenByte32Slice(arr [][32]byte) []byte {
 	// 每个元素都是 32 字节
 	totalBytes := len(arr) * 32
@@ -83,6 +92,30 @@ func FlattenByte32Slice(arr [][32]byte) []byte {
 		result = append(result, v[:]...)
 	}
 	return result
+}
+
+// trimZero 去掉右侧零字节，并转成 string
+func TrimZero(b []byte) string {
+	return strings.TrimRight(string(b), "\x00")
+}
+
+// hexList 把一组 byte-slice 转成 hex 字符串列表
+func HexList(bsList [][]byte) []string {
+	out := make([]string, len(bsList))
+	for i, bs := range bsList {
+		out[i] = "0x" + hex.EncodeToString(bs)
+	}
+	return out
+}
+
+// bytes32ListToStrings 把 [][32]byte 当成字符串，去掉尾部 \x00
+func Bytes32ListToStrings(in [][32]byte) []string {
+	out := make([]string, len(in))
+	for i, v := range in {
+		// 直接把字节切片转成 string 然后去尾部 \x00
+		out[i] = strings.TrimRight(string(v[:]), "\x00")
+	}
+	return out
 }
 
 //// BinarySearch 二分查找

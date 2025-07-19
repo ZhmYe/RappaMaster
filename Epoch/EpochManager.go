@@ -81,7 +81,12 @@ func (t *EpochManager) Start() {
 				default:
 					panic("An Unknown State CommitSlotItem should not be involved in commitSlot!!!")
 				}
-
+			case task := <-t.channel.EpochInitTaskChannel:
+				// 记录epoch定义的task
+				t.epochRecord.UpdateTask(task)
+			case slot := <-t.channel.UnScheduledSlotChannel:
+				// 这里要记录没法调度的slot
+				t.epochRecord.Invalids[slot.SlotID] = paradigm.NewInvalidCommitError(paradigm.INVALID_SLOT, slot.ErrorMessage())
 				//t.UpdateTask(initTask.Sign, initTask.Model, initTask.Size, initTask.Params)
 			//case schedule := <-t.channel.ScheduledTasks:
 			//	_, err := t.UpdateTaskSchedule(schedule)
@@ -222,7 +227,7 @@ func (t *EpochManager) UpdateEpoch() {
 			Id:            int32(currentEpoch),
 			CommitsHash:   commits,
 			JustifiedHash: finalized,
-			Invalids:      epochRecord.Invalids,
+			Invalids:      epochRecord.SampleInvalids(),
 		}
 	}(tmp)
 	// 下面的内容和心跳无关
@@ -248,7 +253,7 @@ func (t *EpochManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Commits:    t.epochRecord.Commits,
 		Justifieds: t.epochRecord.Justifieds,
 		Finalizes:  t.epochRecord.Finalizes,
-		Invalids:   t.epochRecord.Invalids,
+		Invalids:   t.epochRecord.SampleInvalids(),
 		//Tasks:     validTaskMap,
 		Epoch: int32(t.currentEpoch),
 	}

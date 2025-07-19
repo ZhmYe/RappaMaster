@@ -10,8 +10,8 @@ import (
 type PersistedOracle struct {
 	channel *paradigm.RappaChannel
 	// mySQLConfig paradigm.DBConnection              //mysql连接配置
-	dbService  *Database.DatabaseService
-	collectors map[string]paradigm.RappaCollector //定义任务收集器
+	dbService *Database.DatabaseService
+	// collectors map[string]paradigm.RappaCollector //定义任务收集器
 }
 
 func (o *PersistedOracle) Start() {
@@ -38,7 +38,7 @@ func (o *PersistedOracle) Start() {
 						// 那么需要新建一个epoch
 						epochRecord := ptx.Tx.Blob().(*paradigm.EpochRecord)
 						//fmt.Println(222, epochRecord)
-						commits, justifieds, finalizeds := make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0), make(map[paradigm.SupportModelType][]*paradigm.Slot, 0)
+						commits, justifieds, finalizeds := make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0), make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0), make(map[paradigm.SupportModelType][]paradigm.SlotHash, 0)
 						invalids := make([]*paradigm.Slot, 0)
 						initTasks := make([]*paradigm.Task, 0)
 
@@ -51,10 +51,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := commits[slotType]; ok {
-								commits[slotType] = append(value, slot)
+								commits[slotType] = append(value, slotHash)
 							} else {
-								commitOfType := make([]*paradigm.Slot, 0)
-								commitOfType = append(commitOfType, slot)
+								commitOfType := make([]paradigm.SlotHash, 0)
+								commitOfType = append(commitOfType, slotHash)
 								commits[slotType] = commitOfType
 							}
 						}
@@ -67,10 +67,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := justifieds[slotType]; ok {
-								justifieds[slotType] = append(value, slot)
+								justifieds[slotType] = append(value, slotHash)
 							} else {
-								justifiedOfType := make([]*paradigm.Slot, 0)
-								justifiedOfType = append(justifiedOfType, slot)
+								justifiedOfType := make([]paradigm.SlotHash, 0)
+								justifiedOfType = append(justifiedOfType, slotHash)
 								justifieds[slotType] = justifiedOfType
 							}
 						}
@@ -85,10 +85,10 @@ func (o *PersistedOracle) Start() {
 							}
 							slotType := tempTask.Model
 							if value, ok := finalizeds[slotType]; ok {
-								finalizeds[slotType] = append(value, slot)
+								finalizeds[slotType] = append(value, slotHash)
 							} else {
-								finalizedOfType := make([]*paradigm.Slot, 0)
-								finalizedOfType = append(finalizedOfType, slot)
+								finalizedOfType := make([]paradigm.SlotHash, 0)
+								finalizedOfType = append(finalizedOfType, slotHash)
 								finalizeds[slotType] = finalizedOfType
 							}
 							if value, ok := epochProcess[slotType]; ok {
@@ -154,6 +154,7 @@ func (o *PersistedOracle) Start() {
 						// 那么需要在tasks更新一个任务
 						task := transaction.(*paradigm.InitTaskTransaction).Task
 						//task.UpdateTxInfo(ptx)
+						o.channel.EpochInitTaskChannel <- task  // 将task记录到epoch中
 						o.channel.InitTasks <- task.InitTrack() // 上链后，发起新的任务，这样scheduler能接受到
 						// 更新txMap，对应的rf是InitTaskTx
 						reference := &paradigm.DevReference{
@@ -169,7 +170,7 @@ func (o *PersistedOracle) Start() {
 						o.dbService.SetTransaction(reference)
 						task.TID = reference.TID
 						o.dbService.SetTask(task)
-						o.collectors[task.Sign] = task.Collector
+						// o.collectors[task.Sign] = task.Collector
 
 						// 更新date
 						dateRecord.UpdateInitTasks(1)
@@ -184,7 +185,7 @@ func (o *PersistedOracle) Start() {
 						if task, err := o.dbService.GetTask(taskSign); err == nil {
 							// 传递给monitor更新完成的任务
 							// TODO 这里暂时将任务的类型写入
-							task.Collector = o.collectors[task.Sign]
+							// task.Collector = o.collectors[task.Sign]
 							transaction.(*paradigm.TaskProcessTransaction).Model = task.Model
 							o.channel.MonitorOracleChannel <- transaction
 							reference := &paradigm.DevReference{
@@ -200,18 +201,25 @@ func (o *PersistedOracle) Start() {
 							o.dbService.SetTransaction(reference)
 							o.dbService.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
 							commitRecord.TxID = reference.TID
-							err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
+							// err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
+							// if err != nil {
+							// 	e := paradigm.Error(paradigm.RuntimeError, err.Error())
+							// 	panic(e.Error())
+							// }
+							// 使用原子操作增加任务进度并获取更新后的任务
+							task, err := o.dbService.IncrementTaskProcessAndGet(taskSign, commitRecord)
 							if err != nil {
-								e := paradigm.Error(paradigm.RuntimeError, err.Error())
+								e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to increment task process: %s", err.Error()))
 								panic(e.Error())
 							}
 
 							if task.IsFinish() && !task.HasbeenCollect {
 								// 更新date
 								dateRecord.UpdateFinishTasks(1)
-								task.SetEndTime()
+								task.SetEndTime() // 更新end_time和status
 								//d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
+								o.dbService.UpdateTask(task)
 								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 							}
 							// 这里更新oracle的全局信息
@@ -222,7 +230,7 @@ func (o *PersistedOracle) Start() {
 							//	d.synthData[task.Model] = commitRecord.Process
 							//}
 							//更新task
-							o.dbService.UpdateTask(task)
+							// o.dbService.UpdateTask(task)
 							dateRecord.UpdateFinalized(1)
 							dateRecord.UpdateProcess(commitRecord.Process, task.Model)
 							dateRecord.UpdateTransactions(1)
@@ -257,8 +265,8 @@ func (o *PersistedOracle) Start() {
 
 func NewPersistedOracle(channel *paradigm.RappaChannel, service *Database.DatabaseService) *PersistedOracle {
 	return &PersistedOracle{
-		channel:    channel,
-		dbService:  service,
-		collectors: make(map[string]paradigm.RappaCollector),
+		channel:   channel,
+		dbService: service,
+		// collectors: make(map[string]paradigm.RappaCollector),
 	}
 }

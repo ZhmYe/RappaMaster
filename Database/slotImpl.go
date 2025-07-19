@@ -24,10 +24,10 @@ func (o DatabaseService) UpdateSlotFromSchedule(slot *paradigm.Slot) {
 	}
 }
 
-func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {
+func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitError, epoch int32) {
 	slotQuery := o.GetSlot(slotHash)
 	slotQuery.Epoch = epoch
-	slotQuery.Err = paradigm.InvalidCommitTypeToString(e)
+	slotQuery.Err = fmt.Sprintf("%s||%s", paradigm.InvalidCommitTypeToString(e.Error), e.ErrorMessage)
 	//slot.CommitSlot.SetEpoch(epoch)
 	o.db.Model(slotQuery).Select("epoch", "err", "status").Updates(slotQuery)
 }
@@ -71,4 +71,18 @@ func (o DatabaseService) DownUnFinishedSlots(epoch int32) error {
 	updateMap["err"] = paradigm.InvalidCommitTypeToString(paradigm.DOWN_FAILED)
 	updateMap["status"] = paradigm.Failed
 	return o.db.Model(&paradigm.Slot{}).Where("status = ?", paradigm.Processing).Updates(updateMap).Error
+}
+
+// 查询单个任务的slot的并行完成情况的组成
+func (o DatabaseService) QueryFinishedSlotsByTask(taskId paradigm.TaskHash) []*paradigm.Slot {
+	var slots []*paradigm.Slot
+	o.db.Where(map[string]interface{}{"task_id": taskId, "status": paradigm.Finished}).Find(&slots)
+	return slots
+}
+
+// 查询slot所属task的所有slots
+func (o DatabaseService) QueryFinishedSlotsBySlot(slotHash paradigm.SlotHash) []*paradigm.Slot {
+	slotQuery := o.GetSlot(slotHash)
+	slots := o.QueryFinishedSlotsByTask(slotQuery.TaskID)
+	return slots
 }

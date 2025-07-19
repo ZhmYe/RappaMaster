@@ -36,13 +36,6 @@ func (o *PersistedOracle) processDBQuery() {
 			item.SendResponse(item.GenerateResponse(task))
 		case *Query.EvidencePreserveEpochIDQuery:
 			item := query.(*Query.EvidencePreserveEpochIDQuery)
-			// epoch := &paradigm.DevEpoch{}
-			// if err := o.db.Where("epoch_id = ?", item.EpochID).First(epoch).Error; err != nil {
-			// 	errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, "Epoch does not exist in database"))
-			// 	item.SendResponse(errorResponse)
-			// 	paradigm.Error(paradigm.ValueError, "Epoch does not exist in database")
-			// 	continue
-			// }
 			epoch, err := o.dbService.GetEpochByID(item.EpochID)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ValueError, err.Error()))
@@ -156,13 +149,20 @@ func (o *PersistedOracle) processDBQuery() {
 		case *Query.DateSynthDataQuery:
 			item := query.(*Query.DateSynthDataQuery)
 			records, err := o.dbService.GetDateRecords()
+			proccessTasks := o.dbService.CountTaskByStatus(paradigm.Processing)
+			finishTasks := o.dbService.CountTaskByStatus(paradigm.Finished)
+			data := map[string]interface{}{
+				"records":         records,
+				"proccessTaskNum": proccessTasks,
+				"finishTaskNum":   finishTasks,
+			}
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.RuntimeError, fmt.Sprintf("Failed to query date records: %v", err)))
 				item.SendResponse(errorResponse)
 				paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Date synth data query failed: %v", err))
 				continue
 			}
-			item.SendResponse(item.GenerateResponse(records))
+			item.SendResponse(item.GenerateResponse(data))
 		case *Query.DateTransactionQuery:
 			item := query.(*Query.DateTransactionQuery)
 			records, err := o.dbService.GetDateRecords()
@@ -187,10 +187,16 @@ func (o *PersistedOracle) processDBQuery() {
 				continue
 			}
 			item.SendResponse(item.GenerateResponse(tasksMap))
+		case *Query.TaskOnNodesQuery:
+			item := query.(*Query.TaskOnNodesQuery)
+			slots := o.dbService.QueryFinishedSlotsByTask(item.Sign)
+			item.SendResponse(item.GenerateResponse(slots))
 		case *Query.CollectTaskQuery:
 			item := query.(*Query.CollectTaskQuery)
 			task, err := o.dbService.GetTaskByID(item.TaskID())
-			task.SetCollector(o.collectors[task.Sign])
+			// task.SetCollector(o.collectors[task.Sign])
+			// 从数据库中恢复Collector
+			err = o.dbService.RecoverCollector(task)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,
@@ -201,6 +207,26 @@ func (o *PersistedOracle) processDBQuery() {
 				continue
 			}
 			go item.SendResponse(item.GenerateResponse(task.GetCollector()))
+		case *Query.SlotIntegrityVerification: // 完整性验证
+			item := query.(*Query.SlotIntegrityVerification)
+			slots := o.dbService.QueryFinishedSlotsBySlot(item.SlotHash)
+			item.SendResponse(item.GenerateResponse(slots))
+		case *Query.UploadTaskQuery:
+			item := query.(*Query.UploadTaskQuery)
+			task, err := o.dbService.GetTaskByID(item.TaskID())
+			// task.SetCollector(o.collectors[task.Sign])
+			// 从数据库中恢复Collector
+			err = o.dbService.RecoverCollector(task)
+			if err != nil {
+				errorResponse := paradigm.NewErrorResponse(
+					paradigm.NewRappaError(paradigm.RuntimeError,
+						fmt.Sprintf("Failed to query tasks: %v", err)))
+				item.SendResponse(errorResponse)
+				paradigm.Error(paradigm.RuntimeError,
+					fmt.Sprintf("Synth task query failed: %v", err))
+				continue
+			}
+			item.SendResponse(item.GenerateResponse(task))
 		default:
 			panic("Unsupported Query Type!!!")
 		}

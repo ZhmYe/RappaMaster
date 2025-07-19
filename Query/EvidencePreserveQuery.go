@@ -29,6 +29,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["params"] = task.Params           // 任务的一些参数，包括模型、输入、数据集等，待定 todo
 	info["model"] = paradigm.ModelTypeToString(task.Model)
 	info["dataset"] = task.GetDataset()
+	info["status"] = task.Status
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
 	tx["txHash"] = task.TxReceipt.TransactionHash                   // 交易哈希
@@ -241,31 +242,57 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 	//commitInfo := make(map[interface{}]interface{})
 
 	commitInfo := make([]map[string]interface{}, 0)
-	for modelType, slots := range epoch.Commits {
-		for _, slot := range slots {
-			slotView := slot.Json()
-			slotView["model"] = paradigm.ModelTypeToString(modelType)
-			commitInfo = append(commitInfo, slotView)
+	for modelType, slotHashes := range epoch.Commits {
+		for _, slotHash := range slotHashes {
+			if slot, exists := epoch.SlotMap[slotHash]; exists {
+				slotView := slot.Json()
+				slotView["model"] = paradigm.ModelTypeToString(modelType)
+				commitInfo = append(commitInfo, slotView)
+			}
 		}
 	}
+	// for modelType, slots := range epoch.Commits {
+	// 	for _, slot := range slots {
+	// 		slotView := slot.Json()
+	// 		slotView["model"] = paradigm.ModelTypeToString(modelType)
+	// 		commitInfo = append(commitInfo, slotView)
+	// 	}
+	// }
 	taskProcessDistribution := make(map[paradigm.TaskHash]map[string]interface{})
 	finalizedInfo := make([]map[string]interface{}, 0)
+	for modelType, slotHashes := range epoch.Finalizes {
+		for _, slotHash := range slotHashes {
+			if slot, exists := epoch.SlotMap[slotHash]; exists {
+				slotView := slot.Json()
+				slotView["model"] = paradigm.ModelTypeToString(modelType)
+				finalizedInfo = append(finalizedInfo, slotView)
 
-	for modelType, slots := range epoch.Finalizes {
-		for _, slot := range slots {
-			slotView := slot.Json()
-			slotView["model"] = paradigm.ModelTypeToString(modelType)
-			finalizedInfo = append(finalizedInfo, slotView)
-			if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
-				taskProcess := make(map[string]interface{})
-				taskProcess["model"] = paradigm.ModelTypeToString(modelType)
-				taskProcess["schedule"] = int32(0)
-				taskProcessDistribution[slot.TaskID] = taskProcess
+				if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
+					taskProcess := make(map[string]interface{})
+					taskProcess["model"] = paradigm.ModelTypeToString(modelType)
+					taskProcess["schedule"] = int32(0)
+					taskProcessDistribution[slot.TaskID] = taskProcess
+				}
+
+				taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
 			}
-			// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
-			taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
 		}
 	}
+	// for modelType, slots := range epoch.Finalizes {
+	// 	for _, slot := range slots {
+	// 		slotView := slot.Json()
+	// 		slotView["model"] = paradigm.ModelTypeToString(modelType)
+	// 		finalizedInfo = append(finalizedInfo, slotView)
+	// 		if _, exist := taskProcessDistribution[slot.TaskID]; !exist {
+	// 			taskProcess := make(map[string]interface{})
+	// 			taskProcess["model"] = paradigm.ModelTypeToString(modelType)
+	// 			taskProcess["schedule"] = int32(0)
+	// 			taskProcessDistribution[slot.TaskID] = taskProcess
+	// 		}
+	// 		// TODO 如果还保留这里的一部分的话，这里的ScheduleSize要改，加一个字段，acceptSize
+	// 		taskProcessDistribution[slot.TaskID]["schedule"] = taskProcessDistribution[slot.TaskID]["schedule"].(int32) + slot.ScheduleSize
+	// 	}
+	// }
 
 	invalidSlot := make([]map[string]interface{}, 0)
 	for _, slot := range epoch.Invalids {
@@ -281,7 +308,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 		taskInfo["Total"] = task.Size
 		taskInfo["Process"] = task.Process
 		taskInfo["Model"] = task.Model
-		taskInfo["Status"] = task.IsFinish()
+		taskInfo["Status"] = task.Status
 		initTaskInfo = append(initTaskInfo, taskInfo)
 	}
 	// 5. 可视化图表1：各种slot的组成饼图，即上面的nbCommit, nbJustified, nbFinalized, nbInvalid

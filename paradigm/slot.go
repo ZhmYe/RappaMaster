@@ -13,6 +13,7 @@ type Slot struct {
 	SlotID       SlotHash        `gorm:"primaryKey;size:256;comment:Slot哈希，作为主键"`
 	TaskID       TaskHash        `gorm:"not null;size:256;comment:任务哈希（TaskHash）"`
 	ScheduleID   ScheduleHash    `gorm:"not null;comment:调度哈希（ScheduleHash）"`
+	NodeID       int32           `gorm:"not null;comment:节点id"`
 	ScheduleSize int32           `gorm:"not null;comment:调度的数量，以KB为单位"`
 	Status       SlotStatus      `gorm:"type:tinyint;not null;comment:完成状态"`
 	Err          string          `gorm:"type:text;comment:错误信息"`
@@ -27,6 +28,7 @@ func (s *Slot) Json() map[string]interface{} {
 	json["scheduleSize"] = s.ScheduleSize
 	json["status"] = s.Status
 	json["Err"] = s.Err
+	json["nodeID"] = s.NodeID
 	if s.CommitSlot != nil {
 		json["store"] = s.CommitSlot.Store
 		json["commitment"] = s.CommitSlot.Commitment

@@ -29,10 +29,13 @@ type RappaChannel struct {
 	ToCollectorRequestChannel chan HttpCollectRequest
 	SlotCollectChannel        chan RecoverConnection
 	QueryChannel              chan Query
-	ProofReceivedChannel	  chan ProofReceipt
+	EpochInitTaskChannel      chan *Task
+	UnScheduledSlotChannel    chan *Slot //临时处理不能调度的slot
 	// ============================== DEBUG用的Channel==========================
 	FakeCollectSignChannel chan [2]interface{} // 传递sign和size
 	//SlotRecoverChannel     chan RecoverResponse
+
+	ProofReceivedChannel chan ProofReceipt // Channel for received proofs
 }
 
 func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
@@ -60,8 +63,10 @@ func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
 		MonitorQueryChannel:         make(chan Query, config.MaxCommitSlotItemPoolSize),               // todo
 		SlotCollectChannel:          make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),   // todo
 		QueryChannel:                make(chan Query, config.MaxCommitSlotItemPoolSize),               // todo
-		FakeCollectSignChannel:      make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize),      // todo
-		ProofReceivedChannel: 		 make(chan ProofReceipt, config.MaxCommitSlotItemPoolSize),
+		EpochInitTaskChannel:        make(chan *Task, config.MaxCommitSlotItemPoolSize),
+		UnScheduledSlotChannel:      make(chan *Slot, config.MaxCommitSlotItemPoolSize),
+		FakeCollectSignChannel:      make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize), // todo
+		ProofReceivedChannel:        make(chan ProofReceipt, config.MaxCommitSlotItemPoolSize),
 		//SlotRecoverChannel:     slotRecoverChannel,
 	}
 }

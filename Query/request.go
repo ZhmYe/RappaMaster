@@ -12,6 +12,7 @@ type HttpInitTaskRequest struct {
 	//Slot       int32                  // slot index
 	Name       string                 // 任务名称
 	Size       int32                  // data size
+	SlotSize   int32                  // 可选参数，自定义slot大小
 	Model      string                 // 模型名称
 	Params     map[string]interface{} // 不确定的模型参数
 	IsReliable bool                   // 是否需要可信证明
@@ -20,6 +21,13 @@ type HttpInitTaskRequest struct {
 type HttpOracleQueryRequest struct {
 	Query string                      // 查询类型
 	Data  map[interface{}]interface{} // 查询内容rawData
+}
+
+type HttpUploadTaskRequest struct {
+	TaskID      string
+	Purpose     string
+	Description string
+	CreateBy    string
 }
 
 func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool, paradigm.Query) {
@@ -110,6 +118,14 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewDateTransactionQuery()
 	case "SynthTaskQuery":
 		return true, NewSynthTaskQuery()
+	case "TaskOnNodesQuery":
+		taskID := c.DefaultQuery("taskID", "")
+		if taskID == "" {
+			return false, nil
+		}
+		return true, NewTaskOnNodesQuery(map[interface{}]interface{}{
+			"taskID": taskID,
+		})
 	case "CollectTaskQuery":
 		taskID := c.DefaultQuery("taskID", "")
 		if taskID == "" {
@@ -126,6 +142,31 @@ func (r *HttpOracleQueryRequest) BuildQueryFromGETRequest(c *gin.Context) (bool,
 		return true, NewCollectTaskQuery(map[interface{}]interface{}{
 			"taskID": taskID,
 			"size":   s,
+		})
+	case "UploadTaskQuery":
+		taskID := c.DefaultQuery("taskID", "")
+		purpose := c.DefaultQuery("purpose", "")
+		description := c.DefaultQuery("description", "")
+		createBy := c.DefaultQuery("createBy", "")
+		if taskID == "" {
+			return false, nil
+		}
+		// 构造 UploadTaskQuery 对象
+		return true, NewUploadTaskQuery(map[interface{}]interface{}{
+			"taskID":      taskID,
+			"purpose":     purpose,
+			"description": description,
+			"createBy":    createBy,
+		})
+	case "SlotIntegrityVerification":
+		slotHash := c.DefaultQuery("slotHash", "")
+		structType := c.DefaultQuery("type", "merkle")
+		if slotHash == "" {
+			return false, nil
+		}
+		return true, NewSlotIntegrityVerification(map[interface{}]interface{}{
+			"slotHash": slotHash,
+			"type":     structType,
 		})
 	default:
 		return false, nil
