@@ -5,10 +5,11 @@ def create_task():
     # 请求体数据
     request_data = {
         "name": "金融表格数据合成任务",
-        "model": "FINKAN",
+        "model": "CTGAN",
         "params": {
+            "dataset": "default_dataset"
         },
-        "size": 1000,
+        "size": 900,
         "isReliable": True
     }
 

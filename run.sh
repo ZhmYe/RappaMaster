@@ -1,4 +1,8 @@
 export LD_LIBRARY_PATH=/usr/local/lib
+
+export CGO_LDFLAGS="-L/usr/local/lib"
+export CGO_CFLAGS="-I/path/to/bcos-c-sdk/include"
+
 go run main.go &
 
 MASTER_PID=$!

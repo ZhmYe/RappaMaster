@@ -39,6 +39,21 @@ func NewUpchainWorker(
 	}
 }
 
+func toBytes32(v interface{}) ([32]byte, error) {
+	var arr [32]byte
+	if val, ok := v.([32]byte); ok {
+		return val, nil
+	}
+	if val, ok := v.([]byte); ok {
+		if len(val) > 32 {
+			return arr, fmt.Errorf("slice is too long")
+		}
+		copy(arr[32-len(val):], val) // 大端对齐
+		return arr, nil
+	}
+	return arr, fmt.Errorf("value is not a [32]byte or []byte")
+}
+
 func (w *UpChainWorker) Process() {
 	for tx := range w.queue {
 		if tx == nil {
@@ -55,13 +70,37 @@ func (w *UpChainWorker) Process() {
 		var receipt *types.Receipt
 		switch tx.(type) {
 		case *paradigm.InitTaskTransaction:
+			// _, receipt, err = session.StoreInitTask(
+			// 	params[0].([32]byte),
+			// 	params[1].(string),
+			// 	params[2].(uint32),
+			// 	params[3].([32]byte),
+			// 	params[4].(bool),
+			// 	params[5].([]byte),
+			// )
+			// 1. 安全地转换参数
+			sign, err0 := toBytes32(params[0])
+			name, ok1 := params[1].(string)
+			size, ok2 := params[2].(uint32)
+			model, err3 := toBytes32(params[3])
+			reliable, ok4 := params[4].(bool)
+			paramsJSON, ok5 := params[5].([]byte)
+
+			// 2. 检查所有转换是否成功
+			if err0 != nil || !ok1 || !ok2 || err3 != nil || !ok4 || !ok5 {
+				err = fmt.Errorf("failed to parse InitTaskTransaction params: %v, %v", err0, err3)
+				// 在 switch 外部统一处理 err
+				break
+			}
+
+			// 3. 使用转换后的、类型安全的变量调用合约
 			_, receipt, err = session.StoreInitTask(
-				params[0].([32]byte),
-				params[1].(string),
-				params[2].(uint32),
-				params[3].([32]byte),
-				params[4].(bool),
-				params[5].([]byte),
+				sign,
+				name,
+				size,
+				model,
+				reliable,
+				paramsJSON,
 			)
 			Tx := tx.Blob().(*paradigm.Task)
 			Txjson, err := w.GetInitTaskJSON(Tx.Sign)
@@ -71,16 +110,48 @@ func (w *UpChainWorker) Process() {
 				paradigm.Log("CHAINUP", fmt.Sprintf("query InitTaskTransaction from blockchain By task %s: %s", Tx.Sign, Txjson))
 			}
 		case *paradigm.TaskProcessTransaction:
+			// _, receipt, err = session.StoreTaskProcess(
+			// 	params[0].([32]byte),
+			// 	params[1].([32]byte),
+			// 	params[2].(uint32),
+			// 	params[3].(uint32),
+			// 	params[4].(uint32),
+			// 	params[5].(uint32),
+			// 	params[6].(common.Hash),
+			// 	params[7].([]byte),
+			// 	params[8].([][]byte),
+			// )
+			// 1. 安全地转换参数
+			sign, err0 := toBytes32(params[0])
+			hash, err1 := toBytes32(params[1])
+			slot, ok2 := params[2].(uint32)
+			process, ok3 := params[3].(uint32)
+			id, ok4 := params[4].(uint32)
+			epoch, ok5 := params[5].(uint32)
+
+			// common.Hash 是 [32]byte 的别名，所以也可以用 toBytes32
+			commitment, err6 := toBytes32(params[6])
+
+			proof, ok7 := params[7].([]byte)
+			signatures, ok8 := params[8].([][]byte)
+
+			// 2. 检查所有转换是否成功
+			if err0 != nil || err1 != nil || !ok2 || !ok3 || !ok4 || !ok5 || err6 != nil || !ok7 || !ok8 {
+				err = fmt.Errorf("failed to parse TaskProcessTransaction params: %v, %v, %v", err0, err1, err6)
+				break
+			}
+
+			// 3. 使用转换后的变量调用合约
 			_, receipt, err = session.StoreTaskProcess(
-				params[0].([32]byte),
-				params[1].([32]byte),
-				params[2].(uint32),
-				params[3].(uint32),
-				params[4].(uint32),
-				params[5].(uint32),
-				params[6].(common.Hash),
-				params[7].([]byte),
-				params[8].([][]byte),
+				sign,
+				hash,
+				slot,
+				process,
+				id,
+				epoch,
+				common.BytesToHash(commitment[:]), // 将 [32]byte 转回 common.Hash
+				proof,
+				signatures,
 			)
 			Tx := tx.Blob().(*paradigm.CommitSlotItem)
 			Txjson, err := w.GetTaskProcessJSON(Tx.SlotHash())
@@ -90,13 +161,34 @@ func (w *UpChainWorker) Process() {
 				paradigm.Log("CHAINUP", fmt.Sprintf("query TaskProcessTransaction from blockchain By Slot %s: %s", Tx.SlotHash(), Txjson))
 			}
 		case *paradigm.EpochRecordTransaction:
+			// 1. 安全地转换参数
+			idBig, ok0 := params[0].(*big.Int)
+			justs, ok1 := params[1].([][32]byte)
+			comms, ok2 := params[2].([][32]byte)
+			invHashes, ok3 := params[3].([][32]byte)
+			invReasons, ok4 := params[4].([]uint8)
+
+			// 2. 检查所有转换是否成功
+			if !ok0 || !ok1 || !ok2 || !ok3 || !ok4 {
+				err = fmt.Errorf("failed to parse EpochRecordTransaction params")
+				break
+			}
+
+			// 3. 使用转换后的变量调用合约
 			_, receipt, err = session.StoreEpochRecord(
-				params[0].(*big.Int),
-				params[1].([][32]byte),
-				params[2].([][32]byte),
-				params[3].([][32]byte),
-				params[4].([]uint8),
+				idBig,
+				justs,
+				comms,
+				invHashes,
+				invReasons,
 			)
+			// _, receipt, err = session.StoreEpochRecord(
+			// 	params[0].(*big.Int),
+			// 	params[1].([][32]byte),
+			// 	params[2].([][32]byte),
+			// 	params[3].([][32]byte),
+			// 	params[4].([]uint8),
+			// )
 			Tx := tx.Blob().(*paradigm.EpochRecord)
 			Txjson, err := w.GetEpochRecordJSON(uint64(Tx.Id))
 			if err != nil {

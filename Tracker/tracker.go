@@ -37,7 +37,7 @@ func (t *Tracker) UpdateTask(sign string) {
 	trackItem := t.taskTracks[sign]
 	var expireTime time.Time
 	switch trackItem.Model {
-	case paradigm.FINKAN, paradigm.BAED:
+	case paradigm.FINKAN, paradigm.BAED, paradigm.CTGAN:
 		expireTime = time.Now().Add(40 * time.Second) // todo @SD 这里的时间写成config
 	case paradigm.ABM:
 		expireTime = time.Now().Add(120 * time.Second)
