@@ -1,7 +1,7 @@
 package Collector
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"encoding/json"
 	"github.com/go-gota/gota/dataframe"
 )

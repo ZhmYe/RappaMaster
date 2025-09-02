@@ -1,7 +1,7 @@
 package ErasureDecoder
 
 import (
-	pb "BHLayer2Node/pb/service"
+	pb "RappaMaster/pb/service"
 	"fmt"
 	"github.com/klauspost/reedsolomon"
 )

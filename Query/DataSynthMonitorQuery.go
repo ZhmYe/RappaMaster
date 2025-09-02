@@ -1,8 +1,8 @@
 package Query
 
 import (
-	"BHLayer2Node/Date"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Date"
+	"RappaMaster/paradigm"
 )
 
 // NodesStatusQuery 数据合成页面关于节点的展示

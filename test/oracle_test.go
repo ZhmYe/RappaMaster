@@ -1,9 +1,9 @@
 package test
 
 import (
-	"BHLayer2Node/Oracle"
-	"BHLayer2Node/paradigm"
-	"BHLayer2Node/pb/service"
+	"RappaMaster/Oracle"
+	"RappaMaster/paradigm"
+	"RappaMaster/pb/service"
 	"testing"
 )
 

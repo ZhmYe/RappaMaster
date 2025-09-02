@@ -1,13 +1,17 @@
 package ChainUpper
 
 import (
-	"BHLayer2Node/ChainUpper/service"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/ChainUpper/service"
+	"RappaMaster/channel"
+	"RappaMaster/fisco-bcos-client/contract/store"
+	"RappaMaster/paradigm"
+	"RappaMaster/transaction"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"sync"
 	"time"
 
-	Store "BHLayer2Node/ChainUpper/contract/store"
 	"context"
 	"encoding/hex"
 	"log"
@@ -15,20 +19,105 @@ import (
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 )
 
+// ChainUpper handles the process of up-chain transaction
+// we consider 2 conditions to trigger the up-chain process
+// after a timeout or the transactionPool is full
 type ChainUpper struct {
-	channel *paradigm.RappaChannel
-	//pendingTransactions chan paradigm.Transaction // 交易channel
-	transactionPool  []paradigm.Transaction // 所有的交易
-	unprocessedIndex int                    // 未处理的交易index，包括这一index
-	mu               sync.Mutex
-	//queue               chan map[string]interface{} // 用于异步上链的队列
-	queue    chan paradigm.Transaction // 用于异步上链的队列 modified by zhmye
-	client   *client.Client            // FISCO-BCOS 客户端
-	instance *Store.Store
-	count    int // add by zhmye, 这里是用来给每笔交易赋予一个id的
+	ctx             *context.Context
+	channel         *channel.RappaChannel
+	transactionPool []transaction.Transaction
+	mu              sync.Mutex
+	queue           chan transaction.Transaction
+	instance        *Store.Store
+	count           int
+	ticker          *time.Ticker
+	batchSize       int
+	threshold       int
 }
 
-func (c *ChainUpper) Start() {
+func (c *ChainUpper) processAsyncTransaction(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tx := <-c.channel.UpchainBuffer:
+			c.mu.Lock()
+			c.transactionPool = append(c.transactionPool, tx)
+			c.mu.Unlock()
+		}
+	}
+}
+func (c *ChainUpper) upchain(txs []transaction.Transaction) {
+	if len(txs) == 0 {
+		return
+	}
+	check := func(tx transaction.Transaction) error {
+		calldata := tx.CallData()
+		switch tx.(type) {
+		case *transaction.InitTaskTransaction:
+			// todo
+			return nil
+		case *transaction.TaskProcessTransaction:
+			if calldata["Process"].(int32) < 0 {
+				return fmt.Errorf("TaskProcessTransaction Process <0")
+			}
+			// todo
+			return nil
+		case *transaction.EpochRecordTransaction:
+			// todo
+			return nil
+		default:
+			return nil
+		}
+	}
+	ctrl := make()
+	for _, tx := range txs {
+		if err := check(tx); err != nil {
+			paradigm.Log("ERROR", err.Error())
+			continue
+		} else {
+			c.queue <- tx
+		}
+	}
+}
+func (c *ChainUpper) consume(w map[transaction.TransactionType]transaction.PackedParams) {
+	client := c.client
+	instance := c.instance
+	// 对每种交易类型，都调用 ConvertParamsToKVPairs 得到 KV 对，然后调用合约函数 setItems
+	for tType, packedParam := range w.params {
+		if packedParam.IsEmpty() {
+			// txs := packedParam.GetParams()
+			// LogWriter.Log("DEBUG", fmt.Sprintf("TX_%d waiting for upchain: %s", tType, txs))
+			continue
+		}
+		// key, value := packedParam.ConvertParamsToKVPairs()
+		keys, values := packedParam.ParamsToKVPairs()
+		// LogWriter.Log("DEBUG", fmt.Sprintf("TX_%d convert to:[key]%s [value]%s", tType, keys, values))
+		storeSession := &Store.StoreSession{Contract: instance, CallOpts: *client.GetCallOpts(), TransactOpts: *client.GetTransactOpts()}
+		// _, receipt, err := storeSession.SetItem(key, value)
+		_, receipt, err := storeSession.SetItems(keys, values)
+		if err != nil {
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Worker %d Failed to call SetItems for type %v: %v", w.id, tType, err))
+		}
+		// 获得有merkleProof的receipt
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_receipt, err := w.client.GetTransactionReceipt(ctx, common.HexToHash(receipt.TransactionHash), true)
+		if err != nil {
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to getReceipt with merkleProof for type %v: %v", tType, err))
+		} else {
+			// LogWriter.Log("DEBUG", fmt.Sprintf("Receipt with merkleProof: %s", _receipt)) //debug
+			// block, _ := w.client.GetBlockByNumber(ctx, int64(_receipt.BlockNumber), false, false)
+			blockHash, _ := w.client.GetBlockHashByNumber(ctx, int64(_receipt.BlockNumber))
+			ptxs := packedParam.BuildDevTransactions([]*types.Receipt{_receipt}, blockHash.Hex())
+			w.devPackedTransaction <- ptxs // 传递到dev
+		}
+
+	}
+	w.params = transaction.NewParamsMap()
+}
+
+func (c *ChainUpper) Start(ctx context.Context) {
 	go c.handleQuery()
 	timeStart := time.Now()
 	go func() {
@@ -39,25 +128,14 @@ func (c *ChainUpper) Start() {
 			}
 		}
 	}()
-	for {
-		select {
-		case transaction := <-c.channel.PendingTransactions:
-			// 先简单写一下
-			c.mu.Lock()
-			c.transactionPool = append(c.transactionPool, transaction)
-			c.mu.Unlock()
-		default:
-			continue
-		}
-	}
 }
 func (c *ChainUpper) UpChain() {
 	// 这里简单写一下，应该是用异步上链组件接入这里
-	pack := func() []paradigm.Transaction {
+	pack := func() []transaction.Transaction {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		if c.unprocessedIndex == len(c.transactionPool) {
-			return []paradigm.Transaction{}
+			return []transaction.Transaction{}
 		}
 		packedTransactions := c.transactionPool[c.unprocessedIndex:]
 		c.unprocessedIndex = len(c.transactionPool)
@@ -68,20 +146,20 @@ func (c *ChainUpper) UpChain() {
 		// 将交易打包为链上合约的参数
 		for _, tx := range packedTransactions {
 			// modify by zhmye
-			check := func(tx paradigm.Transaction) error {
+			check := func(tx transaction.Transaction) error {
 				calldata := tx.CallData()
 				switch tx.(type) {
 				// 这里可以写在Transaction的interface里，加一个Check()，然后下面统一tx.Check()
-				case *paradigm.InitTaskTransaction:
+				case *transaction.InitTaskTransaction:
 					// todo
 					return nil
-				case *paradigm.TaskProcessTransaction:
+				case *transaction.TaskProcessTransaction:
 					if calldata["Process"].(int32) < 0 {
 						return fmt.Errorf("TaskProcessTransaction Process <0")
 					}
 					// todo
 					return nil
-				case *paradigm.EpochRecordTransaction:
+				case *transaction.EpochRecordTransaction:
 					// todo
 					return nil
 				default:
@@ -95,14 +173,6 @@ func (c *ChainUpper) UpChain() {
 			} else {
 				c.queue <- tx
 			}
-			//result := tx.CallData()
-			//if result["Process"] == -1 {
-			//	LogWriter.Log("ERROR", fmt.Sprintf("Transaction %d BUG: %v", id, result))
-			//	continue
-			//} else {
-			//	c.queue <- result // 推送到异步队列
-			//	LogWriter.Log("CHAINUP", fmt.Sprintf("Transaction %d pushed to queue: %v", id, result))
-			//}
 		}
 		// LogWriter.Log("CHAINUP", fmt.Sprintf("%d Transactions pushed to queue for async processing", len(packedTransactions)))
 		paradigm.Log("CHAINUP", fmt.Sprintf("up %d transactions to blockchain...", len(packedTransactions)))
@@ -112,7 +182,7 @@ func (c *ChainUpper) UpChain() {
 	}
 }
 
-func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2NodeConfig) (*ChainUpper, error) {
+func NewChainUpper(channel *channel.RappaChannel, config *paradigm.RappaMasterConfig) (*ChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{
@@ -145,7 +215,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2Node
 	//paradigm.Log("INFO", fmt.Sprintf("transaction hash: %s", receipt.TransactionHash))
 
 	// 初始化队列和 Worker
-	queue := make(chan paradigm.Transaction, config.QueueBufferSize)
+	queue := make(chan transaction.Transaction, config.QueueBufferSize)
 	for i := 0; i < config.WorkerCount; i++ {
 		worker := service.NewUpchainWorker(i, config.BatchSize, queue, channel.DevTransactionChannel, instance, client)
 		go worker.Process()
@@ -156,7 +226,7 @@ func NewChainUpper(channel *paradigm.RappaChannel, config *paradigm.BHLayer2Node
 	return &ChainUpper{
 		channel: channel,
 		//pendingTransactions: channel.PendingTransactions,
-		transactionPool:  make([]paradigm.Transaction, 0),
+		transactionPool:  make([]transaction.Transaction, 0),
 		unprocessedIndex: 0,
 		mu:               sync.Mutex{},
 		queue:            queue,

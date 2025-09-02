@@ -24,7 +24,7 @@ func TestECRecover(t *testing.T) {
 	chunks := make([][]byte, 0)
 	dec, err := reedsolomon.New(6, 3)
 	for index := 0; index <= 8; index++ {
-		filename := fmt.Sprintf("/root/zkml_test/BHLayer2Node/test/FakeSign-1736836377/0/FakeSign-1736836377_0_0-row-0-%d-chunk.slot", index)
+		filename := fmt.Sprintf("/root/zkml_test/RappaMaster/test/FakeSign-1736836377/0/FakeSign-1736836377_0_0-row-0-%d-chunk.slot", index)
 		chunk := ReadChunkFromFile(filename)
 		chunks = append(chunks, chunk)
 	}
@@ -46,7 +46,7 @@ func TestECRecover(t *testing.T) {
 		return result
 	}
 	jsonStr := toBytes(chunks)
-	err = os.WriteFile("/root/zkml_test/BHLayer2Node/test/FakeSign-1736758379_0_0-row-0.chunk", jsonStr, 0644)
+	err = os.WriteFile("/root/zkml_test/RappaMaster/test/FakeSign-1736758379_0_0-row-0.chunk", jsonStr, 0644)
 	if err != nil {
 		fmt.Printf("Error writing file: %v\n", err)
 		return

@@ -1,10 +1,12 @@
 package Epoch
 
 import (
-	"BHLayer2Node/Recovery"
-	"BHLayer2Node/Tracker"
-	"BHLayer2Node/paradigm"
-	pb "BHLayer2Node/pb/service"
+	"RappaMaster/Recovery"
+	"RappaMaster/Tracker"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
+	pb "RappaMaster/pb/service"
+	"RappaMaster/transaction"
 	"sync"
 )
 
@@ -15,7 +17,7 @@ type EpochManager struct {
 	//tasks             map[string]*Task 不需要task，task放到Oracle里
 	mu      sync.Mutex
 	tracker *Tracker.Tracker // 监视任务和slot的expire
-	channel *paradigm.RappaChannel
+	channel *channel.RappaChannel
 	//pendingCommitSlot map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack // 等待由Justified -> Finalized的slot
 	currentEpoch int
 	epochRecord  *EpochRecord
@@ -69,9 +71,9 @@ func (t *EpochManager) Start() {
 					}
 					t.epochRecord.Finalize(&commitSlotItem)
 					// 上链任务推进情况
-					go func(transaction *paradigm.TaskProcessTransaction) {
+					go func(transaction *transaction.TaskProcessTransaction) {
 						t.channel.PendingTransactions <- transaction
-					}(&paradigm.TaskProcessTransaction{
+					}(&transaction.TaskProcessTransaction{
 						CommitSlotItem: &commitSlotItem,
 						Proof:          nil,
 						Signatures:     nil,
@@ -217,7 +219,7 @@ func (t *EpochManager) UpdateEpoch() {
 		}
 		// 上链epoch信息
 		// TODO @YZM
-		t.channel.PendingTransactions <- &paradigm.EpochRecordTransaction{
+		t.channel.PendingTransactions <- &transaction.EpochRecordTransaction{
 			EpochRecord:   &epochRecord,
 			Id:            int32(currentEpoch),
 			CommitsHash:   commits,
@@ -253,7 +255,7 @@ func (t *EpochManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Epoch: int32(t.currentEpoch),
 	}
 }
-func NewEpochManager(channel *paradigm.RappaChannel, recovery *Recovery.RappaRecovery) *EpochManager {
+func NewEpochManager(channel *channel.RappaChannel, recovery *Recovery.RappaRecovery) *EpochManager {
 	return &EpochManager{
 		channel: channel,
 		//tasks:             make(map[string]*Task),

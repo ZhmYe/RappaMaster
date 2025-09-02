@@ -1,7 +1,7 @@
 package test
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"bytes"
 	"fmt"
 	"github.com/goccy/go-json"

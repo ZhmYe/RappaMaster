@@ -1,7 +1,8 @@
 package Tracker
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -10,10 +11,10 @@ import (
 // Tracker 用于监视任务进度，包括commit和expire
 // 用于监视Slot进度,包括零知识证明proof的提交
 type Tracker struct {
-	//config            *Config.BHLayer2NodeConfig
+	//config            *Config.RappaMasterConfig
 	taskTracks        map[paradigm.TaskHash]*paradigm.SynthTaskTrackItem     // 用于维护每个任务的进度(剩余多少size)
 	pendingCommitSlot map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack // 等待由Justified -> Finalized的slot
-	channel           *paradigm.RappaChannel
+	channel           *channel.RappaChannel
 	//taskBuckets         [][]string // 二维切片，每个索引对应剩余时间，这里是task slot的过期时间，也就是过期要开启新的slot
 	expireInputChannel  chan paradigm.ExpireItem
 	expireOutputChannel chan paradigm.ExpireItem
@@ -234,7 +235,7 @@ func (t *Tracker) Start() {
 }
 
 // NewTracker 创建新的 Tracker
-func NewTracker(channel *paradigm.RappaChannel) *Tracker {
+func NewTracker(channel *channel.RappaChannel) *Tracker {
 
 	t := &Tracker{
 		taskTracks:          make(map[paradigm.TaskHash]*paradigm.SynthTaskTrackItem),

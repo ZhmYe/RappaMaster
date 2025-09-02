@@ -1,17 +1,17 @@
 package main
 
 import (
-	"BHLayer2Node/ChainUpper"
-	"BHLayer2Node/Coordinator"
-	"BHLayer2Node/Database"
-	"BHLayer2Node/Epoch"
-	"BHLayer2Node/Event"
-	"BHLayer2Node/Monitor"
-	"BHLayer2Node/Network/HTTP"
-	"BHLayer2Node/Oracle"
-	"BHLayer2Node/Recovery"
-	"BHLayer2Node/Schedule"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/ChainUpper"
+	"RappaMaster/Coordinator"
+	"RappaMaster/Database"
+	"RappaMaster/Epoch"
+	"RappaMaster/Event"
+	"RappaMaster/Monitor"
+	"RappaMaster/Network/HTTP"
+	"RappaMaster/Oracle"
+	"RappaMaster/Recovery"
+	"RappaMaster/Schedule"
+	"RappaMaster/paradigm"
 	"fmt"
 )
 
@@ -23,9 +23,9 @@ func catchPanic() {
 }
 func main() {
 	defer catchPanic()
-	config := paradigm.LoadBHLayer2NodeConfig("config.json")
+	config := paradigm.LoadRappaMasterConfig("config.json")
 	// 加载数据库
-	dbService, err := Database.NewDatabaseService(config)
+	dbService, err := database.NewDatabaseService(config)
 	if err != nil {
 		paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("Failed to init database: %v", err))
 	}

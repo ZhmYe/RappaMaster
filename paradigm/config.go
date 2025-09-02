@@ -45,8 +45,8 @@ func (d DatabaseConfig) BuildDSN() string {
 		d.Timeout)
 }
 
-// BHLayer2NodeConfig 定义 Layer2 节点的配置
-type BHLayer2NodeConfig struct {
+// RappaMasterConfig 定义 Layer2 节点的配置
+type RappaMasterConfig struct {
 	GrpcPort                   int // gRPC 服务端口
 	HttpPort                   int // HTTP 服务端口
 	MaxEpochDelay              int //MaxEpochDelay 对应proto里的timeout
@@ -83,8 +83,8 @@ type BHLayer2NodeConfig struct {
 	Database *DatabaseConfig
 }
 
-// DefaultBHLayer2NodeConfig 定义默认的配置值
-var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
+// DefaultRappaMasterConfig 定义默认的配置值
+var DefaultRappaMasterConfig = RappaMasterConfig{
 	GrpcPort:                   50051, // 默认 gRPC 端口
 	HttpPort:                   8080,  // 默认 HTTP 端口
 	MaxEpochDelay:              1,
@@ -131,15 +131,15 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 
 //var (
 //	// GlobalConfig 全局配置实例
-//	GlobalConfig *BHLayer2NodeConfig
+//	GlobalConfig *RappaMasterConfig
 //	once         sync.Once
 //)
 
-// LoadBHLayer2NodeConfig 从指定路径加载配置文件，覆盖默认值
+// LoadRappaMasterConfig 从指定路径加载配置文件，覆盖默认值
 // 如果文件不存在或加载失败，则使用默认配置
-func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
+func LoadRappaMasterConfig(path string) *RappaMasterConfig {
 	//once.Do(func() {
-	config := DefaultBHLayer2NodeConfig
+	config := DefaultRappaMasterConfig
 	InitGlobalLogWriter(config.LogPath, config.DEBUG)
 
 	// 尝试从配置文件加载

@@ -1,8 +1,8 @@
 package Recovery
 
 import (
-	"BHLayer2Node/Database"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Database"
+	"RappaMaster/paradigm"
 	"fmt"
 )
 
@@ -10,7 +10,7 @@ type RappaRecovery struct {
 	EpochID int32 //当前epoch数
 }
 
-func RecoverFromDataBase(config *paradigm.BHLayer2NodeConfig, service *Database.DatabaseService) *RappaRecovery {
+func RecoverFromDataBase(config *paradigm.RappaMasterConfig, service *database.DatabaseService) *RappaRecovery {
 	if config.IsAutoMigrate {
 		if err := service.AutoMigrate(); err != nil {
 			paradigm.Error(paradigm.DatabaseError, fmt.Sprintf("auto migrate failed: %v", err))

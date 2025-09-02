@@ -1,93 +1,94 @@
 package paradigm
 
-type Query interface {
-	GenerateResponse(data interface{}) Response
-	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
-	SendResponse(response Response)
-	ReceiveResponse() Response
-	ToHttpJson() map[string]interface{}
-}
-
-type BasicChannelQuery struct {
-	responseChannel chan Response
-	// 这里没有别的参数
-}
-
-func (q *BasicChannelQuery) SendResponse(response Response) {
-	q.responseChannel <- response
-	close(q.responseChannel)
-}
-func (q *BasicChannelQuery) ReceiveResponse() Response {
-	return <-q.responseChannel
-}
-func NewBasicChannelQuery() BasicChannelQuery {
-	return BasicChannelQuery{responseChannel: make(chan Response, 1)}
-}
-
-// DoubleChannelQuery 需要和链交互，因此有一个给client传递消息的channel
-type DoubleChannelQuery struct {
-	BasicChannelQuery
-	infoChannel chan interface{}
-}
-
-func (q *DoubleChannelQuery) SendInfo(info interface{}) {
-	q.infoChannel <- info
-	close(q.infoChannel)
-}
-func (q *DoubleChannelQuery) ReceiveInfo() interface{} {
-	return <-q.infoChannel
-}
-func NewDoubleChannelQuery() DoubleChannelQuery {
-	return DoubleChannelQuery{
-		BasicChannelQuery: NewBasicChannelQuery(),
-		infoChannel:       make(chan interface{}),
-	}
-}
-
-type Response interface {
-	ToHttpJson() map[string]interface{}
-	Error() string
-}
-
-type SuccessResponse struct {
-	rawData map[string]interface{}
-}
-
-func NewSuccessResponse(data map[string]interface{}) *SuccessResponse {
-	return &SuccessResponse{
-		rawData: data,
-	}
-}
-
-func (r *SuccessResponse) ToHttpJson() map[string]interface{} {
-	return r.rawData
-}
-func (r *SuccessResponse) Error() string {
-	return ""
-}
-
-type ErrorResponse struct {
-	error RappaError
-}
-
-func (e *ErrorResponse) ToHttpJson() map[string]interface{} {
-	return map[string]interface{}{"error": e.error.Error()}
-}
-func (e *ErrorResponse) Error() string {
-	return e.error.Error()
-}
-func NewErrorResponse(err RappaError) *ErrorResponse {
-	return &ErrorResponse{
-		error: err,
-	}
-}
-
-type LatestBlockchainInfo struct {
-	LatestTxs     []*DevReference
-	LatestEpoch   []*DevEpoch
-	NbFinalized   int32
-	SynthData     map[SupportModelType]int32
-	NbEpoch       int32
-	NbBlock       int32
-	NbTransaction int32
-}
+//
+//type Query interface {
+//	GenerateResponse(data interface{}) Response
+//	ParseRawDataFromHttpEngine(rawData map[interface{}]interface{}) bool
+//	SendResponse(response Response)
+//	ReceiveResponse() Response
+//	ToHttpJson() map[string]interface{}
+//}
+//
+//type BasicChannelQuery struct {
+//	responseChannel chan Response
+//	// 这里没有别的参数
+//}
+//
+//func (q *BasicChannelQuery) SendResponse(response Response) {
+//	q.responseChannel <- response
+//	close(q.responseChannel)
+//}
+//func (q *BasicChannelQuery) ReceiveResponse() Response {
+//	return <-q.responseChannel
+//}
+//func NewBasicChannelQuery() BasicChannelQuery {
+//	return BasicChannelQuery{responseChannel: make(chan Response, 1)}
+//}
+//
+//// DoubleChannelQuery 需要和链交互，因此有一个给client传递消息的channel
+//type DoubleChannelQuery struct {
+//	BasicChannelQuery
+//	infoChannel chan interface{}
+//}
+//
+//func (q *DoubleChannelQuery) SendInfo(info interface{}) {
+//	q.infoChannel <- info
+//	close(q.infoChannel)
+//}
+//func (q *DoubleChannelQuery) ReceiveInfo() interface{} {
+//	return <-q.infoChannel
+//}
+//func NewDoubleChannelQuery() DoubleChannelQuery {
+//	return DoubleChannelQuery{
+//		BasicChannelQuery: NewBasicChannelQuery(),
+//		infoChannel:       make(chan interface{}),
+//	}
+//}
+//
+//type Response interface {
+//	ToHttpJson() map[string]interface{}
+//	Error() string
+//}
+//
+//type SuccessResponse struct {
+//	rawData map[string]interface{}
+//}
+//
+//func NewSuccessResponse(data map[string]interface{}) *SuccessResponse {
+//	return &SuccessResponse{
+//		rawData: data,
+//	}
+//}
+//
+//func (r *SuccessResponse) ToHttpJson() map[string]interface{} {
+//	return r.rawData
+//}
+//func (r *SuccessResponse) Error() string {
+//	return ""
+//}
+//
+//type ErrorResponse struct {
+//	error RappaError
+//}
+//
+//func (e *ErrorResponse) ToHttpJson() map[string]interface{} {
+//	return map[string]interface{}{"error": e.error.Error()}
+//}
+//func (e *ErrorResponse) Error() string {
+//	return e.error.Error()
+//}
+//func NewErrorResponse(err RappaError) *ErrorResponse {
+//	return &ErrorResponse{
+//		error: err,
+//	}
+//}
+//
+//type LatestBlockchainInfo struct {
+//	LatestTxs     []*DevReference
+//	LatestEpoch   []*DevEpoch
+//	NbFinalized   int32
+//	SynthData     map[SupportModelType]int32
+//	NbEpoch       int32
+//	NbBlock       int32
+//	NbTransaction int32
+//}

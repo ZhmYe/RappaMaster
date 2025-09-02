@@ -1,8 +1,8 @@
-package Database
+package database
 
 import (
-	"BHLayer2Node/Date"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Date"
+	"RappaMaster/paradigm"
 	"fmt"
 	"time"
 )

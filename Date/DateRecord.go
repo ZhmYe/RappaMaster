@@ -1,7 +1,7 @@
 package Date
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"time"
 )
 

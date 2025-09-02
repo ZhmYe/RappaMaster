@@ -1,7 +1,7 @@
 package paradigm
 
 import (
-	pb "BHLayer2Node/pb/service"
+	pb "RappaMaster/pb/service"
 )
 
 // HttpCollectRequest 表示一个来自前端的收集请求

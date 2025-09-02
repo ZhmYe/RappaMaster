@@ -1,8 +1,8 @@
 package Query
 
 import (
-	"BHLayer2Node/Date"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Date"
+	"RappaMaster/paradigm"
 	"encoding/json"
 	"log"
 )

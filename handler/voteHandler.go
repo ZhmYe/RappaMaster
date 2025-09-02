@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"BHLayer2Node/paradigm"
-	pb "BHLayer2Node/pb/service"
+	"RappaMaster/paradigm"
+	pb "RappaMaster/pb/service"
 	"fmt"
 )
 

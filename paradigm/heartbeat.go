@@ -1,6 +1,6 @@
 package paradigm
 
-import "BHLayer2Node/pb/service"
+import "RappaMaster/pb/service"
 
 type HeartBeat struct {
 	Commits    []*service.JustifiedSlot

@@ -1,8 +1,8 @@
 package test
 
 import (
-	"BHLayer2Node/paradigm"
-	"BHLayer2Node/utils"
+	"RappaMaster/paradigm"
+	"RappaMaster/utils"
 	"os"
 	"path/filepath"
 	"testing"

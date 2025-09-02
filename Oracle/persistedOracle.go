@@ -1,16 +1,17 @@
 package Oracle
 
 import (
-	"BHLayer2Node/Database"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
+	"RappaMaster/transaction"
 	"fmt"
 	"time"
 )
 
 type PersistedOracle struct {
-	channel *paradigm.RappaChannel
+	channel *channel.RappaChannel
 	// mySQLConfig paradigm.DBConnection              //mysql连接配置
-	dbService  *Database.DatabaseService
+	dbService  *database.DatabaseService
 	collectors map[string]paradigm.RappaCollector //定义任务收集器
 }
 
@@ -33,7 +34,7 @@ func (o *PersistedOracle) Start() {
 					dateRecord := o.dbService.GetDateRecord(ptx.UpchainTime)
 					transaction := ptx.Tx // 一笔交易，根据交易类型判断更新什么
 					switch transaction.(type) {
-					case *paradigm.EpochRecordTransaction:
+					case *transaction.EpochRecordTransaction:
 						// 上链了一个epoch历史记录
 						// 那么需要新建一个epoch
 						epochRecord := ptx.Tx.Blob().(*paradigm.EpochRecord)
@@ -149,10 +150,10 @@ func (o *PersistedOracle) Start() {
 						}
 						dateRecord.UpdateTransactions(1)
 						o.dbService.UpdateDateRecord(dateRecord)
-					case *paradigm.InitTaskTransaction:
+					case *transaction.InitTaskTransaction:
 						// 上链了一笔初始化任务的交易
 						// 那么需要在tasks更新一个任务
-						task := transaction.(*paradigm.InitTaskTransaction).Task
+						task := transaction.(*transaction.InitTaskTransaction).Task
 						//task.UpdateTxInfo(ptx)
 						o.channel.InitTasks <- task.InitTrack() // 上链后，发起新的任务，这样scheduler能接受到
 						// 更新txMap，对应的rf是InitTaskTx
@@ -176,7 +177,7 @@ func (o *PersistedOracle) Start() {
 						dateRecord.UpdateDateset(task.GetDataset())
 						dateRecord.UpdateTransactions(1)
 						o.dbService.UpdateDateRecord(dateRecord)
-					case *paradigm.TaskProcessTransaction:
+					case *transaction.TaskProcessTransaction:
 						// 上链了一笔任务推进交易
 						commitRecord := paradigm.NewCommitRecord(ptx)
 						// 这里就是要更新某个task
@@ -185,7 +186,7 @@ func (o *PersistedOracle) Start() {
 							// 传递给monitor更新完成的任务
 							// TODO 这里暂时将任务的类型写入
 							task.Collector = o.collectors[task.Sign]
-							transaction.(*paradigm.TaskProcessTransaction).Model = task.Model
+							transaction.(*transaction.TaskProcessTransaction).Model = task.Model
 							o.channel.MonitorOracleChannel <- transaction
 							reference := &paradigm.DevReference{
 								TxHash:      ptx.Receipt.TransactionHash,
@@ -255,7 +256,7 @@ func (o *PersistedOracle) Start() {
 	updateOracle()
 }
 
-func NewPersistedOracle(channel *paradigm.RappaChannel, service *Database.DatabaseService) *PersistedOracle {
+func NewPersistedOracle(channel *channel.RappaChannel, service *database.DatabaseService) *PersistedOracle {
 	return &PersistedOracle{
 		channel:    channel,
 		dbService:  service,

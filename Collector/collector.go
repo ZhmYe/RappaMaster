@@ -1,8 +1,9 @@
 package Collector
 
 import (
-	"BHLayer2Node/paradigm"
-	"BHLayer2Node/pb/service"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
+	"RappaMaster/pb/service"
 	"fmt"
 )
 
@@ -12,7 +13,7 @@ type Collector struct {
 	taskID paradigm.TaskHash
 	items  []paradigm.CollectSlotItem
 	//taskSlots map[string][]paradigm.CollectSlotItem
-	channel    *paradigm.RappaChannel
+	channel    *channel.RappaChannel
 	outputType paradigm.ModelOutputType
 }
 
@@ -94,7 +95,7 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 		OutputType: c.outputType,
 		Slots:      slotList,
 		//Transfer:        collectRequest.TransferChannel,
-		ResponseChannel: make(chan service.RecoverResponse, paradigm.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
+		ResponseChannel: make(chan service.RecoverResponse, paradigm.DefaultRappaMasterConfig.MaxCommitSlotItemPoolSize), // TODO
 		//Connection:      c.channel.SlotCollectChannel,
 		Channel: c.channel,
 	}
@@ -114,7 +115,7 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 //	}
 //}
 
-func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *paradigm.RappaChannel) *Collector {
+func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *channel.RappaChannel) *Collector {
 	return &Collector{
 		taskID:     taskID,
 		items:      make([]paradigm.CollectSlotItem, 0),

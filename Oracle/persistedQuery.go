@@ -1,8 +1,8 @@
 package Oracle
 
 import (
-	"BHLayer2Node/Query"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Query"
+	"RappaMaster/paradigm"
 	"fmt"
 )
 

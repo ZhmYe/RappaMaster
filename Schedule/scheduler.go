@@ -1,7 +1,8 @@
 package Schedule
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
 	"fmt"
 	"sync"
 )
@@ -9,7 +10,7 @@ import (
 // Scheduler 用于调度任务，产生Slot
 // 接收UnprocessedTask，1. 新建的合成任务(上链后); 2. 未完成的任务(由Tracker发现过期，重新进入调度)
 type Scheduler struct {
-	channel *paradigm.RappaChannel // channel
+	channel *channel.RappaChannel // channel
 	//monitor   *Monitor.Monitor          // 监控节点状态，用于进行调度
 	schedules map[paradigm.TaskHash]int // 记录每个Task最新的调度index
 	mu        sync.Mutex                // 保护 unprocessedTasks 的读写
@@ -107,7 +108,7 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 	return schedule
 }
 
-//func (s *Scheduler) Setup(config *Config.BHLayer2NodeConfig) {
+//func (s *Scheduler) Setup(config *Config.RappaMasterConfig) {
 //	s.config = config
 //	//s.pendingRequestPool = make(chan HTTP.UnprocessedTask, config.MaxHttpRequestPoolSize)
 //	//s.pendingSlotPool = make(chan PendingSlotItem, config.MaxGrpcRequestPoolSize)
@@ -119,7 +120,7 @@ func (s *Scheduler) generateSynthSchedule(task paradigm.UnprocessedTask, nIDs []
 //	}
 
 // NewScheduler 创建新的 Scheduler todo
-func NewScheduler(channel *paradigm.RappaChannel) *Scheduler {
+func NewScheduler(channel *channel.RappaChannel) *Scheduler {
 	return &Scheduler{
 		//grpcEngine:       nil,
 		channel:   channel,

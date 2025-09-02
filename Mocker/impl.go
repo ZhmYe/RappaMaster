@@ -1,8 +1,8 @@
 package Mocker
 
 import (
-	"BHLayer2Node/paradigm"
-	"BHLayer2Node/pb/service"
+	"RappaMaster/paradigm"
+	"RappaMaster/pb/service"
 	"context"
 	"fmt"
 	"math/rand"

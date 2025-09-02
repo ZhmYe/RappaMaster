@@ -1,8 +1,8 @@
 package ChainUpper
 
 import (
-	"BHLayer2Node/Query"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Query"
+	"RappaMaster/paradigm"
 	"context"
 	"fmt"
 	"time"

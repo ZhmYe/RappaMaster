@@ -4,18 +4,21 @@ import (
 	"fmt"
 )
 
+// RappaError gives an unified format of error in rappa
 type RappaError struct {
-	errorType    ErrorEnum // 错误类型
-	errorMessage string    // 错误信息
+	errorType    ErrorEnum
+	errorMessage string
+	err          error
 }
 
 func (e *RappaError) Error() string {
-	return fmt.Sprintf("Error %s: %s", ErrorToString(e.errorType), e.errorMessage)
+	return fmt.Sprintf("%s: %s, error: %v", ErrorToString(e.errorType), e.errorMessage, e.err)
 }
-func NewRappaError(errorType ErrorEnum, message string) RappaError {
+func NewRappaError(errorType ErrorEnum, message string, err error) RappaError {
 	return RappaError{
 		errorType:    errorType,
 		errorMessage: message,
+		err:          err,
 	}
 }
 
@@ -31,6 +34,8 @@ const (
 	ExecutorError
 	SlotLifeError
 	DatabaseError
+	FileError
+	UpchainError
 )
 
 func ErrorToString(error ErrorEnum) string {
@@ -51,14 +56,21 @@ func ErrorToString(error ErrorEnum) string {
 		return "ExecutorError"
 	case SlotLifeError:
 		return "SlotLifeError"
+	case DatabaseError:
+		return "DatabaseError"
+	case FileError:
+		return "FileError"
+	case UpchainError:
+		return "UpchainError"
 	default:
 		return "Unknown Error"
 	}
 }
 
-//func RaiseError(errorType ErrorEnum, errorMessage string, isPanic bool) {
-//	Log("ERROR", fmt.Sprintf("%s: %s", ErrorToString(errorType), errorMessage))
-//	if isPanic {
-//		panic(fmt.Sprintf("%s: %s", ErrorToString(errorType), errorMessage))
-//	}
-//}
+func RaiseError(errorType ErrorEnum, message string, err error) error {
+	return &RappaError{
+		errorType:    errorType,
+		errorMessage: message,
+		err:          err,
+	}
+}

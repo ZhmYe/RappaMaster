@@ -1,7 +1,7 @@
 package Query
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"fmt"
 	"sort"
 )

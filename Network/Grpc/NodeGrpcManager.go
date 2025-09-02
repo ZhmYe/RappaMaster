@@ -1,7 +1,7 @@
 package Grpc
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"

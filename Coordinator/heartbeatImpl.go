@@ -1,9 +1,9 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/handler"
-	"BHLayer2Node/paradigm"
-	pb "BHLayer2Node/pb/service"
+	"RappaMaster/handler"
+	"RappaMaster/paradigm"
+	pb "RappaMaster/pb/service"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"

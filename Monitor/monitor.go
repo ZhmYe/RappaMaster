@@ -1,14 +1,16 @@
 package Monitor
 
 import (
-	"BHLayer2Node/Query"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Query"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
+	"RappaMaster/transaction"
 )
 
 // Monitor 监视节点状态
 // 存储节点的状态信息，并维护一些统计值
 type Monitor struct {
-	channel    *paradigm.RappaChannel
+	channel    *channel.RappaChannel
 	nodeStatus []*paradigm.NodeStatus
 }
 
@@ -41,8 +43,8 @@ func (m *Monitor) processOracleInfo() {
 				//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
 
 			}
-		case *paradigm.TaskProcessTransaction:
-			tx := info.(*paradigm.TaskProcessTransaction)
+		case *transaction.TaskProcessTransaction:
+			tx := info.(*transaction.TaskProcessTransaction)
 			nodeID := tx.Nid
 			m.nodeStatus[int(nodeID)].UpdateFinishSlot(tx.SlotHash(), tx.Process, tx.Model)
 			//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
@@ -104,7 +106,7 @@ func (m *Monitor) Start() {
 	go m.processQuery()
 }
 
-func NewMonitor(channel *paradigm.RappaChannel) *Monitor {
+func NewMonitor(channel *channel.RappaChannel) *Monitor {
 	nodeStatus := make([]*paradigm.NodeStatus, len(channel.Config.BHNodeAddressMap)) // 这里假设key是对应的[n]
 	for nodeID, address := range channel.Config.BHNodeAddressMap {
 		nodeStatus[nodeID] = paradigm.NewNodeStatus(int32(nodeID), *address)

@@ -1,9 +1,10 @@
 package HTTP
 
 import (
-	"BHLayer2Node/Collector"
-	"BHLayer2Node/Query"
-	"BHLayer2Node/paradigm"
+	"RappaMaster/Query"
+	"RappaMaster/paradigm"
+	"RappaMaster/task"
+	"RappaMaster/transaction"
 	"bytes"
 	"fmt"
 	"net/http"
@@ -16,10 +17,6 @@ type HttpService struct {
 	Method  string
 	Handler func(c *gin.Context)
 }
-
-//func (s *HttpService) HandleRequest(request paradigm.HttpRequestInterface) paradigm.HttpResponse {
-//	return s.Handler(request)
-//}
 
 type HttpServiceEnum int
 
@@ -94,7 +91,6 @@ func (e *HttpEngine) HandleDownload(c *gin.Context) {
 func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, error) {
 	switch service {
 	case INIT_TASK:
-		// 初始化任务
 		httpService := HttpService{
 			Url:    "/create",
 			Method: "POST",
@@ -111,24 +107,26 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					})
 					return
 				}
+				t := task.NewTask(requestBody.Name, paradigm.NameToModelType(requestBody.Model), requestBody.Size)
+				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, t.Sign))
+				receipt, err := e.channel.SendWithSync(transaction.NewInitTaskTransaction([]task.Task{*t}))
+				if err != nil {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: fmt.Sprintf("create task error: %v", err),
+						Code:    "ERROR",
+						Data:    nil,
+					})
+				}
+				if err = e.channel.CreateTask(*t, receipt); err != nil {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: fmt.Sprintf("create task error: %v", err),
+						Code:    "ERROR",
+						Data:    nil,
+					})
+				}
 
-				e.taskIDConsumer <- 1        // 获取ID
-				taskID := <-e.taskIDProvider // 这里要阻塞
-				task := paradigm.NewTask(
-					taskID,
-					requestBody.Name,
-					paradigm.NameToModelType(requestBody.Model),
-					requestBody.Params,
-					requestBody.Size,
-					requestBody.IsReliable,
-				)
-				task.SetCollector(Collector.NewCollector(task.Sign, task.OutputType, e.channel))
-				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
-				// 新建任务用于上链，然后直接返回response
-				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}
-				// 返回response
 				response := paradigm.HttpResponse{
-					Message: fmt.Sprintf("Create New SynthTask Successfully, taskID: %s", task.Sign),
+					Message: fmt.Sprintf("Create New SynthTask Successfully, task sign: %s", t.Sign()),
 					Code:    "OK",
 					Data:    nil,
 				}

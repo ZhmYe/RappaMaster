@@ -1,7 +1,7 @@
-package Database
+package database
 
 import (
-	"BHLayer2Node/paradigm"
+	"RappaMaster/paradigm"
 	"errors"
 	"fmt"
 

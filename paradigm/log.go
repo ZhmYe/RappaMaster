@@ -1,7 +1,7 @@
 package paradigm
 
 import (
-	"BHLayer2Node/utils"
+	"RappaMaster/config"
 	"fmt"
 	"io"
 	"log"
@@ -111,7 +111,7 @@ func (lw *LogWriter) Print(level, message string) {
 
 // Error handles error logging and printing
 func (lw *LogWriter) Error(errorEnum ErrorEnum, errorMessage string) RappaError {
-	error := NewRappaError(errorEnum, errorMessage)
+	error := NewRappaError(errorEnum, errorMessage, nil)
 	lw.Print("ERROR", error.Error()) // 写入日志文件
 	return error
 }
@@ -126,13 +126,10 @@ func (lw *LogWriter) Close() {
 // InitGlobalLogWriter initializes the global LogWriter instance
 func InitGlobalLogWriter(logPath string, debug bool) {
 	once.Do(func() {
-		root, err := utils.GetProjectRoot()
-		if err != nil {
-			log.Fatalf("Failed to find root path: %v", err)
-		}
+		root := config.ProjectRootPath
 		path := filepath.Join(root, logPath)
 		globalLogWriter = NewLogWriter(path, debug)
-		err = globalLogWriter.Init()
+		err := globalLogWriter.Init()
 		if err != nil {
 			log.Fatalf("Error initializing global LogWriter: %v", err)
 		}

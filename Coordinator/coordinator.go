@@ -1,9 +1,10 @@
 package Coordinator
 
 import (
-	"BHLayer2Node/Network/Grpc"
-	"BHLayer2Node/paradigm"
-	pb "BHLayer2Node/pb/service"
+	"RappaMaster/Network/Grpc"
+	"RappaMaster/channel"
+	"RappaMaster/paradigm"
+	pb "RappaMaster/pb/service"
 	"fmt"
 	"google.golang.org/grpc"
 	"net"
@@ -21,7 +22,7 @@ import (
 // 最后获得k票以上的slot们可以被打包，然后将slot和其投票结果元数据等作为交易传递给chainupper准备上链
 
 type Coordinator struct {
-	channel *paradigm.RappaChannel
+	channel *channel.RappaChannel
 	//pendingSchedules      chan paradigm.TaskSchedule      // 等待被发送的调度任务
 	//unprocessedTasks      chan paradigm.UnprocessedTask   // 待处理任务
 	//scheduledTasks        chan paradigm.TaskSchedule      // 已经完成调度的任务
@@ -110,7 +111,7 @@ func (c *Coordinator) Start() {
 	//}
 }
 
-func NewCoordinator(channel *paradigm.RappaChannel) *Coordinator {
+func NewCoordinator(channel *channel.RappaChannel) *Coordinator {
 	config := channel.Config
 	// 加载配置中的节点IP
 	c := Coordinator{

@@ -1,7 +1,7 @@
 package paradigm
 
 import (
-	"BHLayer2Node/pb/service"
+	"RappaMaster/pb/service"
 	"fmt"
 )
 

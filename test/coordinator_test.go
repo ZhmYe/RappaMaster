@@ -2,23 +2,23 @@ package test
 
 //
 //import (
-//	"BHLayer2Node/Config"
-//	"BHLayer2Node/Coordinator"
-//	"BHLayer2Node/paradigm"
-//	pb "BHLayer2Node/pb/service"
-//	"BHLayer2Node/utils"
+//	"RappaMaster/Config"
+//	"RappaMaster/Coordinator"
+//	"RappaMaster/paradigm"
+//	pb "RappaMaster/pb/service"
+//	"RappaMaster/utils"
 //	"os"
 //	"path/filepath"
 //	"testing"
 //	"time"
 //)
 //
-//var testConfig *Config.BHLayer2NodeConfig
+//var testConfig *Config.RappaMasterConfig
 //
 //// 用于测试初始化
 //func TestMain(m *testing.M) {
 //	rootPath, _ := utils.GetProjectRoot()
-//	testConfig = Config.LoadBHLayer2NodeConfig(filepath.Join(rootPath, "config.json"))
+//	testConfig = Config.LoadRappaMasterConfig(filepath.Join(rootPath, "config.json"))
 //	// 执行所有测试
 //	exitCode := m.Run()
 //	// 显式退出
