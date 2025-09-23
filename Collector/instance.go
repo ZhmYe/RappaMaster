@@ -15,7 +15,7 @@ type CollectSlotInstance struct {
 	//Transfer        chan interface{}           // 传给http，用于返回给Backend
 	ResponseChannel chan pb.RecoverResponse // 这里是grpc收到response以后通过这个channel传回collector
 	//Connection      chan paradigm.RecoverConnection // 这里是传递给grpc的channel
-	Channel *channel.RappaChannel
+	Channel *helper.RappaChannel
 }
 
 func (i *CollectSlotInstance) Collect() interface{} {

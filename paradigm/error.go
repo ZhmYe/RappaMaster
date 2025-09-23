@@ -36,6 +36,7 @@ const (
 	DatabaseError
 	FileError
 	UpchainError
+	RedisError
 )
 
 func ErrorToString(error ErrorEnum) string {
@@ -62,6 +63,8 @@ func ErrorToString(error ErrorEnum) string {
 		return "FileError"
 	case UpchainError:
 		return "UpchainError"
+	case RedisError:
+		return "RedisError"
 	default:
 		return "Unknown Error"
 	}

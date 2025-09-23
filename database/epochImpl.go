@@ -1,5 +1,31 @@
 package database
 
+import (
+	"RappaMaster/config"
+	"RappaMaster/paradigm"
+	"errors"
+	"path"
+)
+
+func (dbs *DatabaseService) GetCurrentEpoch() (int64, error) {
+	result, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/query_current_epoch.sql"), true)
+	if err != nil {
+		return -1, err
+	}
+	data := make(map[string]interface{})
+	result.Scan(data)
+	if currentEpoch, ok := data["current_epoch"].(int64); !ok {
+		return -1, paradigm.RaiseError(paradigm.DatabaseError, "invalid parse result", errors.New("data[current_epoch] is not int64"))
+	} else {
+		return currentEpoch, nil
+	}
+}
+
+func (dbs *DatabaseService) AdvanceEpoch() error {
+	_, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/advance_new_epoch.sql"), false)
+	return err
+}
+
 //
 //import (
 //	"RappaMaster/paradigm"

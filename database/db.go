@@ -23,22 +23,34 @@ type DatabaseService struct {
 func (dbs *DatabaseService) IsCreated() bool {
 	return dbs.db != nil
 }
-func (dbs *DatabaseService) script(path string, values ...interface{}) error {
+func (dbs *DatabaseService) parseScript(path string) (string, error) {
 	sqlBytes, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return "", err
 	}
-	sqlStr := string(sqlBytes)
-	if err = dbs.db.Exec(sqlStr, values...).Error; err != nil {
-		return paradigm.RaiseError(paradigm.DatabaseError, fmt.Sprintf("Database executes scripts failed"), err)
+	return string(sqlBytes), nil
+
+}
+func (dbs *DatabaseService) script(path string, isRead bool, values ...interface{}) (*gorm.DB, error) {
+	sqlStr, err := dbs.parseScript(path)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	var result *gorm.DB
+	if isRead {
+		result = dbs.db.Raw(sqlStr, values...)
+	} else {
+		result = dbs.db.Exec(sqlStr, values...)
+	}
+	if err = result.Error; err != nil {
+		return nil, paradigm.RaiseError(paradigm.DatabaseError, fmt.Sprintf("Database executes scripts failed"), err)
+	}
+	return result, nil
 }
 func (dbs *DatabaseService) Init() error {
 	if dbs.IsCreated() {
 		return nil
 	}
-	fmt.Println(dbs.DSN())
 	logFile, err := os.OpenFile(path.Join(config.ProjectRootPath, "logs/slow_sql.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return paradigm.RaiseError(paradigm.FileError, "Create slow sql log failed", err)
@@ -70,8 +82,8 @@ func (dbs *DatabaseService) Init() error {
 	}
 	sqlDB.SetConnMaxLifetime(maxLifetime)
 	dbs.db = gormDB
-	return dbs.script("./sql/schema.sql")
-
+	_, err = dbs.script(path.Join(config.ProjectRootPath, "database/sql/schema.sql"), false)
+	return err
 }
 
 func NewDatabaseService(config config.DatabaseConfig) *DatabaseService {

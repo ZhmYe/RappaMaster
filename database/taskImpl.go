@@ -1,12 +1,16 @@
 package database
 
 import (
-	"RappaMaster/task"
+	"RappaMaster/config"
+	"RappaMaster/paradigm"
+	types2 "RappaMaster/types"
+	"errors"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
+	"path"
 	"time"
 )
 
-func (dbs *DatabaseService) CreateTask(task task.Task, receipt types.Receipt) error {
+func (dbs *DatabaseService) CreateTask(task types2.Task, receipt types.Receipt) error {
 	params := []interface{}{
 		task.Sign(),             // sign
 		task.Name(),             // name
@@ -17,26 +21,44 @@ func (dbs *DatabaseService) CreateTask(task task.Task, receipt types.Receipt) er
 		time.Now(),              // startDate
 		nil,                     // finishDate
 	}
-	return dbs.script("./sql/create_task.sql", params...)
+	_, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/create_task.sql"), false, params...)
+	return err
 }
 
-//
-//// 获取任务
-//func (o DatabaseService) GetTask(taskHash paradigm.TaskHash) (*paradigm.Task, error) {
-//	taskQuery := paradigm.Task{}
-//	err := o.db.Where(paradigm.Task{Sign: taskHash}).Take(&taskQuery).Error
-//	if errors.Is(err, gorm.ErrRecordNotFound) {
-//		return nil, err
-//	} else {
-//		// 获取txHash
-//		tx := paradigm.DevReference{}
-//		o.db.Take(&tx, taskQuery.TID)
-//		taskQuery.TxReceipt = &tx.TxReceipt
-//		taskQuery.TxBlockHash = tx.TxBlockHash
-//		taskQuery.TxHash = tx.TxHash
-//		return &taskQuery, nil
-//	}
-//}
+func (dbs *DatabaseService) GetTaskBySign(sign string) (*types2.Task, error) {
+	params := []interface{}{
+		sign,
+	}
+	result, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/query_task_by_sign.sql"), true, params...)
+	if err != nil {
+		return nil, err
+	}
+	data := make(map[string]interface{})
+	result.Scan(data)
+	t := new(types2.Task)
+	t.FromRowData(data)
+	return t, nil
+}
+
+func (dbs *DatabaseService) CheckTaskIsFinish(sign string, t ...*types2.Task) (bool, error) {
+	params := []interface{}{sign}
+	result, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/query_task_by_sign.sql"), true, params...)
+	if err != nil {
+		return false, err
+	}
+	data := make(map[string]interface{})
+	result.Scan(data)
+	if len(t) != 0 {
+		tsk := t[0]
+		tsk.FromRowData(data)
+	}
+	if flag, ok := data["done"].(int64); !ok {
+		return false, paradigm.RaiseError(paradigm.DatabaseError, "invalid parse result", errors.New("data[done] is not int64"))
+	} else {
+		return flag == 1, nil
+	}
+}
+
 //
 //// 更新任务schedule
 //func (o DatabaseService) UpdateScheduleInTask(schedule *paradigm.SynthTaskSchedule) {

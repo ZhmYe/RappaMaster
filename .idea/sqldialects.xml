@@ -2,6 +2,7 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/database/sql/create_task.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/database/sql/query_task_by_sign.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/database/sql/schema.sql" dialect="MySQL" />
   </component>
 </project>

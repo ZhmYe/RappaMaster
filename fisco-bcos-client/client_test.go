@@ -2,8 +2,8 @@ package fisco_bcos_client
 
 import (
 	"RappaMaster/config"
-	"RappaMaster/task"
 	"RappaMaster/transaction"
+	"RappaMaster/types"
 	"fmt"
 	"testing"
 )
@@ -31,6 +31,6 @@ func TestSendWithSync(t *testing.T) {
 }
 
 func generateTransaction() transaction.Transaction {
-	tasks := []task.Task{*task.DefaultTaskForTest()}
+	tasks := []types.Task{*types.DefaultTaskForTest()}
 	return transaction.NewInitTaskTransaction(tasks)
 }

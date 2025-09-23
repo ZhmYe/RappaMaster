@@ -1,0 +1,1 @@
+SELECT IFNULL(MAX(id), -1) as current_epoch FROM epoch;

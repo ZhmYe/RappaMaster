@@ -1,7 +1,7 @@
 package transaction
 
 import (
-	"RappaMaster/task"
+	"RappaMaster/types"
 	"RappaMaster/utils"
 )
 
@@ -20,7 +20,7 @@ type Transaction interface {
 
 // InitTaskTransaction a transaction to create a task, get the txHash
 type InitTaskTransaction struct {
-	tasks []task.Task
+	tasks []types.Task
 }
 
 func (t *InitTaskTransaction) Call() string {
@@ -36,7 +36,7 @@ func (t *InitTaskTransaction) CallData() ([][32]byte, [][32]byte) {
 	return keys, values
 }
 
-func NewInitTaskTransaction(tasks []task.Task) *InitTaskTransaction {
+func NewInitTaskTransaction(tasks []types.Task) *InitTaskTransaction {
 	return &InitTaskTransaction{tasks}
 }
 

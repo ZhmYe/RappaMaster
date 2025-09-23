@@ -13,7 +13,7 @@ type Collector struct {
 	taskID paradigm.TaskHash
 	items  []paradigm.CollectSlotItem
 	//taskSlots map[string][]paradigm.CollectSlotItem
-	channel    *channel.RappaChannel
+	channel    *helper.RappaChannel
 	outputType paradigm.ModelOutputType
 }
 
@@ -115,7 +115,7 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 //	}
 //}
 
-func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *channel.RappaChannel) *Collector {
+func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *helper.RappaChannel) *Collector {
 	return &Collector{
 		taskID:     taskID,
 		items:      make([]paradigm.CollectSlotItem, 0),

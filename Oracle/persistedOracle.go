@@ -9,7 +9,7 @@ import (
 )
 
 type PersistedOracle struct {
-	channel *channel.RappaChannel
+	channel *helper.RappaChannel
 	// mySQLConfig paradigm.DBConnection              //mysql连接配置
 	dbService  *database.DatabaseService
 	collectors map[string]paradigm.RappaCollector //定义任务收集器
@@ -256,7 +256,7 @@ func (o *PersistedOracle) Start() {
 	updateOracle()
 }
 
-func NewPersistedOracle(channel *channel.RappaChannel, service *database.DatabaseService) *PersistedOracle {
+func NewPersistedOracle(channel *helper.RappaChannel, service *database.DatabaseService) *PersistedOracle {
 	return &PersistedOracle{
 		channel:    channel,
 		dbService:  service,

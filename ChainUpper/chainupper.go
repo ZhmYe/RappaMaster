@@ -24,7 +24,7 @@ import (
 // after a timeout or the transactionPool is full
 type ChainUpper struct {
 	ctx             *context.Context
-	channel         *channel.RappaChannel
+	channel         *helper.RappaChannel
 	transactionPool []transaction.Transaction
 	mu              sync.Mutex
 	queue           chan transaction.Transaction
@@ -182,7 +182,7 @@ func (c *ChainUpper) UpChain() {
 	}
 }
 
-func NewChainUpper(channel *channel.RappaChannel, config *paradigm.RappaMasterConfig) (*ChainUpper, error) {
+func NewChainUpper(channel *helper.RappaChannel, config *paradigm.RappaMasterConfig) (*ChainUpper, error) {
 	// 初始化 FISCO-BCOS 客户端
 	privateKey, _ := hex.DecodeString(config.PrivateKey)
 	client, err := client.DialContext(context.Background(), &client.Config{

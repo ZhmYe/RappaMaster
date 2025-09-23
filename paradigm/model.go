@@ -7,6 +7,7 @@ const (
 	BAED
 	FINKAN
 	ABM
+	NOTIMPORTANT
 	// TODO 后续有支持的新模型在这里加上
 )
 

@@ -1,27 +1,34 @@
 package database
 
 import (
+	"RappaMaster/config"
 	"RappaMaster/paradigm"
-	"errors"
+	pb "RappaMaster/pb/service"
+	"RappaMaster/types"
+	"encoding/hex"
 	"fmt"
-
-	"gorm.io/gorm"
+	"path"
 )
 
-// 这里定义slot的数据库操作
-func (o DatabaseService) UpdateSlotFromSchedule(slot *paradigm.Slot) {
-	slotQuery := paradigm.Slot{}
-	err := o.db.Where(paradigm.Slot{SlotID: slot.SlotID}).Take(&slotQuery).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		o.db.Create(slot)
-	} else {
-		if slot.Status == paradigm.Failed {
-			// 更新除了提交commitslot和epoch以外的值
-			o.db.Model(slot).Omit("commit_slot", "epoch").Updates(slot)
-		} else {
-			o.db.Model(slot).Select("task_id", "schedule_id", "schedule_size").Updates(slot)
-		}
+func (dbs *DatabaseService) UpdateSlotFromSchedule(slot types.ScheduleSlot) error {
+	params := []interface{}{
+		slot.SlotHash(),
+		slot.Task,
+		slot.NodeID,
+		slot.Size,
 	}
+	_, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/create_slot.sql"), false, params...)
+	return err
+}
+func (dbs *DatabaseService) CommitSlot(request *pb.SlotCommitRequest) error {
+	params := []interface{}{
+		request.Size,
+		hex.EncodeToString(request.Commitment),
+		hex.EncodeToString(request.Signature),
+		request.SlotHash,
+	}
+	_, err := dbs.script(path.Join(config.ProjectRootPath, "database/sql/commit_slot.sql"), false, params...)
+	return err
 }
 
 func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.InvalidCommitType, epoch int32) {

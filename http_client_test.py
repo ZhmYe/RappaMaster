@@ -106,7 +106,7 @@ def send_POST_request(url, request_data):
 #         print(f"Response Message: {response_data['msg']}")
 #         print(f"Response Code: {response_data['code']}")
     else:
-        print(f"Failed to create task. Status code: {response.status_code}")
+        print(f"Failed to create task. Status code: {response.status_code}, Error: {response.text}")
 def send_GET_request(url, request_data):
     headers = {'Content-Type': 'application/json'}
 
@@ -120,7 +120,7 @@ def send_GET_request(url, request_data):
     #         print(f"Response Message: {response_data['msg']}")
     #         print(f"Response Code: {response_data['code']}")
     else:
-        print(f"Failed to query task. Status code: {response.status_code}")
+        print(f"Failed to query task. Status code: {response.status_code}, Error: {response.msg}")
 def main():
     print("Welcome to the HTTP Client Shell!")
     print("Type 'create' to create a new task or 'exit' to quit.")

@@ -25,10 +25,6 @@ const (
 // RappaMasterClient is the client API for RappaMaster service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// **
-// NOTE: 定义Master处的接口
-// *
 type RappaMasterClient interface {
 	// CommitSlot Executor向Master提交自己完成的Task Slot
 	CommitSlot(ctx context.Context, in *SlotCommitRequest, opts ...grpc.CallOption) (*SlotCommitResponse, error)
@@ -55,10 +51,6 @@ func (c *rappaMasterClient) CommitSlot(ctx context.Context, in *SlotCommitReques
 // RappaMasterServer is the server API for RappaMaster service.
 // All implementations must embed UnimplementedRappaMasterServer
 // for forward compatibility.
-//
-// **
-// NOTE: 定义Master处的接口
-// *
 type RappaMasterServer interface {
 	// CommitSlot Executor向Master提交自己完成的Task Slot
 	CommitSlot(context.Context, *SlotCommitRequest) (*SlotCommitResponse, error)
@@ -131,19 +123,15 @@ var RappaMaster_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	RappaExecutor_Heartbeat_FullMethodName = "/service.RappaExecutor/Heartbeat"
-	RappaExecutor_Schedule_FullMethodName  = "/service.RappaExecutor/Schedule"
-	RappaExecutor_Collect_FullMethodName   = "/service.RappaExecutor/Collect"
+	RappaSynthesizer_Heartbeat_FullMethodName = "/service.RappaSynthesizer/Heartbeat"
+	RappaSynthesizer_Schedule_FullMethodName  = "/service.RappaSynthesizer/Schedule"
+	RappaSynthesizer_Collect_FullMethodName   = "/service.RappaSynthesizer/Collect"
 )
 
-// RappaExecutorClient is the client API for RappaExecutor service.
+// RappaSynthesizerClient is the client API for RappaSynthesizer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// **
-// NOTE: 定义Executor处的接口
-// *
-type RappaExecutorClient interface {
+type RappaSynthesizerClient interface {
 	// Heartbeat 向follower同步slot状态，同时监控节点状态
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
@@ -152,170 +140,166 @@ type RappaExecutorClient interface {
 	Collect(ctx context.Context, in *RecoverRequest, opts ...grpc.CallOption) (*RecoverResponse, error)
 }
 
-type rappaExecutorClient struct {
+type rappaSynthesizerClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewRappaExecutorClient(cc grpc.ClientConnInterface) RappaExecutorClient {
-	return &rappaExecutorClient{cc}
+func NewRappaSynthesizerClient(cc grpc.ClientConnInterface) RappaSynthesizerClient {
+	return &rappaSynthesizerClient{cc}
 }
 
-func (c *rappaExecutorClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+func (c *rappaSynthesizerClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HeartbeatResponse)
-	err := c.cc.Invoke(ctx, RappaExecutor_Heartbeat_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaSynthesizer_Heartbeat_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *rappaExecutorClient) Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error) {
+func (c *rappaSynthesizerClient) Schedule(ctx context.Context, in *ScheduleRequest, opts ...grpc.CallOption) (*ScheduleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ScheduleResponse)
-	err := c.cc.Invoke(ctx, RappaExecutor_Schedule_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaSynthesizer_Schedule_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *rappaExecutorClient) Collect(ctx context.Context, in *RecoverRequest, opts ...grpc.CallOption) (*RecoverResponse, error) {
+func (c *rappaSynthesizerClient) Collect(ctx context.Context, in *RecoverRequest, opts ...grpc.CallOption) (*RecoverResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RecoverResponse)
-	err := c.cc.Invoke(ctx, RappaExecutor_Collect_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, RappaSynthesizer_Collect_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// RappaExecutorServer is the server API for RappaExecutor service.
-// All implementations must embed UnimplementedRappaExecutorServer
+// RappaSynthesizerServer is the server API for RappaSynthesizer service.
+// All implementations must embed UnimplementedRappaSynthesizerServer
 // for forward compatibility.
-//
-// **
-// NOTE: 定义Executor处的接口
-// *
-type RappaExecutorServer interface {
+type RappaSynthesizerServer interface {
 	// Heartbeat 向follower同步slot状态，同时监控节点状态
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// Schedule 用于向节点发送调度
 	Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error)
 	// Collect 用于向节点收集chunk，恢复文件数据
 	Collect(context.Context, *RecoverRequest) (*RecoverResponse, error)
-	mustEmbedUnimplementedRappaExecutorServer()
+	mustEmbedUnimplementedRappaSynthesizerServer()
 }
 
-// UnimplementedRappaExecutorServer must be embedded to have
+// UnimplementedRappaSynthesizerServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedRappaExecutorServer struct{}
+type UnimplementedRappaSynthesizerServer struct{}
 
-func (UnimplementedRappaExecutorServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+func (UnimplementedRappaSynthesizerServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
-func (UnimplementedRappaExecutorServer) Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error) {
+func (UnimplementedRappaSynthesizerServer) Schedule(context.Context, *ScheduleRequest) (*ScheduleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Schedule not implemented")
 }
-func (UnimplementedRappaExecutorServer) Collect(context.Context, *RecoverRequest) (*RecoverResponse, error) {
+func (UnimplementedRappaSynthesizerServer) Collect(context.Context, *RecoverRequest) (*RecoverResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Collect not implemented")
 }
-func (UnimplementedRappaExecutorServer) mustEmbedUnimplementedRappaExecutorServer() {}
-func (UnimplementedRappaExecutorServer) testEmbeddedByValue()                       {}
+func (UnimplementedRappaSynthesizerServer) mustEmbedUnimplementedRappaSynthesizerServer() {}
+func (UnimplementedRappaSynthesizerServer) testEmbeddedByValue()                          {}
 
-// UnsafeRappaExecutorServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to RappaExecutorServer will
+// UnsafeRappaSynthesizerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RappaSynthesizerServer will
 // result in compilation errors.
-type UnsafeRappaExecutorServer interface {
-	mustEmbedUnimplementedRappaExecutorServer()
+type UnsafeRappaSynthesizerServer interface {
+	mustEmbedUnimplementedRappaSynthesizerServer()
 }
 
-func RegisterRappaExecutorServer(s grpc.ServiceRegistrar, srv RappaExecutorServer) {
-	// If the following call pancis, it indicates UnimplementedRappaExecutorServer was
+func RegisterRappaSynthesizerServer(s grpc.ServiceRegistrar, srv RappaSynthesizerServer) {
+	// If the following call pancis, it indicates UnimplementedRappaSynthesizerServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&RappaExecutor_ServiceDesc, srv)
+	s.RegisterService(&RappaSynthesizer_ServiceDesc, srv)
 }
 
-func _RappaExecutor_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaSynthesizer_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RappaExecutorServer).Heartbeat(ctx, in)
+		return srv.(RappaSynthesizerServer).Heartbeat(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RappaExecutor_Heartbeat_FullMethodName,
+		FullMethod: RappaSynthesizer_Heartbeat_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RappaExecutorServer).Heartbeat(ctx, req.(*HeartbeatRequest))
+		return srv.(RappaSynthesizerServer).Heartbeat(ctx, req.(*HeartbeatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RappaExecutor_Schedule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaSynthesizer_Schedule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ScheduleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RappaExecutorServer).Schedule(ctx, in)
+		return srv.(RappaSynthesizerServer).Schedule(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RappaExecutor_Schedule_FullMethodName,
+		FullMethod: RappaSynthesizer_Schedule_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RappaExecutorServer).Schedule(ctx, req.(*ScheduleRequest))
+		return srv.(RappaSynthesizerServer).Schedule(ctx, req.(*ScheduleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RappaExecutor_Collect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _RappaSynthesizer_Collect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RecoverRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RappaExecutorServer).Collect(ctx, in)
+		return srv.(RappaSynthesizerServer).Collect(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RappaExecutor_Collect_FullMethodName,
+		FullMethod: RappaSynthesizer_Collect_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RappaExecutorServer).Collect(ctx, req.(*RecoverRequest))
+		return srv.(RappaSynthesizerServer).Collect(ctx, req.(*RecoverRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// RappaExecutor_ServiceDesc is the grpc.ServiceDesc for RappaExecutor service.
+// RappaSynthesizer_ServiceDesc is the grpc.ServiceDesc for RappaSynthesizer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var RappaExecutor_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.RappaExecutor",
-	HandlerType: (*RappaExecutorServer)(nil),
+var RappaSynthesizer_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.RappaSynthesizer",
+	HandlerType: (*RappaSynthesizerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Heartbeat",
-			Handler:    _RappaExecutor_Heartbeat_Handler,
+			Handler:    _RappaSynthesizer_Heartbeat_Handler,
 		},
 		{
 			MethodName: "Schedule",
-			Handler:    _RappaExecutor_Schedule_Handler,
+			Handler:    _RappaSynthesizer_Schedule_Handler,
 		},
 		{
 			MethodName: "Collect",
-			Handler:    _RappaExecutor_Collect_Handler,
+			Handler:    _RappaSynthesizer_Collect_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
