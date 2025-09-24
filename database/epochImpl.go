@@ -26,104 +26,207 @@ func (dbs *DatabaseService) AdvanceEpoch() error {
 	return err
 }
 
-//
-//import (
-//	"RappaMaster/paradigm"
-//	"fmt"
-//
-//	"gorm.io/gorm"
-//)
-//
-//// // 记录epoch
-//// func (o *PersistedOracle) setEpoch(epochRecord *paradigm.DevEpoch) {
-//// 	o.db.Create(epochRecord)
-//// }
-//
-//func (o DatabaseService) SaveEpochRecord(epoch *paradigm.DevEpoch) error {
-//	return o.db.Transaction(func(tx *gorm.DB) error {
-//		result := tx.Create(epoch)
-//		if result.Error != nil {
-//			return result.Error
-//		}
-//		return nil
-//	})
-//}
-//
-//func (o DatabaseService) SetEpoch(epochRecord *paradigm.DevEpoch) error {
-//	if err := o.SaveEpochRecord(epochRecord); err != nil {
-//		paradigm.Error(paradigm.RuntimeError,
-//			fmt.Sprintf("Failed to save epoch record: %v", err))
-//		return err
-//	}
-//	return nil
-//}
-//
-//// GetEpochByID 通过纪元标识查询纪元
-//func (o DatabaseService) GetEpochByID(epochID int32) (*paradigm.DevEpoch, error) {
-//	var epoch paradigm.DevEpoch
-//	err := o.db.Where("epoch_id = ?", epochID).First(&epoch).Error
-//	if err != nil {
-//		return nil, err
-//	}
-//	tx := paradigm.DevReference{}
-//	if err := o.db.Take(&tx, epoch.TID).Error; err != nil {
-//		return nil, fmt.Errorf("failed to get associated transaction: %v", err)
-//	}
-//	epoch.TxHash = tx.TxHash
-//	epoch.TxBlockHash = tx.TxBlockHash
-//	epoch.TxReceipt = &tx.TxReceipt
-//
-//	return &epoch, nil
-//}
-//
-//// GetEpochByTxHash 通过交易哈希查询纪元
-//func (o DatabaseService) GetEpochByTxHash(txHash string) (*paradigm.DevEpoch, error) {
-//	tx, err := o.GetTransactionByHash(txHash)
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to get transaction: %v", err)
-//	}
-//	if tx.Rf != paradigm.EpochTx {
-//		return nil, fmt.Errorf("transaction is not an epoch transaction")
-//	}
-//	if tx.EpochID == -1 {
-//		return nil, fmt.Errorf("invalid epoch ID in transaction")
-//	}
-//	epoch, err := o.GetEpochByID(tx.EpochID)
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to get epoch: %v", err)
-//	}
-//
-//	return epoch, nil
-//}
-//
-//// GetLatestEpochs 查询 limit 条最新纪元
-//func (o DatabaseService) GetLatestEpochs(limit int) ([]*paradigm.DevEpoch, error) {
-//	var epochs []*paradigm.DevEpoch
-//	err := o.db.Order("epoch_id desc").Limit(limit).Find(&epochs).Error
-//	if err != nil {
-//		return nil, fmt.Errorf("failed to query latest epochs: %v", err)
-//	}
-//	for _, epoch := range epochs {
-//		tx := paradigm.DevReference{}
-//		if err := o.db.Take(&tx, epoch.TID).Error; err != nil {
-//			// 记录错误但继续处理其他 epoch
-//			paradigm.Log("ERROR", fmt.Sprintf("Failed to get transaction for epoch %d: %v", epoch.EpochID, err))
-//			continue
-//		}
-//		epoch.TxHash = tx.TxHash
-//		epoch.TxBlockHash = tx.TxBlockHash
-//		epoch.TxReceipt = &tx.TxReceipt
-//	}
-//
-//	return epochs, nil
-//}
-//
-//// 从数据库里获取最大的EpochID
-//func (o DatabaseService) GetMaxEpochID() (int32, error) {
-//	var maxEpochID int32
-//	result := o.db.Model(&paradigm.DevEpoch{}).Select("COALESCE(MAX(epoch_id), -1)").Scan(&maxEpochID)
-//	if result.Error != nil {
-//		return -1, result.Error
-//	}
-//	return maxEpochID, nil
-//}
+// UpdateEpochRoot updates the epoch root hash
+func (dbs *DatabaseService) UpdateEpochRoot(epochID int, root string) error {
+	query := "UPDATE epoch SET epochRoot = ? WHERE id = ?"
+	_, err := dbs.db.Exec(query, root, epochID)
+	return err
+}
+
+// GetEpochRoot retrieves the epoch root hash
+func (dbs *DatabaseService) GetEpochRoot(epochID int) (string, error) {
+	var root string
+	query := "SELECT epochRoot FROM epoch WHERE id = ?"
+	err := dbs.db.QueryRow(query, epochID).Scan(&root)
+	return root, err
+}
+
+// GetCommittedSlotsInEpoch retrieves all committed slots in an epoch
+func (dbs *DatabaseService) GetCommittedSlotsInEpoch(epochID int) (map[string]SlotInfo, error) {
+	query := `
+		SELECT s.slotHash, t.sign, s.nodeID, s.commitment, s.signature 
+		FROM slot s 
+		JOIN task t ON s.taskID = t.id 
+		WHERE s.commitEpoch = ? AND s.status = 'committed'
+	`
+	
+	rows, err := dbs.db.Query(query, epochID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	slots := make(map[string]SlotInfo)
+	for rows.Next() {
+		var slot SlotInfo
+		err := rows.Scan(&slot.SlotHash, &slot.TaskSign, &slot.NodeID, &slot.Commitment, &slot.Signature)
+		if err != nil {
+			continue
+		}
+		slots[slot.SlotHash] = slot
+	}
+
+	return slots, nil
+}
+
+// SlotInfo represents slot information from database
+type SlotInfo struct {
+	SlotHash   string
+	TaskSign   string
+	NodeID     int
+	Commitment string
+	Signature  string
+}
+
+// UpdateSlotMerkleProof updates slot's merkle proof
+func (dbs *DatabaseService) UpdateSlotMerkleProof(slotHash, proof string) error {
+	query := "UPDATE slot SET merkleProof = ? WHERE slotHash = ?"
+	_, err := dbs.db.Exec(query, proof, slotHash)
+	return err
+}
+
+// UpdateTaskMerkleProofs updates task merkle proofs for multiple slots
+func (dbs *DatabaseService) UpdateTaskMerkleProofs(slotHashes []string, proof string) error {
+	if len(slotHashes) == 0 {
+		return nil
+	}
+	
+	// Build placeholders for IN clause
+	placeholders := ""
+	args := []interface{}{proof}
+	for i, hash := range slotHashes {
+		if i > 0 {
+			placeholders += ","
+		}
+		placeholders += "?"
+		args = append(args, hash)
+	}
+	
+	query := "UPDATE slot SET taskMerkleProof = ? WHERE slotHash IN (" + placeholders + ")"
+	_, err := dbs.db.Exec(query, args...)
+	return err
+}
+
+// GetSlotsFromNodes retrieves slots committed by specific nodes in an epoch
+func (dbs *DatabaseService) GetSlotsFromNodes(epochID int, nodeIDs []int) ([]string, error) {
+	if len(nodeIDs) == 0 {
+		return nil, nil
+	}
+	
+	// Build placeholders for IN clause
+	placeholders := ""
+	args := []interface{}{epochID}
+	for i, nodeID := range nodeIDs {
+		if i > 0 {
+			placeholders += ","
+		}
+		placeholders += "?"
+		args = append(args, nodeID)
+	}
+	
+	query := "SELECT slotHash FROM slot WHERE commitEpoch = ? AND nodeID IN (" + placeholders + ") AND status = 'committed'"
+	rows, err := dbs.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var slotHashes []string
+	for rows.Next() {
+		var slotHash string
+		if err := rows.Scan(&slotHash); err == nil {
+			slotHashes = append(slotHashes, slotHash)
+		}
+	}
+
+	return slotHashes, nil
+}
+
+// UpdateSlotStatus updates status of multiple slots
+func (dbs *DatabaseService) UpdateSlotStatus(slotHashes []string, status string) error {
+	if len(slotHashes) == 0 {
+		return nil
+	}
+	
+	// Build placeholders for IN clause
+	placeholders := ""
+	args := []interface{}{status}
+	for i, hash := range slotHashes {
+		if i > 0 {
+			placeholders += ","
+		}
+		placeholders += "?"
+		args = append(args, hash)
+	}
+	
+	query := "UPDATE slot SET status = ? WHERE slotHash IN (" + placeholders + ")"
+	_, err := dbs.db.Exec(query, args...)
+	return err
+}
+
+// GetJustifiedSlotsByTask retrieves justified slots grouped by task
+func (dbs *DatabaseService) GetJustifiedSlotsByTask(taskSign string) ([]string, error) {
+	query := `
+		SELECT s.slotHash 
+		FROM slot s 
+		JOIN task t ON s.taskID = t.id 
+		WHERE t.sign = ? AND s.status = 'justified'
+		ORDER BY s.slotHash
+	`
+	
+	rows, err := dbs.db.Query(query, taskSign)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var slotHashes []string
+	for rows.Next() {
+		var slotHash string
+		if err := rows.Scan(&slotHash); err == nil {
+			slotHashes = append(slotHashes, slotHash)
+		}
+	}
+
+	return slotHashes, nil
+}
+
+// UpdateTaskRoot updates task root hash and completion status
+func (dbs *DatabaseService) UpdateTaskRoot(taskSign, taskRoot string, finishEpoch int) error {
+	query := "UPDATE task SET taskRoot = ?, done = TRUE, finishEpoch = ?, finishDate = NOW() WHERE sign = ?"
+	_, err := dbs.db.Exec(query, taskRoot, finishEpoch, taskSign)
+	return err
+}
+
+// FinalizeTaskSlots updates all justified slots of a task to finalized status
+func (dbs *DatabaseService) FinalizeTaskSlots(taskSign string, finalizeEpoch int) error {
+	query := `
+		UPDATE slot s 
+		JOIN task t ON s.taskID = t.id 
+		SET s.status = 'finalized', s.finalizeEpoch = ? 
+		WHERE t.sign = ? AND s.status = 'justified'
+	`
+	_, err := dbs.db.Exec(query, finalizeEpoch, taskSign)
+	return err
+}
+
+// CheckTaskCompletion checks if a task has enough justified slots to be completed
+func (dbs *DatabaseService) CheckTaskCompletion(taskSign string) (bool, error) {
+	query := `
+		SELECT 
+			t.expected,
+			COALESCE(SUM(s.finished), 0) as totalFinished
+		FROM task t 
+		LEFT JOIN slot s ON t.id = s.taskID AND s.status = 'justified'
+		WHERE t.sign = ?
+		GROUP BY t.id, t.expected
+	`
+	
+	var expected, totalFinished int64
+	err := dbs.db.QueryRow(query, taskSign).Scan(&expected, &totalFinished)
+	if err != nil {
+		return false, err
+	}
+	
+	return totalFinished >= expected, nil
+}

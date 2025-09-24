@@ -1,78 +1,79 @@
 syntax = "proto3";
 
 package service;
+
 import "google/protobuf/struct.proto";
+
 option go_package = "/service";
 
-service RappaMaster {
-  // CommitSlot Executor向Master提交自己完成的Task Slot
-  rpc CommitSlot (SlotCommitRequest) returns (SlotCommitResponse);
-  //  rpc CommitProof (ProofCommitRequest) returns (ProofCommitResponse); // TODO
-}
-
-service RappaSynthesizer {
-  // Heartbeat 向follower同步slot状态，同时监控节点状态
-  rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
-  // Schedule 用于向节点发送调度
-  rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
-
-  // Collect 用于向节点收集chunk，恢复文件数据
-  rpc Collect(RecoverRequest) returns (RecoverResponse);
-}
-
-
-// Heartbeat request message
+// Heartbeat request message - master sends to nodes
 message HeartbeatRequest {
-  map<string, bytes> commits = 1;     // 提交的CommitSlotItem列表
-  map<string, bytes> justifieds = 2;
-  map<string, bytes> finalizes = 3;   // 完成的CommitSlotItem列表
-  map<string, int32> invalids = 4;    // 这个epoch中检测出的有问题的slot
-  //  map<string, int32> tasks = 3;            // 在这个epoch中过期的任务的最新slot
-  int32 epoch = 5;
+    map<string, bytes> commits = 1;    // 提交的CommitSlotItem列表
+    map<string, bytes> justifieds = 2;
+    map<string, bytes> finalizes = 3;  // 完成的CommitSlotItem列表
+    map<string, int32> invalids = 4;   // 这个epoch中检测出的有问题的slot
+    int32 epoch = 5;
+    
+    // New fields for epoch validation
+    string epochRoot = 6;              // Epoch merkle root
+    repeated NodeMerkleInfo nodeMerkleInfos = 7; // Merkle info for each node
 }
 
-// Heartbeat response message
+// Merkle information sent to each node
+message NodeMerkleInfo {
+    int32 nodeId = 1;
+    string nodeRoot = 2;               // Merkle root of slots for this node
+    repeated TaskMerkleProof taskProofs = 3; // Task merkle proofs
+    string epochMerkleProof = 4;       // Proof of epochRoot
+}
 
+// Task merkle proof information
+message TaskMerkleProof {
+    string taskSign = 1;
+    string taskRoot = 2;
+    string merkleProof = 3;            // JSON encoded merkle proof
+}
+
+// Heartbeat response - nodes send back to master
 message HeartbeatResponse {
-  int32 nodeId = 1;  // 节点id
-  int32 cpuUsage = 2;
-  int32 diskAvailable = 3;
+    int32 nodeId = 1;          // 节点id
+    int32 cpuUsage = 2;
+    int32 diskAvailable = 3;
+    
+    // New fields for epoch validation
+    string epochSignature = 4;         // BLS signature of epochRoot
+    bool epochValidated = 5;           // Whether node validated the epoch
+    string validationError = 6;        // Error message if validation failed
 }
-
 
 message ScheduleRequest {
-  string sign = 1; // 任务标记
-  int32 size = 2; // 给该节点的任务数量
-  string model = 3; // 模型名称
+    string sign = 1;   // 任务标记
+    int32 size = 2;    // 给该节点的任务数量
+    string model = 3;  // 模型名称
 }
+
 message ScheduleResponse {
-  bool accept = 1; // 是否接受
+    bool accept = 1;   // 是否接受
 }
 
 message SlotCommitRequest {
-  string slotHash = 1;
-  int32 size = 2;
-  bytes commitment = 3; // 数据的完整性承诺
-  bytes signature = 4; // 需要节点对此签名
-  repeated bytes votes = 5; // 如果是ec或者多副本，需要其他节点的签名
-  int32 store = 6; // 存储方式,0=ec; 1=local; 2=replicas
+    string slotHash = 1;
+    int32 size = 2;
+    bytes commitment = 3;      // 数据的完整性承诺
+    bytes signature = 4;       // 需要节点对此签名
+    repeated bytes votes = 5;  // 如果是ec或者多副本，需要其他节点的签名
+    int32 store = 6;          // 存储方式,0=ec; 1=local; 2=replicas
 }
+
 message SlotCommitResponse {
-  bool accept = 1;
+    bool accept = 1;
 }
 
+service RappaMaster {
+    rpc CommitSlot(SlotCommitRequest) returns (SlotCommitResponse);
+}
 
-message RecoverRequest {
-  string mission = 1;
-  repeated string hashs = 2; // 所有要收集的slotHash
-}
-// 每个chunk，这里是行块的ec块
-message RecoverSlotChunk {
-  string hash = 1; // slot hash
-  int32 row = 2; // 行块对应的index
-  int32 col = 3; // ec的index
-  bytes chunk =4; // chunk的内容
-}
-message RecoverResponse {
-  repeated RecoverSlotChunk chunks = 1; // 本地的对应的chunks
+service RappaSynthesizer {
+    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+    rpc Schedule(ScheduleRequest) returns (ScheduleResponse);
 }

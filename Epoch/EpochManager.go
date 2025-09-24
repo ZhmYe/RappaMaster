@@ -2,7 +2,10 @@ package Epoch
 
 import (
 	"RappaMaster/config"
+	"RappaMaster/epoch"
 	"RappaMaster/helper"
+	"RappaMaster/paradigm"
+	"RappaMaster/task"
 	"context"
 	"time"
 )
@@ -14,16 +17,41 @@ type EpochManager struct {
 }
 
 func (em *EpochManager) advanceNextEpoch(ctx context.Context) {
+	epochProcessor := epoch.NewEpochProcessor(helper.GlobalServiceHelper.DB)
+	taskManager := task.NewTaskCompletionManager(helper.GlobalServiceHelper.DB)
+	
 	for {
 		select {
 		case <-em.ticker.C:
-			err := helper.GlobalServiceHelper.DB.AdvanceEpoch()
+			// Get current epoch before advancing
+			currentEpoch, err := helper.GlobalServiceHelper.DB.GetCurrentEpoch()
 			if err != nil {
-				helper.GlobalServiceHelper.ReportError(err) // todo panic?
+				helper.GlobalServiceHelper.ReportError(err)
+				continue
 			}
+
+			// Process merkle trees for the current epoch
+			err = epochProcessor.ProcessEpochMerkleTree(int(currentEpoch))
+			if err != nil {
+				paradigm.Log("ERROR", "Failed to process epoch merkle tree: %v", err)
+			}
+
+			// Check and complete any ready tasks
+			err = taskManager.ProcessCompletedTasks(int(currentEpoch))
+			if err != nil {
+				paradigm.Log("ERROR", "Failed to process completed tasks: %v", err)
+			}
+
+			// Advance to next epoch
+			err = helper.GlobalServiceHelper.DB.AdvanceEpoch()
+			if err != nil {
+				helper.GlobalServiceHelper.ReportError(err)
+			} else {
+				paradigm.Log("INFO", "Advanced to epoch %d", currentEpoch+1)
+			}
+			
 		case <-ctx.Done():
 			return
-
 		}
 	}
 }

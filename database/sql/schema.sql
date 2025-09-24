@@ -2,8 +2,9 @@ CREATE TABLE IF NOT EXISTS epoch (
     id INT PRIMARY KEY AUTO_INCREMENT,
     startDate Date NOT NULL,
     finishDate DATE,
-    rootHash VARCHAR(64)
+    epochRoot VARCHAR(64)
 ) ENGINE=InnoDB DEFAULT CHARSET =utf8mb4;
+
 -- create task table to record the tasks submitted by users in frontend
 CREATE TABLE IF NOT EXISTS task (
     id INT PRIMARY KEY AUTO_INCREMENT, /* so that we don't need to write an id-allocator */
@@ -17,7 +18,10 @@ CREATE TABLE IF NOT EXISTS task (
     startDate DATE NOT NULL,
     finishDate DATE,
     done BOOL DEFAULT FALSE, /* has been finished */
-    CONSTRAINT TaskCreateEpoch FOREIGN KEY (epochID) REFERENCES epoch(id)
+    taskRoot VARCHAR(64), /* merkle root of all justified slots for this task */
+    finishEpoch INT, /* epoch when task is completed */
+    CONSTRAINT TaskCreateEpoch FOREIGN KEY (epochID) REFERENCES epoch(id),
+    CONSTRAINT TaskFinishEpoch FOREIGN KEY (finishEpoch) REFERENCES epoch(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS slot (
@@ -34,12 +38,14 @@ CREATE TABLE IF NOT EXISTS slot (
     signature VARCHAR(64), 
     padding INT NOT NULL DEFAULT 0,
     store ENUM('local', 'ec') DEFAULT 'local',
+    status ENUM('committed', 'justified', 'finalized') DEFAULT 'committed',
+    merkleProof JSON, /* merkle proof for this slot within task */
+    taskMerkleProof JSON, /* merkle proof for task within epoch */
+    blsSignature VARCHAR(256), /* BLS signature from node */
     CONSTRAINT TaskCommitSlot FOREIGN KEY (taskID) REFERENCES task(id),
     CONSTRAINT SlotCommitEpoch FOREIGN KEY (commitEpoch) REFERENCES epoch(id),
     CONSTRAINT SlotFinalizeEpoch FOREIGN KEY (finalizeEpoch) REFERENCES epoch(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
 
 INSERT INTO epoch (startDate)
 SELECT CURDATE()

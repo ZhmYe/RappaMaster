@@ -11,10 +11,23 @@ import (
 type SlotStatus int
 
 const (
-	Commit SlotStatus = iota // is commit
-	Justified
-	Finalized
+	Committed SlotStatus = iota // slot has been committed by node
+	Justified                   // slot has been verified and justified in epoch
+	Finalized                   // slot has been finalized when task completes
 )
+
+func (s SlotStatus) String() string {
+	switch s {
+	case Committed:
+		return "committed"
+	case Justified:
+		return "justified"
+	case Finalized:
+		return "finalized"
+	default:
+		return "unknown"
+	}
+}
 
 type ScheduleSlot struct {
 	NodeID    int
