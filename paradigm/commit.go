@@ -43,8 +43,9 @@ const (
 	INVALID_SLOT       InvalidCommitType = iota // 不合法（负数或过大）的slot
 	EXPIRE_SLOT                                 // 过期的slot
 	INVALID_COMMITMENT                          // 承诺不通过
-	VERIFIED_FAILED                             // 异常的存储状态
+	VERIFIED_FAILED                             // 签名验证失败
 	DOWN_FAILED                                 //宕机无法恢复
+	Veritified_FALED                            //
 	UNKNOWN
 	NONE
 )
@@ -82,6 +83,7 @@ func (c *CommitSlotItem) Check() bool {
 	}
 	return true
 }
+
 func (c *CommitSlotItem) State() CommitState {
 	return c.state
 }

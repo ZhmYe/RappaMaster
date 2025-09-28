@@ -1,8 +1,10 @@
 package paradigm
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	ecdsa_secp "github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	"os"
 	"strconv"
 )
@@ -12,6 +14,50 @@ type BHNodeAddress struct {
 	NodeIPAddress string //节点IP
 	NodeGrpcPort  int    //节点grpc端口
 	nodeUrl       string //节点访问url
+}
+
+// 定义节点公钥配置
+type BHNodeKey struct {
+	secpKey ecdsa_secp.PublicKey
+	blKey   BLS12381PublicKey
+}
+
+// 自定义序列化
+func (nk *BHNodeKey) UnmarshalJSON(data []byte) error {
+	// 定义临时结构体用于解析原始 JSON
+	var raw struct {
+		SecpKey string `json:"spKey"`
+		BlKey   string `json:"blKey"`
+	}
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// 解析 secpKey
+	secpBytes, err := base64.StdEncoding.DecodeString(raw.SecpKey)
+	if err != nil {
+		return fmt.Errorf("invalid secpKey: %w", err)
+	}
+	secpKey, err := DecodeSecpPublicKey(secpBytes)
+	if err != nil {
+		return fmt.Errorf("invalid secpKey: %w", err)
+	}
+
+	nk.secpKey = secpKey
+
+	// 解析 blKey（假设是十六进制）
+	blKeyBytes, err := base64.StdEncoding.DecodeString(raw.BlKey)
+	if err != nil {
+		return fmt.Errorf("invalid blKey: %w", err)
+	}
+	blKey, err := DecodeBLS12381PublicKey(blKeyBytes)
+	if err != nil {
+		return fmt.Errorf("invalid blKey: %w", err)
+	}
+	nk.blKey = blKey
+
+	return nil
 }
 
 // 返回地址字符串
@@ -59,11 +105,14 @@ type BHLayer2NodeConfig struct {
 	LogPath                    string                 // 日志路径
 	BHNodeAddressMap           map[int]*BHNodeAddress //节点的grpc端口配置，id->nodeIdaddress todo 这里是不是可以改成数组
 	DEBUG                      bool
-
 	// 纠删码配置
 	// todo 这里考虑可以加一个枚举作为纠删码的选项
 	ErasureCodeParamN int
 	ErasureCodeParamK int
+	//密钥管理配置
+	CertPath       string                // 主机密钥路径
+	HostPrivateKey ecdsa_secp.PrivateKey // 主机公钥
+	BHNodeKeyMap   map[int]*BHNodeKey    // 节点公钥存储
 
 	// ChainUpper 配置
 	FiscoBcosHost string // FISCO-BCOS 节点地址
@@ -100,6 +149,10 @@ var DefaultBHLayer2NodeConfig = BHLayer2NodeConfig{
 
 	ErasureCodeParamN: 9,
 	ErasureCodeParamK: 6, // 默认配置
+
+	CertPath:       "./cert",
+	HostPrivateKey: ecdsa_secp.PrivateKey{},
+	BHNodeKeyMap:   make(map[int]*BHNodeKey, 0),
 
 	// 默认 ChainUpper 配置
 	FiscoBcosHost: "127.0.0.1",
@@ -141,7 +194,7 @@ func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 	//once.Do(func() {
 	config := DefaultBHLayer2NodeConfig
 	InitGlobalLogWriter(config.LogPath, config.DEBUG)
-
+	loadPKI(&config)
 	// 尝试从配置文件加载
 	if path != "" {
 		file, err := os.Open(path)
@@ -151,9 +204,10 @@ func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 			err = decoder.Decode(&config)
 			if err != nil {
 				// 配置文件解析失败时保留默认值
-
 				println("Failed to parse config file, using default values:", err.Error())
 			}
+			//加载公私钥
+
 		} else {
 			// 文件打开失败时保留默认值
 			println("Failed to open config file, using default values:", err.Error())
@@ -162,5 +216,23 @@ func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 
 	// 设置全局配置
 	return &config
+}
 
+func loadPKI(config *BHLayer2NodeConfig) {
+	// 加载主机公私钥
+	hostSKPath := fmt.Sprintf("%s/host_sk.key", config.CertPath)
+	// 加载文件，公私钥bas64解码
+	hostSKBytes, err := os.ReadFile(hostSKPath)
+	if err != nil {
+		println("Failed to read host secret key file, using default values:", err.Error())
+	}
+	// 解码公私钥
+	hostSK, err := base64.StdEncoding.DecodeString(string(hostSKBytes))
+	if err != nil {
+		println("Failed to decode host secret key, using default values:", err.Error())
+	}
+	_, err = config.HostPrivateKey.SetBytes(hostSK)
+	if err != nil {
+		return
+	}
 }

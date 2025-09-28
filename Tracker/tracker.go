@@ -125,7 +125,7 @@ func (t *Tracker) CollectExpire() {
 				//} else {
 				// abort
 				commitSlot := expireSlot.PendingSlot.CommitSlotItem
-				commitSlot.SetInvalid(paradigm.VERIFIED_FAILED)
+				commitSlot.SetInvalid(paradigm.EXPIRE_SLOT)
 				t.channel.CommitSlots <- *commitSlot
 			}
 			delete(t.pendingCommitSlot, expireSlot.SlotHash) // 标记为已完成，不需要记录了

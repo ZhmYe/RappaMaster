@@ -13,7 +13,7 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 	//slot, _ := strconv.Atoi(req.Slot)
 	//paradigm.Log("DEBUG", "successfully receive commit slot") // TODO
 
-	item := paradigm.NewCommitSlotItem(&pb.JustifiedSlot{
+	item := paradigm.NewSignedCommitSlot(&pb.JustifiedSlot{
 		Nid:        req.NodeId,
 		Process:    req.Size,
 		Sign:       req.Sign,
@@ -22,9 +22,12 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Padding:    req.Padding,
 		Store:      req.Store,
 		Commitment: req.Commitment,
-	})
+	}, req.NodeSign)
 	item.SetHash(req.Hash) // 设置slotHash
-	//TODO  @YZM 将验证后的结果放入commitSlot 这里目前没想好验什么
+
+	//这里验证合法性
+	c.pkiManager.VertifySlot(item)
+
 	c.channel.CommitSlots <- item
 	//paradigm.Print("COORDINATOR", fmt.Sprintf("Successfully receive commit slot: {%s}, commitment: {%v}", item.SlotHash(), item.Commitment))
 	generateRandomSeed := func() []byte {
