@@ -58,11 +58,13 @@ message ScheduleResponse {
 
 message SlotCommitRequest {
     string slotHash = 1;
-    int32 size = 2;
-    bytes commitment = 3;      // 数据的完整性承诺
-    bytes signature = 4;       // 需要节点对此签名
-    repeated bytes votes = 5;  // 如果是ec或者多副本，需要其他节点的签名
-    int32 store = 6;          // 存储方式,0=ec; 1=local; 2=replicas
+    string sign = 2;
+    int32 nodeID = 3;
+    int32 size = 4;
+    bytes commitment = 5;      // 数据的完整性承诺
+    bytes signature = 6;       // 需要节点对此签名
+    repeated bytes votes = 7;  // 如果是ec或者多副本，需要其他节点的签名
+    int32 store = 8;          // 存储方式,0=ec; 1=local; 2=replicas
 }
 
 message SlotCommitResponse {

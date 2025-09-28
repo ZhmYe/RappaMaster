@@ -1,7 +1,6 @@
 package types
 
 import (
-	"RappaMaster/paradigm"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -9,11 +8,12 @@ import (
 	"time"
 )
 
+type TaskID int32
 type Task struct {
-	taskID   int32
+	taskID   TaskID
 	sign     string
 	name     string
-	model    paradigm.SupportModelType
+	model    SupportModelType
 	expected int64
 	finish   int64
 	txHash   string
@@ -36,14 +36,14 @@ func (task *Task) Sign() string {
 	return task.sign
 }
 func (task *Task) Model() string {
-	return paradigm.ModelTypeToString(task.model)
+	return ModelTypeToString(task.model)
 }
 func (task *Task) Expected() int64 {
 	return task.expected
 }
 func (task *Task) FromRowData(data map[string]interface{}) {
 	if id, ok := data["id"]; ok {
-		task.taskID = id.(int32)
+		task.taskID = id.(TaskID)
 	}
 	if sign, ok := data["sign"]; ok {
 		task.sign = sign.(string)
@@ -53,7 +53,7 @@ func (task *Task) FromRowData(data map[string]interface{}) {
 	}
 
 	if model, ok := data["model"]; ok {
-		task.model = paradigm.NameToModelType(model.(string))
+		task.model = NameToModelType(model.(string))
 	}
 	if expected, ok := data["expected"]; ok {
 		task.expected = expected.(int64)
@@ -75,7 +75,7 @@ func SimpleTaskFromSign(sign string) *Task {
 		taskID:   -1,
 		sign:     sign,
 		name:     "",
-		model:    paradigm.NOTIMPORTANT,
+		model:    NOTIMPORTANT,
 		expected: 0,
 		finish:   0,
 		txHash:   "",
@@ -83,11 +83,11 @@ func SimpleTaskFromSign(sign string) *Task {
 	}
 }
 
-func NewTask(name string, model paradigm.SupportModelType, expected int64) *Task {
+func NewTask(name string, model SupportModelType, expected int64) *Task {
 	hash := sha256.New()
 	hash.Write([]byte(name))
 	hash.Write([]byte(fmt.Sprintf("%d", expected)))
-	hash.Write([]byte(paradigm.ModelTypeToString(model)))
+	hash.Write([]byte(ModelTypeToString(model)))
 	hash.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	hash.Write([]byte(fmt.Sprintf("%d", rand.Int())))
 	return &Task{
@@ -103,5 +103,5 @@ func NewTask(name string, model paradigm.SupportModelType, expected int64) *Task
 }
 
 func DefaultTaskForTest() *Task {
-	return NewTask("Test Task", paradigm.CTGAN, 1000)
+	return NewTask("Test Task", CTGAN, 1000)
 }

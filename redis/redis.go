@@ -2,7 +2,7 @@ package redis
 
 import (
 	"RappaMaster/config"
-	"RappaMaster/paradigm"
+	"RappaMaster/types"
 	"context"
 	"github.com/redis/go-redis/v9"
 )
@@ -21,7 +21,7 @@ func (rcs *RedisService) Init() error {
 	ctx := context.Background()
 	_, err := rcs.Client.Ping(ctx).Result()
 	if err != nil {
-		return paradigm.RaiseError(paradigm.RedisError, "connect redis failed", err)
+		return types.RaiseError(types.RedisError, "connect redis failed", err)
 	}
 	return nil
 }

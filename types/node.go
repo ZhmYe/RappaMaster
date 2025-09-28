@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+type NodeID int32
+
 const (
 	CPU_USAGE_THERESHOLD     int64 = 80
 	DISK_AVAILABLE_THRESHOLD int64 = 10000000000 // 10GB

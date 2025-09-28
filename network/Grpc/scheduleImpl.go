@@ -2,7 +2,6 @@ package Grpc
 
 import (
 	"RappaMaster/helper"
-	"RappaMaster/paradigm"
 	pb "RappaMaster/pb/service"
 	"RappaMaster/types"
 	"context"
@@ -12,13 +11,13 @@ import (
 
 func (ge *GrpcEngine) sendSchedule(slot types.ScheduleSlot) {
 	if slot.NodeID >= len(ge.nodeAddress) {
-		helper.GlobalServiceHelper.ReportError(paradigm.RaiseError(paradigm.RuntimeError, "Invalid Schedule, Node ID out of range", fmt.Errorf("%d >= %d", slot.NodeID, len(ge.nodeAddress))))
+		helper.GlobalServiceHelper.ReportError(types.RaiseError(types.RuntimeError, "Invalid Schedule, Node ID out of range", fmt.Errorf("%d >= %d", slot.NodeID, len(ge.nodeAddress))))
 		return
 	}
 	request := pb.ScheduleRequest{
 		Sign:  slot.Task,
 		Size:  int32(slot.Size),
-		Model: paradigm.ModelTypeToString(slot.Model),
+		Model: types.ModelTypeToString(slot.Model),
 	}
 	conn, err := ge.GetConnection(slot.NodeID)
 	if err != nil {
@@ -31,7 +30,7 @@ func (ge *GrpcEngine) sendSchedule(slot types.ScheduleSlot) {
 
 	resp, err := client.Schedule(ctx, &request, grpc.WaitForReady(true))
 	if err != nil {
-		helper.GlobalServiceHelper.ReportError(paradigm.RaiseError(paradigm.NetworkError, fmt.Sprintf("Failed to send schedule to node %d", slot.NodeID), err))
+		helper.GlobalServiceHelper.ReportError(types.RaiseError(types.NetworkError, fmt.Sprintf("Failed to send schedule to node %d", slot.NodeID), err))
 		return
 	}
 	// TODO 如果这里没写成功怎么办，是否应该是先写，再调度
@@ -41,6 +40,6 @@ func (ge *GrpcEngine) sendSchedule(slot types.ScheduleSlot) {
 		}
 
 	} else {
-		helper.GlobalServiceHelper.ReportError(paradigm.RaiseError(paradigm.NetworkError, fmt.Sprintf("Fail to send schedule to node %d", slot.NodeID), fmt.Errorf("node reject to accept the schedule")))
+		helper.GlobalServiceHelper.ReportError(types.RaiseError(types.NetworkError, fmt.Sprintf("Fail to send schedule to node %d", slot.NodeID), fmt.Errorf("node reject to accept the schedule")))
 	}
 }

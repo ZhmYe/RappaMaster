@@ -2,7 +2,6 @@ package Tracker
 
 import (
 	"RappaMaster/helper"
-	"RappaMaster/paradigm"
 	"RappaMaster/types"
 	"context"
 	"fmt"
@@ -30,7 +29,7 @@ func (tracker *Tracker) processNewTask(ctx context.Context) {
 			}
 			err := helper.GlobalServiceHelper.Redis.Set(ctx, t.Sign(), "", TASK_EXPIRE_TIME).Err()
 			if err != nil {
-				helper.GlobalServiceHelper.ReportError(paradigm.RaiseError(paradigm.RedisError, "Set Task Expire Time failed", err))
+				helper.GlobalServiceHelper.ReportError(types.RaiseError(types.RedisError, "Set Task Expire Time failed", err))
 				return
 			}
 		}

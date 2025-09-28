@@ -3,8 +3,7 @@ package fisco_bcos_client
 import (
 	"RappaMaster/config"
 	"RappaMaster/fisco-bcos-client/contract/store"
-	"RappaMaster/paradigm"
-	"RappaMaster/transaction"
+	types2 "RappaMaster/types"
 	"encoding/hex"
 	"github.com/FISCO-BCOS/go-sdk/v3/client"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
@@ -37,15 +36,15 @@ type RappaFBClient struct {
 	contractAddress  common.Address
 }
 
-func (c *RappaFBClient) SendWithSync(tx transaction.Transaction) (types.Receipt, error) {
+func (c *RappaFBClient) SendWithSync(tx types2.Transaction) (types.Receipt, error) {
 	return c.processTransaction(tx)
 }
-func (c *RappaFBClient) SendWithAsync(tx transaction.Transaction, wg *sync.WaitGroup) (types.Receipt, error) {
+func (c *RappaFBClient) SendWithAsync(tx types2.Transaction, wg *sync.WaitGroup) (types.Receipt, error) {
 	defer wg.Done()
 	return c.processTransaction(tx)
 }
 
-func (c *RappaFBClient) processTransaction(tx transaction.Transaction) (types.Receipt, error) {
+func (c *RappaFBClient) processTransaction(tx types2.Transaction) (types.Receipt, error) {
 	if config.DEBUG {
 		// in debug mode, we just return a fake receipt
 		return defaultMockerReceipt, nil
@@ -54,13 +53,13 @@ func (c *RappaFBClient) processTransaction(tx transaction.Transaction) (types.Re
 	storeSession := &Store.StoreSession{Contract: c.contractInstance, CallOpts: *c.GetCallOpts(), TransactOpts: *c.GetTransactOpts()}
 	_, _receipt, err := storeSession.SetItems(keys, values)
 	if err != nil {
-		return types.Receipt{}, paradigm.RaiseError(paradigm.UpchainError, "client failed to call SetItems", err)
+		return types.Receipt{}, types2.RaiseError(types2.UpchainError, "client failed to call SetItems", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	receipt, err := c.GetTransactionReceipt(ctx, common.HexToHash(_receipt.TransactionHash), true)
 	if err != nil {
-		return types.Receipt{}, paradigm.RaiseError(paradigm.UpchainError, "client failed to call SetItems", err)
+		return types.Receipt{}, types2.RaiseError(types2.UpchainError, "client failed to call SetItems", err)
 	}
 	return *receipt, nil
 }
@@ -81,11 +80,11 @@ func NewRappaFBClient(c config.FBConfig) (*RappaFBClient, error) {
 		TLSKeyFile:  c.TLSKeyFile,
 	})
 	if err != nil {
-		return nil, paradigm.RaiseError(paradigm.UpchainError, "client failed to dial client", err)
+		return nil, types2.RaiseError(types2.UpchainError, "client failed to dial client", err)
 	}
 	address, _, instance, err := Store.DeployStore(client.GetTransactOpts(), client)
 	if err != nil {
-		return nil, paradigm.RaiseError(paradigm.UpchainError, "client failed to call DeployStore", err)
+		return nil, types2.RaiseError(types2.UpchainError, "client failed to call DeployStore", err)
 	}
 	return &RappaFBClient{
 		Client:           client,

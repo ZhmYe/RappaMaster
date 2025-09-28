@@ -4,10 +4,11 @@ import (
 	"RappaMaster/config"
 	"RappaMaster/database"
 	fisco_bcos_client "RappaMaster/fisco-bcos-client"
+	pb "RappaMaster/pb/service"
 	"RappaMaster/redis"
-	"RappaMaster/transaction"
 	"RappaMaster/types"
 	"fmt"
+	"sync"
 )
 
 var GlobalServiceHelper RappaChannel
@@ -32,7 +33,7 @@ func init() {
 		ErrorHandler:     make(chan error, 100),
 		UnprocessedTasks: make(chan types.Task, 100),
 		ScheduleQueue:    make(chan string, 100),
-		upchainBuffer:    make(chan transaction.Transaction, 100),
+		upchainBuffer:    make(chan types.Transaction, 100),
 	}
 }
 
@@ -44,7 +45,9 @@ type RappaChannel struct {
 	ScheduleQueue    chan string // sign
 	SlotSchedule     chan types.ScheduleSlot
 	ErrorHandler     chan error
-	upchainBuffer    chan transaction.Transaction
+	upchainBuffer    chan types.Transaction
+	EpochUpdateQueue chan *pb.SlotCommitRequest
+	EvidenceQueue    chan types.BlockedGrpcPayload[types.EpochIntegrityEvidence, error]
 }
 
 func (rc *RappaChannel) UpdateNewTaskTrack(t types.Task) {
@@ -66,4 +69,30 @@ func (rc *RappaChannel) SendToSchedule(slots ...types.ScheduleSlot) {
 			rc.SlotSchedule <- slot
 		}()
 	}
+}
+
+func (rc *RappaChannel) UpdateEpochTree(slot *pb.SlotCommitRequest) {
+	go func() {
+		rc.EpochUpdateQueue <- slot
+	}()
+}
+
+// SendIntegrityEvidence 这里返回值是失败的nodeID
+func (rc *RappaChannel) SendIntegrityEvidence(evidences []types.EpochIntegrityEvidence) []types.NodeID {
+	var wg sync.WaitGroup
+	wg.Add(len(evidences))
+	res := make([]types.NodeID, 0)
+	for _, evidence := range evidences {
+		go func() {
+			defer wg.Done()
+			message, conn := types.NewBlockedGrpcPayload[types.EpochIntegrityEvidence, error](evidence)
+			rc.EvidenceQueue <- message
+			if err := <-conn; err != nil {
+				res = append(res, evidence.NodeID())
+			}
+		}()
+	}
+	wg.Wait()
+	return res
+
 }

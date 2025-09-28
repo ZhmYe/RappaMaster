@@ -1,10 +1,7 @@
 package HTTP
 
 import (
-	"RappaMaster/Query"
 	"RappaMaster/helper"
-	"RappaMaster/paradigm"
-	"RappaMaster/transaction"
 	"RappaMaster/types"
 	"fmt"
 	"net/http"
@@ -96,20 +93,20 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/create",
 			Method: "POST",
 			Handler: func(c *gin.Context) {
-				var requestBody Query.HttpInitTaskRequest
+				var requestBody types.HttpInitTaskRequest
 				if err := c.ShouldBindJSON(&requestBody); err != nil {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+					c.JSON(http.StatusBadRequest, types.HttpResponse{
 						Message: "Invalid Request data, error: " + err.Error(),
 						Code:    "ERROR",
 						Data:    nil,
 					})
 					return
 				}
-				t := types.NewTask(requestBody.Name, paradigm.NameToModelType(requestBody.Model), requestBody.Size)
+				t := types.NewTask(requestBody.Name, types.NameToModelType(requestBody.Model), int64(requestBody.Size))
 				//paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, t.Sign()))
-				receipt, err := helper.GlobalServiceHelper.Chain.SendWithSync(transaction.NewInitTaskTransaction([]types.Task{*t}))
+				receipt, err := helper.GlobalServiceHelper.Chain.SendWithSync(types.NewInitTaskTransaction([]types.Task{*t}))
 				if err != nil {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+					c.JSON(http.StatusBadRequest, types.HttpResponse{
 						Message: fmt.Sprintf("create task error: %v", err),
 						Code:    "ERROR",
 						Data:    nil,
@@ -117,7 +114,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					return
 				}
 				if err = helper.GlobalServiceHelper.DB.CreateTask(*t, receipt); err != nil {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+					c.JSON(http.StatusBadRequest, types.HttpResponse{
 						Message: fmt.Sprintf("create task error: %v", err),
 						Code:    "ERROR",
 						Data:    nil,
@@ -126,7 +123,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				}
 				// now we create a task, then we pass it to tracker
 				go helper.GlobalServiceHelper.UpdateNewTaskTrack(*t)
-				response := paradigm.HttpResponse{
+				response := types.HttpResponse{
 					Message: fmt.Sprintf("Create New SynthTask Successfully, task sign: %s, transaction receipt: %s", t.Sign(), receipt.TransactionHash),
 					Code:    "OK",
 					Data:    nil,
@@ -165,7 +162,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 	//	}
 	//	return &httpService, nil
 	default:
-		paradigm.Error(paradigm.NetworkError, "Unknown HTTP Service")
+		types.Error(types.NetworkError, "Unknown HTTP Service")
 		//LogWriter.Log("ERROR", fmt.Sprintf("%s: %s", paradigm.ErrorToString(paradigm.NetworkError), "Unknown Http Service"))
 		return nil, fmt.Errorf("unknown Http Service")
 	}

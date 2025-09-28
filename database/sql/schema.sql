@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS slot (
     finished BIGINT NOT NULL DEFAULT 0,
     scheduleEpoch INT NOT NULL,
     commitEpoch INT, /* commit but not finalized */
+    justifiedEpoch INT,
     finalizeEpoch INT,
     commitment VARCHAR(64), /* we not constrain not null here, we check in code */
     signature VARCHAR(64), 

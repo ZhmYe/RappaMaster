@@ -2,7 +2,6 @@ package database
 
 import (
 	"RappaMaster/config"
-	"RappaMaster/paradigm"
 	types2 "RappaMaster/types"
 	"errors"
 	"github.com/FISCO-BCOS/go-sdk/v3/types"
@@ -53,7 +52,7 @@ func (dbs *DatabaseService) CheckTaskIsFinish(sign string, t ...*types2.Task) (b
 		tsk.FromRowData(data)
 	}
 	if flag, ok := data["done"].(int64); !ok {
-		return false, paradigm.RaiseError(paradigm.DatabaseError, "invalid parse result", errors.New("data[done] is not int64"))
+		return false, types2.RaiseError(types2.DatabaseError, "invalid parse result", errors.New("data[done] is not int64"))
 	} else {
 		return flag == 1, nil
 	}

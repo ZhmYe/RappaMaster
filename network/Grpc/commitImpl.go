@@ -11,5 +11,6 @@ func (ge *GrpcEngine) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 	if err != nil {
 		return &pb.SlotCommitResponse{Accept: false}, err
 	}
+	helper.GlobalServiceHelper.UpdateEpochTree(req) // 非阻塞，这里只要数据库成功写入了就行
 	return &pb.SlotCommitResponse{Accept: true}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"RappaMaster/handler"
 	"RappaMaster/paradigm"
 	pb "RappaMaster/pb/service"
+	"RappaMaster/types"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
@@ -27,7 +28,7 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 			// 建立grpc连接
 			conn, err := c.connManager.GetConn(nodeID)
 			if err != nil {
-				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
+				e := types.Error(types.ExecutorError, fmt.Sprintf("Failed to connect to node %d at %s: %v", nodeID, address, err))
 				//disconnected <- nodeID // 暂定为当作失联
 				errorStatus := paradigm.NewErrorNodeHeartbeatReport(int32(nodeID), e.Error())
 				c.channel.MonitorHeartbeatChannel <- errorStatus
@@ -41,7 +42,7 @@ func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {
 			resp, err := client.Heartbeat(ctx, heartbeat, grpc.WaitForReady(true))
 			//TODO grpc在建立连接时其实就可以判断出节点是否失联
 			if err != nil {
-				e := paradigm.Error(paradigm.ExecutorError, fmt.Sprintf("Failed to send heartbeat to node %d: %v", nodeID, err))
+				e := types.Error(types.ExecutorError, fmt.Sprintf("Failed to send heartbeat to node %d: %v", nodeID, err))
 				errorStatus := paradigm.NewErrorNodeHeartbeatReport(int32(nodeID), e.Error())
 				c.channel.MonitorHeartbeatChannel <- errorStatus
 				//rejectedChannel <- 0 // 默认统计为未接受

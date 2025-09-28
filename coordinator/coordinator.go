@@ -2,10 +2,9 @@ package coordinator
 
 import (
 	"RappaMaster/Network/Grpc"
-	"RappaMaster/channel"
 	"RappaMaster/helper"
-	"RappaMaster/paradigm"
 	pb "RappaMaster/pb/service"
+	"RappaMaster/types"
 	"fmt"
 	"google.golang.org/grpc"
 	"net"
@@ -65,13 +64,13 @@ func (c *Coordinator) Start() {
 		// 监听指定端口
 		lis, err := net.Listen("tcp", ":"+strconv.Itoa(c.serverPort))
 		if err != nil {
-			paradigm.Error(paradigm.NetworkError, fmt.Sprintf("Failed to listen: %v", err))
+			types.Error(types.NetworkError, fmt.Sprintf("Failed to listen: %v", err))
 		}
 		server := grpc.NewServer(grpc.MaxSendMsgSize(1024*1024*1024), grpc.MaxRecvMsgSize(1024*1024*1024))
 		pb.RegisterRappaMasterServer(server, c)
-		paradigm.Print("INFO", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
+		types.Print("INFO", fmt.Sprintf("Coordinator gRPC server is running on :%d", c.serverPort))
 		if err := server.Serve(lis); err != nil {
-			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to serve: %v", err))
+			types.Error(types.RuntimeError, fmt.Sprintf("Failed to serve: %v", err))
 		}
 
 	}

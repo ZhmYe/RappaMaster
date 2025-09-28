@@ -2,7 +2,7 @@ package database
 
 import (
 	"RappaMaster/config"
-	"RappaMaster/paradigm"
+	"RappaMaster/types"
 	"fmt"
 	"gorm.io/gorm/logger"
 	"log"
@@ -43,7 +43,7 @@ func (dbs *DatabaseService) script(path string, isRead bool, values ...interface
 		result = dbs.db.Exec(sqlStr, values...)
 	}
 	if err = result.Error; err != nil {
-		return nil, paradigm.RaiseError(paradigm.DatabaseError, fmt.Sprintf("Database executes scripts failed"), err)
+		return nil, types.RaiseError(types.DatabaseError, fmt.Sprintf("Database executes scripts failed"), err)
 	}
 	return result, nil
 }
@@ -53,7 +53,7 @@ func (dbs *DatabaseService) Init() error {
 	}
 	logFile, err := os.OpenFile(path.Join(config.ProjectRootPath, "logs/slow_sql.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		return paradigm.RaiseError(paradigm.FileError, "Create slow sql log failed", err)
+		return types.RaiseError(types.FileError, "Create slow sql log failed", err)
 	}
 	defer logFile.Close()
 
@@ -68,17 +68,17 @@ func (dbs *DatabaseService) Init() error {
 	)
 	gormDB, err := gorm.Open(mysql.Open(dbs.DSN()), &gorm.Config{Logger: customLogger})
 	if err != nil {
-		return paradigm.RaiseError(paradigm.DatabaseError, "Database inits failed", err)
+		return types.RaiseError(types.DatabaseError, "Database inits failed", err)
 	}
 	sqlDB, err := gormDB.DB()
 	if err != nil {
-		return paradigm.RaiseError(paradigm.DatabaseError, "Get database failed", err)
+		return types.RaiseError(types.DatabaseError, "Get database failed", err)
 	}
 	sqlDB.SetMaxIdleConns(dbs.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(dbs.MaxOpenConns)
 	maxLifetime, err := time.ParseDuration(dbs.MaxLifetime)
 	if err != nil {
-		return paradigm.RaiseError(paradigm.ValueError, fmt.Sprintf("Parse MaxLifeTime %s failed", dbs.MaxLifetime), err)
+		return types.RaiseError(types.ValueError, fmt.Sprintf("Parse MaxLifeTime %s failed", dbs.MaxLifetime), err)
 	}
 	sqlDB.SetConnMaxLifetime(maxLifetime)
 	dbs.db = gormDB

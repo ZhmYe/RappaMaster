@@ -22,17 +22,19 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Heartbeat request message
+// Heartbeat request message - master sends to nodes
 type HeartbeatRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Commits    map[string][]byte      `protobuf:"bytes,1,rep,name=commits,proto3" json:"commits,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 提交的CommitSlotItem列表
 	Justifieds map[string][]byte      `protobuf:"bytes,2,rep,name=justifieds,proto3" json:"justifieds,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Finalizes  map[string][]byte      `protobuf:"bytes,3,rep,name=finalizes,proto3" json:"finalizes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 完成的CommitSlotItem列表
 	Invalids   map[string]int32       `protobuf:"bytes,4,rep,name=invalids,proto3" json:"invalids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`  // 这个epoch中检测出的有问题的slot
-	// map<string, int32> tasks = 3;            // 在这个epoch中过期的任务的最新slot
-	Epoch         int32 `protobuf:"varint,5,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Epoch      int32                  `protobuf:"varint,5,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// New fields for epoch validation
+	EpochRoot       string            `protobuf:"bytes,6,opt,name=epochRoot,proto3" json:"epochRoot,omitempty"`             // Epoch merkle root
+	NodeMerkleInfos []*NodeMerkleInfo `protobuf:"bytes,7,rep,name=nodeMerkleInfos,proto3" json:"nodeMerkleInfos,omitempty"` // Merkle info for each node
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *HeartbeatRequest) Reset() {
@@ -100,18 +102,167 @@ func (x *HeartbeatRequest) GetEpoch() int32 {
 	return 0
 }
 
+func (x *HeartbeatRequest) GetEpochRoot() string {
+	if x != nil {
+		return x.EpochRoot
+	}
+	return ""
+}
+
+func (x *HeartbeatRequest) GetNodeMerkleInfos() []*NodeMerkleInfo {
+	if x != nil {
+		return x.NodeMerkleInfos
+	}
+	return nil
+}
+
+// Merkle information sent to each node
+type NodeMerkleInfo struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	NodeId           int32                  `protobuf:"varint,1,opt,name=nodeId,proto3" json:"nodeId,omitempty"`
+	NodeRoot         string                 `protobuf:"bytes,2,opt,name=nodeRoot,proto3" json:"nodeRoot,omitempty"`                 // Merkle root of slots for this node
+	TaskProofs       []*TaskMerkleProof     `protobuf:"bytes,3,rep,name=taskProofs,proto3" json:"taskProofs,omitempty"`             // Task merkle proofs
+	EpochMerkleProof string                 `protobuf:"bytes,4,opt,name=epochMerkleProof,proto3" json:"epochMerkleProof,omitempty"` // Proof of epochRoot
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *NodeMerkleInfo) Reset() {
+	*x = NodeMerkleInfo{}
+	mi := &file_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NodeMerkleInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NodeMerkleInfo) ProtoMessage() {}
+
+func (x *NodeMerkleInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NodeMerkleInfo.ProtoReflect.Descriptor instead.
+func (*NodeMerkleInfo) Descriptor() ([]byte, []int) {
+	return file_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *NodeMerkleInfo) GetNodeId() int32 {
+	if x != nil {
+		return x.NodeId
+	}
+	return 0
+}
+
+func (x *NodeMerkleInfo) GetNodeRoot() string {
+	if x != nil {
+		return x.NodeRoot
+	}
+	return ""
+}
+
+func (x *NodeMerkleInfo) GetTaskProofs() []*TaskMerkleProof {
+	if x != nil {
+		return x.TaskProofs
+	}
+	return nil
+}
+
+func (x *NodeMerkleInfo) GetEpochMerkleProof() string {
+	if x != nil {
+		return x.EpochMerkleProof
+	}
+	return ""
+}
+
+// Task merkle proof information
+type TaskMerkleProof struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskSign      string                 `protobuf:"bytes,1,opt,name=taskSign,proto3" json:"taskSign,omitempty"`
+	TaskRoot      string                 `protobuf:"bytes,2,opt,name=taskRoot,proto3" json:"taskRoot,omitempty"`
+	MerkleProof   string                 `protobuf:"bytes,3,opt,name=merkleProof,proto3" json:"merkleProof,omitempty"` // JSON encoded merkle proof
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskMerkleProof) Reset() {
+	*x = TaskMerkleProof{}
+	mi := &file_service_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskMerkleProof) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskMerkleProof) ProtoMessage() {}
+
+func (x *TaskMerkleProof) ProtoReflect() protoreflect.Message {
+	mi := &file_service_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskMerkleProof.ProtoReflect.Descriptor instead.
+func (*TaskMerkleProof) Descriptor() ([]byte, []int) {
+	return file_service_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *TaskMerkleProof) GetTaskSign() string {
+	if x != nil {
+		return x.TaskSign
+	}
+	return ""
+}
+
+func (x *TaskMerkleProof) GetTaskRoot() string {
+	if x != nil {
+		return x.TaskRoot
+	}
+	return ""
+}
+
+func (x *TaskMerkleProof) GetMerkleProof() string {
+	if x != nil {
+		return x.MerkleProof
+	}
+	return ""
+}
+
+// Heartbeat response - nodes send back to master
 type HeartbeatResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NodeId        int32                  `protobuf:"varint,1,opt,name=nodeId,proto3" json:"nodeId,omitempty"` // 节点id
 	CpuUsage      int32                  `protobuf:"varint,2,opt,name=cpuUsage,proto3" json:"cpuUsage,omitempty"`
 	DiskAvailable int32                  `protobuf:"varint,3,opt,name=diskAvailable,proto3" json:"diskAvailable,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// New fields for epoch validation
+	EpochSignature  string `protobuf:"bytes,4,opt,name=epochSignature,proto3" json:"epochSignature,omitempty"`   // BLS signature of epochRoot
+	EpochValidated  bool   `protobuf:"varint,5,opt,name=epochValidated,proto3" json:"epochValidated,omitempty"`  // Whether node validated the epoch
+	ValidationError string `protobuf:"bytes,6,opt,name=validationError,proto3" json:"validationError,omitempty"` // Error message if validation failed
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_service_proto_msgTypes[1]
+	mi := &file_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -123,7 +274,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[1]
+	mi := &file_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -136,7 +287,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{1}
+	return file_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *HeartbeatResponse) GetNodeId() int32 {
@@ -160,6 +311,27 @@ func (x *HeartbeatResponse) GetDiskAvailable() int32 {
 	return 0
 }
 
+func (x *HeartbeatResponse) GetEpochSignature() string {
+	if x != nil {
+		return x.EpochSignature
+	}
+	return ""
+}
+
+func (x *HeartbeatResponse) GetEpochValidated() bool {
+	if x != nil {
+		return x.EpochValidated
+	}
+	return false
+}
+
+func (x *HeartbeatResponse) GetValidationError() string {
+	if x != nil {
+		return x.ValidationError
+	}
+	return ""
+}
+
 type ScheduleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sign          string                 `protobuf:"bytes,1,opt,name=sign,proto3" json:"sign,omitempty"`   // 任务标记
@@ -171,7 +343,7 @@ type ScheduleRequest struct {
 
 func (x *ScheduleRequest) Reset() {
 	*x = ScheduleRequest{}
-	mi := &file_service_proto_msgTypes[2]
+	mi := &file_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -183,7 +355,7 @@ func (x *ScheduleRequest) String() string {
 func (*ScheduleRequest) ProtoMessage() {}
 
 func (x *ScheduleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[2]
+	mi := &file_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -196,7 +368,7 @@ func (x *ScheduleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleRequest.ProtoReflect.Descriptor instead.
 func (*ScheduleRequest) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{2}
+	return file_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ScheduleRequest) GetSign() string {
@@ -229,7 +401,7 @@ type ScheduleResponse struct {
 
 func (x *ScheduleResponse) Reset() {
 	*x = ScheduleResponse{}
-	mi := &file_service_proto_msgTypes[3]
+	mi := &file_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -241,7 +413,7 @@ func (x *ScheduleResponse) String() string {
 func (*ScheduleResponse) ProtoMessage() {}
 
 func (x *ScheduleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[3]
+	mi := &file_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -254,7 +426,7 @@ func (x *ScheduleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduleResponse.ProtoReflect.Descriptor instead.
 func (*ScheduleResponse) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{3}
+	return file_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ScheduleResponse) GetAccept() bool {
@@ -267,18 +439,20 @@ func (x *ScheduleResponse) GetAccept() bool {
 type SlotCommitRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SlotHash      string                 `protobuf:"bytes,1,opt,name=slotHash,proto3" json:"slotHash,omitempty"`
-	Size          int32                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
-	Commitment    []byte                 `protobuf:"bytes,3,opt,name=commitment,proto3" json:"commitment,omitempty"` // 数据的完整性承诺
-	Signature     []byte                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`   // 需要节点对此签名
-	Votes         [][]byte               `protobuf:"bytes,5,rep,name=votes,proto3" json:"votes,omitempty"`           // 如果是ec或者多副本，需要其他节点的签名
-	Store         int32                  `protobuf:"varint,6,opt,name=store,proto3" json:"store,omitempty"`          // 存储方式,0=ec; 1=local; 2=replicas
+	Sign          string                 `protobuf:"bytes,2,opt,name=sign,proto3" json:"sign,omitempty"`
+	NodeID        int32                  `protobuf:"varint,3,opt,name=nodeID,proto3" json:"nodeID,omitempty"`
+	Size          int32                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
+	Commitment    []byte                 `protobuf:"bytes,5,opt,name=commitment,proto3" json:"commitment,omitempty"` // 数据的完整性承诺
+	Signature     []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`   // 需要节点对此签名
+	Votes         [][]byte               `protobuf:"bytes,7,rep,name=votes,proto3" json:"votes,omitempty"`           // 如果是ec或者多副本，需要其他节点的签名
+	Store         int32                  `protobuf:"varint,8,opt,name=store,proto3" json:"store,omitempty"`          // 存储方式,0=ec; 1=local; 2=replicas
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SlotCommitRequest) Reset() {
 	*x = SlotCommitRequest{}
-	mi := &file_service_proto_msgTypes[4]
+	mi := &file_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +464,7 @@ func (x *SlotCommitRequest) String() string {
 func (*SlotCommitRequest) ProtoMessage() {}
 
 func (x *SlotCommitRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[4]
+	mi := &file_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +477,7 @@ func (x *SlotCommitRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlotCommitRequest.ProtoReflect.Descriptor instead.
 func (*SlotCommitRequest) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{4}
+	return file_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SlotCommitRequest) GetSlotHash() string {
@@ -311,6 +485,20 @@ func (x *SlotCommitRequest) GetSlotHash() string {
 		return x.SlotHash
 	}
 	return ""
+}
+
+func (x *SlotCommitRequest) GetSign() string {
+	if x != nil {
+		return x.Sign
+	}
+	return ""
+}
+
+func (x *SlotCommitRequest) GetNodeID() int32 {
+	if x != nil {
+		return x.NodeID
+	}
+	return 0
 }
 
 func (x *SlotCommitRequest) GetSize() int32 {
@@ -357,7 +545,7 @@ type SlotCommitResponse struct {
 
 func (x *SlotCommitResponse) Reset() {
 	*x = SlotCommitResponse{}
-	mi := &file_service_proto_msgTypes[5]
+	mi := &file_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -369,7 +557,7 @@ func (x *SlotCommitResponse) String() string {
 func (*SlotCommitResponse) ProtoMessage() {}
 
 func (x *SlotCommitResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[5]
+	mi := &file_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -382,7 +570,7 @@ func (x *SlotCommitResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlotCommitResponse.ProtoReflect.Descriptor instead.
 func (*SlotCommitResponse) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{5}
+	return file_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SlotCommitResponse) GetAccept() bool {
@@ -392,176 +580,11 @@ func (x *SlotCommitResponse) GetAccept() bool {
 	return false
 }
 
-type RecoverRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Mission       string                 `protobuf:"bytes,1,opt,name=mission,proto3" json:"mission,omitempty"`
-	Hashs         []string               `protobuf:"bytes,2,rep,name=hashs,proto3" json:"hashs,omitempty"` // 所有要收集的slotHash
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RecoverRequest) Reset() {
-	*x = RecoverRequest{}
-	mi := &file_service_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RecoverRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RecoverRequest) ProtoMessage() {}
-
-func (x *RecoverRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RecoverRequest.ProtoReflect.Descriptor instead.
-func (*RecoverRequest) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *RecoverRequest) GetMission() string {
-	if x != nil {
-		return x.Mission
-	}
-	return ""
-}
-
-func (x *RecoverRequest) GetHashs() []string {
-	if x != nil {
-		return x.Hashs
-	}
-	return nil
-}
-
-// 每个chunk，这里是行块的ec块
-type RecoverSlotChunk struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Hash          string                 `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`   // slot hash
-	Row           int32                  `protobuf:"varint,2,opt,name=row,proto3" json:"row,omitempty"`    // 行块对应的index
-	Col           int32                  `protobuf:"varint,3,opt,name=col,proto3" json:"col,omitempty"`    // ec的index
-	Chunk         []byte                 `protobuf:"bytes,4,opt,name=chunk,proto3" json:"chunk,omitempty"` // chunk的内容
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RecoverSlotChunk) Reset() {
-	*x = RecoverSlotChunk{}
-	mi := &file_service_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RecoverSlotChunk) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RecoverSlotChunk) ProtoMessage() {}
-
-func (x *RecoverSlotChunk) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RecoverSlotChunk.ProtoReflect.Descriptor instead.
-func (*RecoverSlotChunk) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *RecoverSlotChunk) GetHash() string {
-	if x != nil {
-		return x.Hash
-	}
-	return ""
-}
-
-func (x *RecoverSlotChunk) GetRow() int32 {
-	if x != nil {
-		return x.Row
-	}
-	return 0
-}
-
-func (x *RecoverSlotChunk) GetCol() int32 {
-	if x != nil {
-		return x.Col
-	}
-	return 0
-}
-
-func (x *RecoverSlotChunk) GetChunk() []byte {
-	if x != nil {
-		return x.Chunk
-	}
-	return nil
-}
-
-type RecoverResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Chunks        []*RecoverSlotChunk    `protobuf:"bytes,1,rep,name=chunks,proto3" json:"chunks,omitempty"` // 本地的对应的chunks
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RecoverResponse) Reset() {
-	*x = RecoverResponse{}
-	mi := &file_service_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RecoverResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RecoverResponse) ProtoMessage() {}
-
-func (x *RecoverResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_service_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RecoverResponse.ProtoReflect.Descriptor instead.
-func (*RecoverResponse) Descriptor() ([]byte, []int) {
-	return file_service_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *RecoverResponse) GetChunks() []*RecoverSlotChunk {
-	if x != nil {
-		return x.Chunks
-	}
-	return nil
-}
-
 var File_service_proto protoreflect.FileDescriptor
 
 const file_service_proto_rawDesc = "" +
 	"\n" +
-	"\rservice.proto\x12\aservice\x1a\x1cgoogle/protobuf/struct.proto\"\xb8\x04\n" +
+	"\rservice.proto\x12\aservice\x1a\x1cgoogle/protobuf/struct.proto\"\x99\x05\n" +
 	"\x10HeartbeatRequest\x12@\n" +
 	"\acommits\x18\x01 \x03(\v2&.service.HeartbeatRequest.CommitsEntryR\acommits\x12I\n" +
 	"\n" +
@@ -569,7 +592,9 @@ const file_service_proto_rawDesc = "" +
 	"justifieds\x12F\n" +
 	"\tfinalizes\x18\x03 \x03(\v2(.service.HeartbeatRequest.FinalizesEntryR\tfinalizes\x12C\n" +
 	"\binvalids\x18\x04 \x03(\v2'.service.HeartbeatRequest.InvalidsEntryR\binvalids\x12\x14\n" +
-	"\x05epoch\x18\x05 \x01(\x05R\x05epoch\x1a:\n" +
+	"\x05epoch\x18\x05 \x01(\x05R\x05epoch\x12\x1c\n" +
+	"\tepochRoot\x18\x06 \x01(\tR\tepochRoot\x12A\n" +
+	"\x0fnodeMerkleInfos\x18\a \x03(\v2\x17.service.NodeMerkleInfoR\x0fnodeMerkleInfos\x1a:\n" +
 	"\fCommitsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a=\n" +
@@ -581,45 +606,50 @@ const file_service_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\x1a;\n" +
 	"\rInvalidsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"m\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xaa\x01\n" +
+	"\x0eNodeMerkleInfo\x12\x16\n" +
+	"\x06nodeId\x18\x01 \x01(\x05R\x06nodeId\x12\x1a\n" +
+	"\bnodeRoot\x18\x02 \x01(\tR\bnodeRoot\x128\n" +
+	"\n" +
+	"taskProofs\x18\x03 \x03(\v2\x18.service.TaskMerkleProofR\n" +
+	"taskProofs\x12*\n" +
+	"\x10epochMerkleProof\x18\x04 \x01(\tR\x10epochMerkleProof\"k\n" +
+	"\x0fTaskMerkleProof\x12\x1a\n" +
+	"\btaskSign\x18\x01 \x01(\tR\btaskSign\x12\x1a\n" +
+	"\btaskRoot\x18\x02 \x01(\tR\btaskRoot\x12 \n" +
+	"\vmerkleProof\x18\x03 \x01(\tR\vmerkleProof\"\xe7\x01\n" +
 	"\x11HeartbeatResponse\x12\x16\n" +
 	"\x06nodeId\x18\x01 \x01(\x05R\x06nodeId\x12\x1a\n" +
 	"\bcpuUsage\x18\x02 \x01(\x05R\bcpuUsage\x12$\n" +
-	"\rdiskAvailable\x18\x03 \x01(\x05R\rdiskAvailable\"O\n" +
+	"\rdiskAvailable\x18\x03 \x01(\x05R\rdiskAvailable\x12&\n" +
+	"\x0eepochSignature\x18\x04 \x01(\tR\x0eepochSignature\x12&\n" +
+	"\x0eepochValidated\x18\x05 \x01(\bR\x0eepochValidated\x12(\n" +
+	"\x0fvalidationError\x18\x06 \x01(\tR\x0fvalidationError\"O\n" +
 	"\x0fScheduleRequest\x12\x12\n" +
 	"\x04sign\x18\x01 \x01(\tR\x04sign\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\x05R\x04size\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\"*\n" +
 	"\x10ScheduleResponse\x12\x16\n" +
-	"\x06accept\x18\x01 \x01(\bR\x06accept\"\xad\x01\n" +
+	"\x06accept\x18\x01 \x01(\bR\x06accept\"\xd9\x01\n" +
 	"\x11SlotCommitRequest\x12\x1a\n" +
 	"\bslotHash\x18\x01 \x01(\tR\bslotHash\x12\x12\n" +
-	"\x04size\x18\x02 \x01(\x05R\x04size\x12\x1e\n" +
+	"\x04sign\x18\x02 \x01(\tR\x04sign\x12\x16\n" +
+	"\x06nodeID\x18\x03 \x01(\x05R\x06nodeID\x12\x12\n" +
+	"\x04size\x18\x04 \x01(\x05R\x04size\x12\x1e\n" +
 	"\n" +
-	"commitment\x18\x03 \x01(\fR\n" +
+	"commitment\x18\x05 \x01(\fR\n" +
 	"commitment\x12\x1c\n" +
-	"\tsignature\x18\x04 \x01(\fR\tsignature\x12\x14\n" +
-	"\x05votes\x18\x05 \x03(\fR\x05votes\x12\x14\n" +
-	"\x05store\x18\x06 \x01(\x05R\x05store\",\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\x12\x14\n" +
+	"\x05votes\x18\a \x03(\fR\x05votes\x12\x14\n" +
+	"\x05store\x18\b \x01(\x05R\x05store\",\n" +
 	"\x12SlotCommitResponse\x12\x16\n" +
-	"\x06accept\x18\x01 \x01(\bR\x06accept\"@\n" +
-	"\x0eRecoverRequest\x12\x18\n" +
-	"\amission\x18\x01 \x01(\tR\amission\x12\x14\n" +
-	"\x05hashs\x18\x02 \x03(\tR\x05hashs\"`\n" +
-	"\x10RecoverSlotChunk\x12\x12\n" +
-	"\x04hash\x18\x01 \x01(\tR\x04hash\x12\x10\n" +
-	"\x03row\x18\x02 \x01(\x05R\x03row\x12\x10\n" +
-	"\x03col\x18\x03 \x01(\x05R\x03col\x12\x14\n" +
-	"\x05chunk\x18\x04 \x01(\fR\x05chunk\"D\n" +
-	"\x0fRecoverResponse\x121\n" +
-	"\x06chunks\x18\x01 \x03(\v2\x19.service.RecoverSlotChunkR\x06chunks2T\n" +
+	"\x06accept\x18\x01 \x01(\bR\x06accept2T\n" +
 	"\vRappaMaster\x12E\n" +
 	"\n" +
-	"CommitSlot\x12\x1a.service.SlotCommitRequest\x1a\x1b.service.SlotCommitResponse2\xd5\x01\n" +
+	"CommitSlot\x12\x1a.service.SlotCommitRequest\x1a\x1b.service.SlotCommitResponse2\x97\x01\n" +
 	"\x10RappaSynthesizer\x12B\n" +
 	"\tHeartbeat\x12\x19.service.HeartbeatRequest\x1a\x1a.service.HeartbeatResponse\x12?\n" +
-	"\bSchedule\x12\x18.service.ScheduleRequest\x1a\x19.service.ScheduleResponse\x12<\n" +
-	"\aCollect\x12\x17.service.RecoverRequest\x1a\x18.service.RecoverResponseB\n" +
+	"\bSchedule\x12\x18.service.ScheduleRequest\x1a\x19.service.ScheduleResponseB\n" +
 	"Z\b/serviceb\x06proto3"
 
 var (
@@ -634,41 +664,39 @@ func file_service_proto_rawDescGZIP() []byte {
 	return file_service_proto_rawDescData
 }
 
-var file_service_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_service_proto_goTypes = []any{
 	(*HeartbeatRequest)(nil),   // 0: service.HeartbeatRequest
-	(*HeartbeatResponse)(nil),  // 1: service.HeartbeatResponse
-	(*ScheduleRequest)(nil),    // 2: service.ScheduleRequest
-	(*ScheduleResponse)(nil),   // 3: service.ScheduleResponse
-	(*SlotCommitRequest)(nil),  // 4: service.SlotCommitRequest
-	(*SlotCommitResponse)(nil), // 5: service.SlotCommitResponse
-	(*RecoverRequest)(nil),     // 6: service.RecoverRequest
-	(*RecoverSlotChunk)(nil),   // 7: service.RecoverSlotChunk
-	(*RecoverResponse)(nil),    // 8: service.RecoverResponse
-	nil,                        // 9: service.HeartbeatRequest.CommitsEntry
-	nil,                        // 10: service.HeartbeatRequest.JustifiedsEntry
-	nil,                        // 11: service.HeartbeatRequest.FinalizesEntry
-	nil,                        // 12: service.HeartbeatRequest.InvalidsEntry
+	(*NodeMerkleInfo)(nil),     // 1: service.NodeMerkleInfo
+	(*TaskMerkleProof)(nil),    // 2: service.TaskMerkleProof
+	(*HeartbeatResponse)(nil),  // 3: service.HeartbeatResponse
+	(*ScheduleRequest)(nil),    // 4: service.ScheduleRequest
+	(*ScheduleResponse)(nil),   // 5: service.ScheduleResponse
+	(*SlotCommitRequest)(nil),  // 6: service.SlotCommitRequest
+	(*SlotCommitResponse)(nil), // 7: service.SlotCommitResponse
+	nil,                        // 8: service.HeartbeatRequest.CommitsEntry
+	nil,                        // 9: service.HeartbeatRequest.JustifiedsEntry
+	nil,                        // 10: service.HeartbeatRequest.FinalizesEntry
+	nil,                        // 11: service.HeartbeatRequest.InvalidsEntry
 }
 var file_service_proto_depIdxs = []int32{
-	9,  // 0: service.HeartbeatRequest.commits:type_name -> service.HeartbeatRequest.CommitsEntry
-	10, // 1: service.HeartbeatRequest.justifieds:type_name -> service.HeartbeatRequest.JustifiedsEntry
-	11, // 2: service.HeartbeatRequest.finalizes:type_name -> service.HeartbeatRequest.FinalizesEntry
-	12, // 3: service.HeartbeatRequest.invalids:type_name -> service.HeartbeatRequest.InvalidsEntry
-	7,  // 4: service.RecoverResponse.chunks:type_name -> service.RecoverSlotChunk
-	4,  // 5: service.RappaMaster.CommitSlot:input_type -> service.SlotCommitRequest
-	0,  // 6: service.RappaSynthesizer.Heartbeat:input_type -> service.HeartbeatRequest
-	2,  // 7: service.RappaSynthesizer.Schedule:input_type -> service.ScheduleRequest
-	6,  // 8: service.RappaSynthesizer.Collect:input_type -> service.RecoverRequest
-	5,  // 9: service.RappaMaster.CommitSlot:output_type -> service.SlotCommitResponse
-	1,  // 10: service.RappaSynthesizer.Heartbeat:output_type -> service.HeartbeatResponse
-	3,  // 11: service.RappaSynthesizer.Schedule:output_type -> service.ScheduleResponse
-	8,  // 12: service.RappaSynthesizer.Collect:output_type -> service.RecoverResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	8,  // 0: service.HeartbeatRequest.commits:type_name -> service.HeartbeatRequest.CommitsEntry
+	9,  // 1: service.HeartbeatRequest.justifieds:type_name -> service.HeartbeatRequest.JustifiedsEntry
+	10, // 2: service.HeartbeatRequest.finalizes:type_name -> service.HeartbeatRequest.FinalizesEntry
+	11, // 3: service.HeartbeatRequest.invalids:type_name -> service.HeartbeatRequest.InvalidsEntry
+	1,  // 4: service.HeartbeatRequest.nodeMerkleInfos:type_name -> service.NodeMerkleInfo
+	2,  // 5: service.NodeMerkleInfo.taskProofs:type_name -> service.TaskMerkleProof
+	6,  // 6: service.RappaMaster.CommitSlot:input_type -> service.SlotCommitRequest
+	0,  // 7: service.RappaSynthesizer.Heartbeat:input_type -> service.HeartbeatRequest
+	4,  // 8: service.RappaSynthesizer.Schedule:input_type -> service.ScheduleRequest
+	7,  // 9: service.RappaMaster.CommitSlot:output_type -> service.SlotCommitResponse
+	3,  // 10: service.RappaSynthesizer.Heartbeat:output_type -> service.HeartbeatResponse
+	5,  // 11: service.RappaSynthesizer.Schedule:output_type -> service.ScheduleResponse
+	9,  // [9:12] is the sub-list for method output_type
+	6,  // [6:9] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_service_proto_init() }
@@ -682,7 +710,7 @@ func file_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_service_proto_rawDesc), len(file_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
