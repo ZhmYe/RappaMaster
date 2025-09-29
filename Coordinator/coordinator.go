@@ -2,7 +2,6 @@ package Coordinator
 
 import (
 	"BHLayer2Node/Network/Grpc"
-	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"BHLayer2Node/utils"
@@ -30,8 +29,7 @@ type Coordinator struct {
 	//scheduledTasks        chan paradigm.TaskSchedule      // 已经完成调度的任务
 	maxEpochDelay int                   //说明多少时间后需要传递一个zkp证明以及多久后开始投票
 	connManager   *Grpc.NodeGrpcManager //用于管理GRPC客户端连接
-	pkiManager    *PKI.PKIManager
-	serverPort    int // coordinator对节点暴露的grpc端口
+	serverPort    int                   // coordinator对节点暴露的grpc端口
 	//epochHeartbeat        chan *pb.HeartbeatRequest       // 由taskManager构造，大小设置为1, 每个epoch构造一次，epoch只在taskManager中计数即可
 	//commitSlot            chan paradigm.CommitSlotItem    // 交给taskManager更新
 	//recoverRequestChannel chan paradigm.RecoverConnection // CollectInstance确认收集哪些slot以后发给coordinator进行分发
@@ -126,7 +124,6 @@ func NewCoordinator(channel *paradigm.RappaChannel) *Coordinator {
 		//scheduledTasks:   channel.ScheduledTasks,
 		channel:       channel,
 		maxEpochDelay: config.MaxEpochDelay,
-		pkiManager:    nil,
 		connManager:   Grpc.NewNodeGrpcManager(config.BHNodeAddressMap),
 		serverPort:    config.GrpcPort,
 		//mockerNodes:      make([]*Mocker.MockerExecutionNode, 0),

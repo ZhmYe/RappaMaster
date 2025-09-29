@@ -9,6 +9,7 @@ import (
 	"BHLayer2Node/Monitor"
 	"BHLayer2Node/Network/HTTP"
 	"BHLayer2Node/Oracle"
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/Recovery"
 	"BHLayer2Node/Schedule"
 	"BHLayer2Node/paradigm"
@@ -32,6 +33,7 @@ func main() {
 	}
 	// 恢复数据
 	recovery := Recovery.RecoverFromDataBase(config, dbService)
+	pkiManager := PKI.NewPKIManager(config)
 	// 初始化各个组件
 	//grpcEngine := Grpc.NewFakeGrpcEngine(pendingSlotPool, pendingSlotRecord)
 	//grpcEngine.Setup(*config)
@@ -40,9 +42,9 @@ func main() {
 	httpEngine := HTTP.NewHttpEngine(rappaChannel)
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
-	epochManager := Epoch.NewEpochManager(rappaChannel, recovery)
+	epochManager := Epoch.NewEpochManager(rappaChannel, recovery, pkiManager)
 	//chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
-	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService)
+	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService, pkiManager)
 	monitor := Monitor.NewMonitor(rappaChannel)
 	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	if err != nil {

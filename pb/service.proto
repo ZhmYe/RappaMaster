@@ -115,7 +115,7 @@ message ScheduleResponse {
 message SlotCommitRequest {
   int32 nodeId = 1;
   string nodeSign = 2;
-  bytes ca = 3;   // 节点的证书
+  string ca = 3;   // 节点的证书
   string sign = 4;
   int32 slot = 5;
   int32 size = 6;

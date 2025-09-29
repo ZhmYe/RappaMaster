@@ -28,6 +28,8 @@ type CollectSlotItem struct {
 	//OutputType  ModelOutputType // 模型输出格式，用于collector恢复
 	PaddingSize []int32 // 所有的padding size
 	StoreMethod int32   // 存储方式
+	NodeSign    string  //节点签名
+	NodeId      int     //节点公钥
 }
 
 type RecoverConnection struct {

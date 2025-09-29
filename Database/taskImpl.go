@@ -2,6 +2,7 @@ package Database
 
 import (
 	"BHLayer2Node/Collector"
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
@@ -204,12 +205,12 @@ func (o DatabaseService) DownUnFinishedTasks() error {
 }
 
 // RecoverCollector 恢复任务的Collector
-func (o DatabaseService) RecoverCollector(task *paradigm.Task) error {
+func (o DatabaseService) RecoverCollector(task *paradigm.Task, manager *PKI.PKIManager) error {
 	if task.Status != paradigm.Finished {
 		return fmt.Errorf("task is not finished, cannot be downloaded")
 	}
 	if task.Collector == nil {
-		task.Collector = Collector.NewCollector(task.Sign, task.OutputType, o.channel)
+		task.Collector = Collector.NewCollector(task.Sign, task.OutputType, o.channel, manager)
 	}
 	var slots []*paradigm.Slot
 	err := o.db.Where("task_id = ? AND status = ?", task.Sign, paradigm.Finished).Find(&slots).Error
@@ -223,6 +224,8 @@ func (o DatabaseService) RecoverCollector(task *paradigm.Task) error {
 			Size:        slot.ScheduleSize,
 			PaddingSize: slot.CommitSlot.GetPadding(),
 			StoreMethod: slot.CommitSlot.GetStore(),
+			NodeSign:    slot.Sign,
+			NodeId:      int(slot.NodeID),
 		}
 		task.Collector.ProcessSlotUpdate(collectSlot)
 	}

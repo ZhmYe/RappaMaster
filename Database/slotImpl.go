@@ -32,13 +32,15 @@ func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.Inv
 	o.db.Model(slotQuery).Select("epoch", "err", "status").Updates(slotQuery)
 }
 
-func (o DatabaseService) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem) {
+func (o DatabaseService) SetSlotFinish(slotHash paradigm.SlotHash, commitSlotItem *paradigm.CommitSlotItem, sign string, ca string) {
 	slotQuery := o.GetSlot(slotHash)
 	// 更新slot状态，这里应该是指针
 	slotQuery.CommitSlot = commitSlotItem
 	slotQuery.Status = paradigm.Finished
 	slotQuery.Epoch = commitSlotItem.Epoch
-	o.db.Model(slotQuery).Select("status", "epoch", "commit_slot").Updates(slotQuery)
+	slotQuery.CA = ca
+	slotQuery.Sign = sign
+	o.db.Model(slotQuery).Select("status", "epoch", "commit_slot", "ca", "sign").Updates(slotQuery)
 }
 
 func (o DatabaseService) GetSlot(slotHash paradigm.SlotHash) *paradigm.Slot {

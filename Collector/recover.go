@@ -20,6 +20,9 @@ type SlotRecover struct {
 	//output     []byte                   // 这里暂时先写成byte
 	paddingSize []int32 // row chunk的padding size
 	storeMethod int32   // 存储方式，也是恢复方式, 一个slot只会有一种方式
+	dataHash    string
+	sign        string
+	nodeId      int
 }
 
 func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {
@@ -32,6 +35,7 @@ func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {
 		r.chunks = append(r.chunks, []*pb.RecoverSlotChunk{})
 	}
 	r.chunks[row] = append(r.chunks[row], chunk)
+	r.dataHash += string(chunk.Chunk)
 	//r.chunks = append(r.chunks, chunk)
 }
 func (r *SlotRecover) Recover() interface{} {

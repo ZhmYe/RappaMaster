@@ -145,7 +145,7 @@ func (r *EpochRecord) UpdateTask(task *Task) {
 	}
 	r.Tasks[task.Sign] = task.Size
 }
-func (r *EpochRecord) Commit(slot *CommitSlotItem) {
+func (r *EpochRecord) Commit(slot *SignedCommitSlotItem) {
 	check := func() bool {
 		// 这里判断slot的合法性 todo
 		if slot.State() == INVALID {
@@ -157,7 +157,7 @@ func (r *EpochRecord) Commit(slot *CommitSlotItem) {
 		r.Commits[slot.SlotHash()] = slot.Commitment
 	}
 }
-func (r *EpochRecord) Justified(slot *CommitSlotItem) {
+func (r *EpochRecord) Justified(slot *SignedCommitSlotItem) {
 	check := func() bool {
 		if slot.State() != JUSTIFIED {
 			return false
@@ -171,7 +171,7 @@ func (r *EpochRecord) Justified(slot *CommitSlotItem) {
 		slot.SetInvalid(UNKNOWN) // TODO
 	}
 }
-func (r *EpochRecord) Finalize(slot *CommitSlotItem) {
+func (r *EpochRecord) Finalize(slot *SignedCommitSlotItem) {
 	check := func() bool {
 		// 这里判断合法性 todo
 		if slot.State() != FINALIZE {
@@ -189,7 +189,7 @@ func (r *EpochRecord) Finalize(slot *CommitSlotItem) {
 
 	}
 }
-func (r *EpochRecord) Abort(slot *CommitSlotItem, reason InvalidCommitType) {
+func (r *EpochRecord) Abort(slot *SignedCommitSlotItem, reason InvalidCommitType) {
 	check := func() bool {
 		return true
 	}

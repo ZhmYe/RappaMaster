@@ -1,10 +1,12 @@
 package Epoch
 
 import (
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/Recovery"
 	"BHLayer2Node/Tracker"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
+	"fmt"
 	"sync"
 )
 
@@ -19,6 +21,7 @@ type EpochManager struct {
 	//pendingCommitSlot map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack // 等待由Justified -> Finalized的slot
 	currentEpoch int
 	epochRecord  *EpochRecord
+	pkiManager   *PKI.PKIManager
 }
 
 func (t *EpochManager) Start() {
@@ -28,36 +31,27 @@ func (t *EpochManager) Start() {
 			select {
 			case <-t.channel.EpochEvent:
 				t.UpdateEpoch() // 如果epoch更新，那么先更新epoch，此时有新的任务也会进入下一个epoch
-			//case initTask := <-t.channel.InitTasks:
-			//	t.tracker.InitTask(initTask)
-			//	// TODO @YZM 应该先上链再更新
-			//	go func(track paradigm.SynthTaskTrackItem) {
-			//		//t.channel.UnprocessedTasks <- slot
-			//		// 上链新Task
-			//		task := paradigm.NewTask(track.TaskID, track.Model, track.Params, track.Size)
-			//		t.channel.PendingTransactions <- &paradigm.InitTaskTransaction{
-			//			task,
-			//		}
-			//	}(*initTask)
 			case commitSlotItem := <-t.channel.CommitSlots:
 				// 判断类别,如果是新commit的则commit，如果已经通过投票，则finalize
 				switch commitSlotItem.State() {
 				case paradigm.UNDETERMINED:
 					//t.pendingCommitSlot[commitSlotItem.SlotHash()] = paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.CheckIsReliable(commitSlotItem.Sign)) // 等待verify
 					// JUSITIFIED的slot必须在一段时间内完成可信证明
-					t.tracker.UpdateSlot(commitSlotItem)
-					t.epochRecord.Commit(&commitSlotItem) // 无论如何都要放到commit里，用于投票
+					//验证节点ca是否有效
+					if t.pkiManager.VerifyNodeCA(commitSlotItem.Nid, int32(t.currentEpoch), commitSlotItem.GetNodeCA()) {
+						t.tracker.UpdateSlot(commitSlotItem)
+						t.epochRecord.Commit(&commitSlotItem) // 无论如何都要放到commit里，用于投票
+					} else {
+						// 无效直接抛弃,按理说要在链上验证签名，这里简单本地验证
+						// TODO 这里可能说明这个节点ca过期了，需要重新注册，目前没相关逻辑
+						commitSlotItem.SetInvalid(paradigm.VERIFIED_FAILED)
+						t.epochRecord.Invalids[commitSlotItem.SlotHash()] =
+							paradigm.NewInvalidCommitError(paradigm.VERIFIED_FAILED, fmt.Sprintf("the slot from %d has invalid ca", commitSlotItem.Nid))
+					}
 				case paradigm.JUSTIFIED:
 					// 这里的JUSTIFIED只是说明通过投票了，在无需可信证明的情况下，可以上链
 					// 这里直接commit，commit里不需要额外的check,随时可以上链
-
 					// 接下来只需要将那个对应的pending给设置为win vote 剩下的由Tracker自己处理
-					//t.pendingCommitSlot[commitSlotItem.SlotHash()].ReceiveProof()
-					// TODO @YZM 这里slot的提交时间要理一下
-					//if _, exist := t.pendingCommitSlot[commitSlotItem.SlotHash()]; exist {
-					//	t.pendingCommitSlot[commitSlotItem.SlotHash()].WonVote()
-					//}
-					//t.epochRecord.Justified(commitSlotItem)
 					t.tracker.WonVote(commitSlotItem.SlotHash())
 				case paradigm.FINALIZE:
 					commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
@@ -69,12 +63,13 @@ func (t *EpochManager) Start() {
 					}
 					t.epochRecord.Finalize(&commitSlotItem)
 					// 上链任务推进情况
+					//TODO 这里简单上链签名和ca证书
 					go func(transaction *paradigm.TaskProcessTransaction) {
 						t.channel.PendingTransactions <- transaction
 					}(&paradigm.TaskProcessTransaction{
-						CommitSlotItem: &commitSlotItem,
+						CommitSlotItem: commitSlotItem.CommitSlotItem,
 						Proof:          nil,
-						Signatures:     nil,
+						Signatures:     [][]byte{[]byte(commitSlotItem.GetSlotSignature()), []byte(commitSlotItem.GetNodeCA())},
 					})
 				case paradigm.INVALID:
 					t.epochRecord.Abort(&commitSlotItem, commitSlotItem.InvalidType) // 如果在外面就判断出来不对，直接加入到invalid即可
@@ -87,16 +82,6 @@ func (t *EpochManager) Start() {
 			case slot := <-t.channel.UnScheduledSlotChannel:
 				// 这里要记录没法调度的slot
 				t.epochRecord.Invalids[slot.SlotID] = paradigm.NewInvalidCommitError(paradigm.INVALID_SLOT, slot.ErrorMessage())
-				//t.UpdateTask(initTask.Sign, initTask.Model, initTask.Size, initTask.Params)
-			//case schedule := <-t.channel.ScheduledTasks:
-			//	_, err := t.UpdateTaskSchedule(schedule)
-			//	// 不合法
-			//	if err != nil {
-			//		LogWriter.Log("ERROR", err.Error())
-			//		continue
-			//	}
-			//	// 将任务添加到对应剩余时间的桶,这里只记录sign即可
-			//	t.tracker.UpdateTask(schedule.Sign)
 			default:
 				continue
 			}
@@ -105,102 +90,11 @@ func (t *EpochManager) Start() {
 	go processTasks()
 }
 
-//func (t *EpochManager) CheckTaskIsFinish(sign string) bool {
-//	if task, exist := t.tasks[sign]; !exist {
-//		return false
-//	} else {
-//		return task.IsFinish()
-//	}
-//}
-//
-
-//func (t *EpochManager) CheckSlotIsValid(sign string, slot int32) paradigm.InvalidCommitType {
-//	if _, exist := t.tasks[sign]; !exist {
-//		return paradigm.INVALID_SLOT
-//	} // todo 这里可以区分slot和sign
-//	task := t.tasks[sign]
-//	if task.Slot < slot {
-//		return paradigm.INVALID_SLOT
-//	}
-//	if task.Slot > slot {
-//		return paradigm.EXPIRE_SLOT
-//	}
-//	return paradigm.NONE
-//}
-
-//func (t *EpochManager) UpdateTask(sign string, model paradigm.SupportModelType, size int32, params map[string]interface{}) {
-//	if _, exist := t.tasks[sign]; !exist {
-//		task := paradigm.NewTask(sign, model, params, size)
-//		t.tasks[sign] = task
-//		nextSlot, _ := task.Next()
-//		go func(slot paradigm.UnprocessedTask) {
-//			t.channel.UnprocessedTasks <- slot
-//			// 上链新Task
-//			t.channel.PendingTransactions <- &paradigm.InitTaskTransaction{
-//				task,
-//			}
-//		}(nextSlot)
-//		LogWriter.Log("TRACKER", fmt.Sprintf("Update New Epoch, sign: %s, slot: 0", sign))
-//	}
-//}
-//
-//func (t *EpochManager) UpdateTaskSchedule(schedule paradigm.TaskSchedule) (bool, error) {
-//	sign, slot := schedule.Sign, schedule.Slot
-//	//if _, exist := t.tasks[sign]; !exist {
-//	//	//t.tasks[sign] = NewTask(sign, schedule.Model, schedule.Params, schedule.Size)
-//	//	LogWriter.Log("ERROR", fmt.Sprintf("Epoch %s does not exist", sign))
-//	//}
-//	t.UpdateTask(sign, schedule.Model, schedule.Size, schedule.Params)
-//	task := t.tasks[sign]
-//	if t.CheckSlotIsValid(sign, slot) != paradigm.NONE {
-//		return false, fmt.Errorf("invalid slot")
-//	}
-//	err := task.UpdateSchedule(schedule) // 更新slot
-//	if err != nil {
-//		return false, err
-//	}
-//	return true, nil
-//}
-
-//func (t *EpochManager) Commit(slot *paradigm.CommitSlotItem) error {
-//	task, exist := t.tasks[slot.Sign]
-//	if !exist {
-//		return fmt.Errorf("task %s does not exist", slot.Sign)
-//	}
-//	return task.Commit(slot)
-//}
-
 func (t *EpochManager) UpdateEpoch() {
 	t.mu.Lock()
 	t.currentEpoch++
 	currentEpoch := t.currentEpoch
 	t.mu.Unlock()
-
-	// paradigm.Log("TRACKER", fmt.Sprintf("Epoch update, current Epoch: %d", t.currentEpoch))
-	//finalizedSlots, abortSlots := t.tracker.OutOfDate()
-	//validTaskMap := make(map[string]int32)
-	//for _, commitSlotItem := range finalizedSlots {
-	//	commitSlotItem.SetEpoch(int32(t.currentEpoch)) // 统一都设置这个epoch
-	//	commitSlotItem.SetFinalize()
-	//	err := t.tracker.Commit(commitSlotItem) // 正式更新任务
-	//	if err != nil {
-	//		LogWriter.Log("ERROR", err.Error())
-	//		continue
-	//	}
-	//	t.epochRecord.Finalize(commitSlotItem)
-	//	// 上链任务推进情况
-	//	go func(transaction *paradigm.TaskProcessTransaction) {
-	//		t.channel.PendingTransactions <- transaction
-	//	}(&paradigm.TaskProcessTransaction{
-	//		CommitSlotItem: commitSlotItem,
-	//		Proof:          nil,
-	//		Signatures:     nil,
-	//	})
-	//}
-	//for _, slot := range abortSlots {
-	//	//slot.SetEpoch(t.currentEpoch)
-	//	t.epochRecord.Abort(slot, paradigm.VERIFIED_FAILED)
-	//}
 
 	// 更新epoch的时候，构建心跳
 	heartbeat := t.buildHeartbeat()
@@ -232,18 +126,6 @@ func (t *EpochManager) UpdateEpoch() {
 	}(tmp)
 	// 下面的内容和心跳无关
 	t.epochRecord.Echo()
-	//for _, sign := range outOfDateTasks {
-	//	task := t.tasks[sign]
-	//	if t.CheckTaskIsFinish(sign) {
-	//		LogWriter.Log("TRACKER", fmt.Sprintf("Epoch %s finished at slot %d, expected: %d, processed: %d", sign, task.Slot, task.Size, task.Process))
-	//		continue
-	//	}
-	//	nextSlot, _ := task.Next()
-	//	//validTaskMap[nextSlot.Sign] = int32(nextSlot.Slot)
-	//	go func(slot paradigm.UnprocessedTask) {
-	//		t.channel.UnprocessedTasks <- slot
-	//	}(nextSlot)
-	//}
 	t.epochRecord.Refresh()
 
 }
@@ -258,13 +140,14 @@ func (t *EpochManager) buildHeartbeat() *pb.HeartbeatRequest {
 		Epoch: int32(t.currentEpoch),
 	}
 }
-func NewEpochManager(channel *paradigm.RappaChannel, recovery *Recovery.RappaRecovery) *EpochManager {
+func NewEpochManager(channel *paradigm.RappaChannel, recovery *Recovery.RappaRecovery, manager *PKI.PKIManager) *EpochManager {
 	return &EpochManager{
 		channel: channel,
 		//tasks:             make(map[string]*Task),
 		mu:          sync.Mutex{},
 		tracker:     Tracker.NewTracker(channel),
 		epochRecord: paradigm.NewEpochRecord(int(recovery.EpochID) + 1),
+		pkiManager:  manager,
 		//pendingCommitSlot: make(map[paradigm.SlotHash]*paradigm.PendingCommitSlotTrack),
 		// currentEpoch: -1,
 		currentEpoch: int(recovery.EpochID),

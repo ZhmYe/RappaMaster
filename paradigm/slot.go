@@ -18,6 +18,8 @@ type Slot struct {
 	Status       SlotStatus      `gorm:"type:tinyint;not null;comment:完成状态"`
 	Err          string          `gorm:"type:text;comment:错误信息"`
 	CommitSlot   *CommitSlotItem `gorm:"type:json;serializer:json;comment:提交的CommitSlot信息"`
+	Sign         string          `gorm:"type:text;comment:签名"`
+	CA           string          `gorm:"column:ca;type:text;comment:CA"`
 	Epoch        int32           `gorm:"comment:Epoch ID"`
 }
 
@@ -34,7 +36,8 @@ func (s *Slot) Json() map[string]interface{} {
 		json["commitment"] = s.CommitSlot.Commitment
 		json["process"] = s.CommitSlot.Process
 	}
-
+	json["sign"] = s.Sign
+	json["ca"] = s.CA
 	json["epoch"] = s.Epoch
 	return json
 }

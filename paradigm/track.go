@@ -11,7 +11,7 @@ type SynthTaskTrackItem struct {
 	IsReliable bool
 }
 
-func (t *SynthTaskTrackItem) Commit(item CommitSlotItem) error {
+func (t *SynthTaskTrackItem) Commit(item SignedCommitSlotItem) error {
 	if item.State() != FINALIZE {
 		return fmt.Errorf("the commit Slot is not finalized") // 只能提交finalized的，因为已经通过投票了所以不需要check
 	}
@@ -48,7 +48,7 @@ func (t *UnprocessedTask) Process(size int32) {
 }
 
 type PendingCommitSlotTrack struct {
-	*CommitSlotItem
+	*SignedCommitSlotItem
 	IsFinalized      int32
 	hasVerifiedProof bool
 	hasWonVote       bool
@@ -57,12 +57,12 @@ type PendingCommitSlotTrack struct {
 func (t *PendingCommitSlotTrack) Check() bool {
 	return t.hasVerifiedProof && t.hasWonVote
 }
-func NewPendingCommitSlotTrack(item *CommitSlotItem, isReliable bool) *PendingCommitSlotTrack {
+func NewPendingCommitSlotTrack(item *SignedCommitSlotItem, isReliable bool) *PendingCommitSlotTrack {
 	return &PendingCommitSlotTrack{
-		CommitSlotItem:   item,
-		hasVerifiedProof: isReliable, // 如果不需要可信证明，那么就是完成了
-		hasWonVote:       false,
-		IsFinalized:      0,
+		SignedCommitSlotItem: item,
+		hasVerifiedProof:     isReliable, // 如果不需要可信证明，那么就是完成了
+		hasWonVote:           false,
+		IsFinalized:          0,
 	}
 }
 func (t *PendingCommitSlotTrack) ReceiveProof() {

@@ -1,6 +1,7 @@
 package Collector
 
 import (
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/pb/service"
 	"fmt"
@@ -14,6 +15,7 @@ type Collector struct {
 	//taskSlots map[string][]paradigm.CollectSlotItem
 	channel    *paradigm.RappaChannel
 	outputType paradigm.ModelOutputType
+	manager    *PKI.PKIManager
 }
 
 // ProcessSlotUpdate 处理slot的更新，从channel中获取
@@ -97,6 +99,7 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 		ResponseChannel: make(chan service.RecoverResponse, paradigm.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
 		//Connection:      c.channel.SlotCollectChannel,
 		Channel: c.channel,
+		Manager: c.manager,
 	}
 	return collectInstance.Collect(), nil
 }
@@ -114,11 +117,12 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 //	}
 //}
 
-func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *paradigm.RappaChannel) *Collector {
+func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *paradigm.RappaChannel, manager *PKI.PKIManager) *Collector {
 	return &Collector{
 		taskID:     taskID,
 		items:      make([]paradigm.CollectSlotItem, 0),
 		channel:    channel,
 		outputType: outputType,
+		manager:    manager,
 	}
 }

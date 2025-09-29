@@ -196,7 +196,7 @@ func (o *PersistedOracle) processDBQuery() {
 			task, err := o.dbService.GetTaskByID(item.TaskID())
 			// task.SetCollector(o.collectors[task.Sign])
 			// 从数据库中恢复Collector
-			err = o.dbService.RecoverCollector(task)
+			err = o.dbService.RecoverCollector(task, o.manager)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,
@@ -216,7 +216,7 @@ func (o *PersistedOracle) processDBQuery() {
 			task, err := o.dbService.GetTaskByID(item.TaskID())
 			// task.SetCollector(o.collectors[task.Sign])
 			// 从数据库中恢复Collector
-			err = o.dbService.RecoverCollector(task)
+			err = o.dbService.RecoverCollector(task, o.manager)
 			if err != nil {
 				errorResponse := paradigm.NewErrorResponse(
 					paradigm.NewRappaError(paradigm.RuntimeError,

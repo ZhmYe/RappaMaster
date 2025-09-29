@@ -2,6 +2,7 @@ package Oracle
 
 import (
 	"BHLayer2Node/Database"
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	"fmt"
 	"time"
@@ -11,6 +12,8 @@ type PersistedOracle struct {
 	channel *paradigm.RappaChannel
 	// mySQLConfig paradigm.DBConnection              //mysql连接配置
 	dbService *Database.DatabaseService
+
+	manager *PKI.PKIManager
 	// collectors map[string]paradigm.RappaCollector //定义任务收集器
 }
 
@@ -125,7 +128,6 @@ func (o *PersistedOracle) Start() {
 							TaskID:      "",
 							EpochID:     int32(epochRecord.Id),
 							UpchainTime: ptx.UpchainTime,
-							//ScheduleID: -1,
 						}
 						o.dbService.SetTransaction(reference)
 
@@ -138,9 +140,6 @@ func (o *PersistedOracle) Start() {
 							Invalids:   invalids,
 							InitTasks:  initTasks,
 							TID:        reference.TID,
-							// TxReceipt:  ptx.Receipt,
-							// // TxBlock:    ptx.Block,
-							// TxBlockHash: ptx.BlockHash,
 						}
 						// 记录epoch
 						err := o.dbService.SetEpoch(epoch)
@@ -199,13 +198,11 @@ func (o *PersistedOracle) Start() {
 								//ScheduleID: slot.ScheduleID,
 							}
 							o.dbService.SetTransaction(reference)
-							o.dbService.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem)
+							// 先暂时这样写入
+							sign := ptx.Tx.(*paradigm.TaskProcessTransaction).Signatures[0]
+							ca := ptx.Tx.(*paradigm.TaskProcessTransaction).Signatures[1]
+							o.dbService.SetSlotFinish(commitRecord.SlotHash(), commitRecord.CommitSlotItem, string(sign), string(ca))
 							commitRecord.TxID = reference.TID
-							// err := task.Commit(commitRecord) // 将commitSlot添加到task的对应slotRecord中
-							// if err != nil {
-							// 	e := paradigm.Error(paradigm.RuntimeError, err.Error())
-							// 	panic(e.Error())
-							// }
 							// 使用原子操作增加任务进度并获取更新后的任务
 							task, err := o.dbService.IncrementTaskProcessAndGet(taskSign, commitRecord)
 							if err != nil {
@@ -222,13 +219,6 @@ func (o *PersistedOracle) Start() {
 								o.dbService.UpdateTask(task)
 								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 							}
-							// 这里更新oracle的全局信息
-							//d.nbFinalized++ // 又完成了一个finalized
-							//if value, ok := d.synthData[task.Model]; ok {
-							//	d.synthData[task.Model] = value + commitRecord.Process
-							//} else {
-							//	d.synthData[task.Model] = commitRecord.Process
-							//}
 							//更新task
 							// o.dbService.UpdateTask(task)
 							dateRecord.UpdateFinalized(1)
@@ -263,10 +253,11 @@ func (o *PersistedOracle) Start() {
 	updateOracle()
 }
 
-func NewPersistedOracle(channel *paradigm.RappaChannel, service *Database.DatabaseService) *PersistedOracle {
+func NewPersistedOracle(channel *paradigm.RappaChannel, service *Database.DatabaseService, manager *PKI.PKIManager) *PersistedOracle {
 	return &PersistedOracle{
 		channel:   channel,
 		dbService: service,
+		manager:   manager,
 		// collectors: make(map[string]paradigm.RappaCollector),
 	}
 }

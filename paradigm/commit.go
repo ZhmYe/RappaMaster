@@ -45,7 +45,6 @@ const (
 	INVALID_COMMITMENT                          // 承诺不通过
 	VERIFIED_FAILED                             // 签名验证失败
 	DOWN_FAILED                                 //宕机无法恢复
-	Veritified_FALED                            //
 	UNKNOWN
 	NONE
 )

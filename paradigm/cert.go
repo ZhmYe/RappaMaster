@@ -36,23 +36,40 @@ type NodeCertification struct {
 	Bpkey  ecdsa_bls12381.PublicKey
 }
 
-type SignedCommitSlot struct {
+type SignedCommitSlotItem struct {
 	*CommitSlotItem
 	//签名，需要验签
 	signature string
+	//节点证书
+	ca string
 }
 
-func (s *SignedCommitSlot) GetSlotSignature() string {
+func (s *SignedCommitSlotItem) GetSlotSignature() string {
 	return s.signature
 }
 
-func NewSignedCommitSlot(slot *service.JustifiedSlot, sign string) SignedCommitSlot {
+func (s *SignedCommitSlotItem) GetNodeCA() string {
+	return s.ca
+}
+
+func NewSignedCommitSlot(slot *service.JustifiedSlot, sign string, ca string) SignedCommitSlotItem {
 	cs := NewCommitSlotItem(slot)
 	//s.hash = s.Hash // todo 这里简单这样写一下
 	//s.computeHash()
-	return SignedCommitSlot{
+	return SignedCommitSlotItem{
 		CommitSlotItem: &cs,
 		signature:      sign,
+		ca:             ca,
+	}
+}
+
+func NewSignedCommitSlotFrom(slot *CommitSlotItem, sign string, ca string) SignedCommitSlotItem {
+	//s.hash = s.Hash // todo 这里简单这样写一下
+	//s.computeHash()
+	return SignedCommitSlotItem{
+		CommitSlotItem: slot,
+		signature:      sign,
+		ca:             ca,
 	}
 }
 

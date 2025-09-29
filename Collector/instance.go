@@ -1,6 +1,7 @@
 package Collector
 
 import (
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	pb "BHLayer2Node/pb/service"
 	"fmt"
@@ -15,6 +16,7 @@ type CollectSlotInstance struct {
 	ResponseChannel chan pb.RecoverResponse // 这里是grpc收到response以后通过这个channel传回collector
 	//Connection      chan paradigm.RecoverConnection // 这里是传递给grpc的channel
 	Channel *paradigm.RappaChannel
+	Manager *PKI.PKIManager
 }
 
 func (i *CollectSlotInstance) Collect() interface{} {
@@ -35,6 +37,9 @@ func (i *CollectSlotInstance) Collect() interface{} {
 			outputType:  i.OutputType,
 			paddingSize: slot.PaddingSize,
 			storeMethod: slot.StoreMethod,
+			dataHash:    "",
+			sign:        slot.Sign,
+			nodeId:      slot.NodeId,
 			//output:     make([]byte, 0),
 		}
 	}
@@ -64,8 +69,13 @@ func (i *CollectSlotInstance) Collect() interface{} {
 	// 此时这里可运行
 	outputs := make([]interface{}, 0)
 	for _, r := range recovers {
-		recoverOutput := r.Recover()
-		outputs = append(outputs, recoverOutput)
+		//先检查
+		if i.Manager.VertifyNodeSign(r.nodeId, r.sign, r.sign) {
+			recoverOutput := r.Recover()
+			outputs = append(outputs, recoverOutput)
+		} else {
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Node %d sign verify failed", r.nodeId))
+		}
 		//i.Transfer <- recoverOutput
 	}
 	finalRecover := SlotRecover{

@@ -51,7 +51,7 @@ func (t *Tracker) UpdateTask(sign string) {
 	t.expireInputChannel <- expireTask
 
 }
-func (t *Tracker) Commit(slot *paradigm.CommitSlotItem) error {
+func (t *Tracker) Commit(slot *paradigm.SignedCommitSlotItem) error {
 	track, exist := t.taskTracks[slot.Sign]
 	if !exist {
 		e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Task %s does not exist in Tracker", slot.Sign))
@@ -61,7 +61,7 @@ func (t *Tracker) Commit(slot *paradigm.CommitSlotItem) error {
 }
 
 // UpdateSlot 更新一个slot,等待其提交
-func (t *Tracker) UpdateSlot(commitSlotItem paradigm.CommitSlotItem) {
+func (t *Tracker) UpdateSlot(commitSlotItem paradigm.SignedCommitSlotItem) {
 	slot := paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.checkIsReliable(commitSlotItem.Sign)) // 等待verify
 	t.pendingCommitSlot[commitSlotItem.SlotHash()] = slot
 	// 每个slot设置比较长的时间，因为是zkp，设置1分钟吧先 todo @SD 这里的时间写成config，按秒
@@ -85,7 +85,7 @@ func (t *Tracker) WonVote(slotHash string) {
 }
 func (t *Tracker) CheckFinalized(slot paradigm.PendingCommitSlotTrack) {
 	if t.pendingCommitSlot[slot.SlotHash()].Check() {
-		commitSlot := slot.CommitSlotItem
+		commitSlot := slot.SignedCommitSlotItem
 		commitSlot.SetFinalize()
 		atomic.StoreInt32(&slot.IsFinalized, 1)
 		t.channel.CommitSlots <- *commitSlot
@@ -124,7 +124,7 @@ func (t *Tracker) CollectExpire() {
 				//t.channel.CommitSlots <- *commitSlot
 				//} else {
 				// abort
-				commitSlot := expireSlot.PendingSlot.CommitSlotItem
+				commitSlot := expireSlot.PendingSlot.SignedCommitSlotItem
 				commitSlot.SetInvalid(paradigm.EXPIRE_SLOT)
 				t.channel.CommitSlots <- *commitSlot
 			}
@@ -137,72 +137,6 @@ func (t *Tracker) CollectExpire() {
 	}
 }
 
-// OutOfDate 返回epoch中提交的slot和abort的slot
-// todo 这里有延时 @YZM 可以多用一点空间换
-//func (t *Tracker) OutOfDate() ([]*paradigm.CommitSlotItem, []*paradigm.CommitSlotItem) {
-
-// 处理任务，这里无需返回
-//processExpireTask := func() {
-//	if len(t.taskBuckets) == 0 {
-//		return
-//	}
-//	outOfDateTaskSlot := t.taskBuckets[0]
-//	t.taskBuckets = t.taskBuckets[1:]
-//	// 得到过期的task，需要重新调度
-//	for _, taskID := range outOfDateTaskSlot {
-//		task := t.taskTracks[taskID]
-//		if task.IsFinish() {
-//			LogWriter.Log("TRACKER", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", taskID, task.Size, task.History))
-//			continue
-//		}
-//		//fmt.Println(task.IsFinish(), task.Size)
-//
-//		//t.channel.UnprocessedTasks <- task.Next()
-//		//validTaskMap[nextSlot.Sign] = int32(nextSlot.Slot)
-//		//go func(task paradigm.SynthTaskTrackItem) {
-//		LogWriter.Log("TRACKER", fmt.Sprintf("Task %s Expire, unprocessed: %d, pass to schedule", task.TaskID, task.Size))
-//		t.channel.UnprocessedTasks <- task.Next()
-//		//}(*task)
-//	}
-//	//return outOfDateTaskSlot
-//}
-//processExpireSlot := func() ([]*paradigm.CommitSlotItem, []*paradigm.CommitSlotItem) {
-//	if len(t.slotBuckets) == 0 {
-//		return []*paradigm.CommitSlotItem{}, []*paradigm.CommitSlotItem{}
-//	}
-//	outOfDateCommitSlot := t.slotBuckets[0]
-//	t.slotBuckets = t.slotBuckets[1:]
-//	finalized := make([]*paradigm.CommitSlotItem, 0)
-//	abort := make([]*paradigm.CommitSlotItem, 0)
-//	for _, h := range outOfDateCommitSlot {
-//		pendingSlot := t.pendingCommitSlot[h]
-//		commitSlotItem := pendingSlot.CommitSlotItem
-//		if pendingSlot.Check() {
-//			finalized = append(finalized, commitSlotItem)
-//		} else {
-//			// 未在指定时间内完成，那么直接丢弃
-//			commitSlotItem.SetInvalid(paradigm.VERIFIED_FAILED)
-//			abort = append(abort, commitSlotItem)
-//		}
-//		delete(t.pendingCommitSlot, h) // 标记为已完成，不需要记录了
-//	}
-//	return finalized, abort
-//}
-//processExpireTask()
-//return processExpireSlot()
-
-//}
-
-// expandBuckets 扩展桶的数量
-//
-//	func (t *Tracker) expandBuckets(required int) {
-//		for len(t.taskBuckets) <= required {
-//			t.taskBuckets = append(t.taskBuckets, []string{})
-//		}
-//		for len(t.slotBuckets) <= required {
-//			t.slotBuckets = append(t.slotBuckets, []paradigm.SlotHash{})
-//		}
-//	}
 func (t *Tracker) checkIsReliable(sign string) bool {
 	if _, exist := t.taskTracks[sign]; !exist {
 		return false

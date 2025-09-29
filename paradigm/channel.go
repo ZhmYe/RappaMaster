@@ -13,7 +13,7 @@ type RappaChannel struct {
 	OracleSchedules  chan *SynthTaskSchedule
 	//PendingSchedule        chan TaskSchedule
 	ScheduledTasks              chan SynthTaskSchedule
-	CommitSlots                 chan CommitSlotItem
+	CommitSlots                 chan SignedCommitSlotItem
 	EpochHeartbeat              chan *pb.HeartbeatRequest
 	PendingTransactions         chan Transaction
 	EpochEvent                  chan bool
@@ -46,7 +46,7 @@ func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
 		OracleSchedules:  make(chan *SynthTaskSchedule, config.MaxPendingSchedulePoolSize),
 		//PendingSchedule:           make(chan TaskSchedule, config.MaxPendingSchedulePoolSize),
 		ScheduledTasks:              make(chan SynthTaskSchedule, config.MaxScheduledTasksPoolSize),
-		CommitSlots:                 make(chan CommitSlotItem, config.MaxCommitSlotItemPoolSize),
+		CommitSlots:                 make(chan SignedCommitSlotItem, config.MaxCommitSlotItemPoolSize),
 		EpochHeartbeat:              make(chan *pb.HeartbeatRequest, 1),
 		PendingTransactions:         make(chan Transaction, config.MaxCommitSlotItemPoolSize), // todo,
 		EpochEvent:                  make(chan bool, 1),
