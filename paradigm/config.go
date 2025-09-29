@@ -18,8 +18,8 @@ type BHNodeAddress struct {
 
 // 定义节点公钥配置
 type BHNodeKey struct {
-	secpKey ecdsa_secp.PublicKey
-	blKey   BLS12381PublicKey
+	SecpKey ecdsa_secp.PublicKey
+	BlSKey  BLS12381PublicKey
 }
 
 // 自定义序列化
@@ -44,7 +44,7 @@ func (nk *BHNodeKey) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid secpKey: %w", err)
 	}
 
-	nk.secpKey = secpKey
+	nk.SecpKey = secpKey
 
 	// 解析 blKey（假设是十六进制）
 	blKeyBytes, err := base64.StdEncoding.DecodeString(raw.BlKey)
@@ -55,7 +55,7 @@ func (nk *BHNodeKey) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("invalid blKey: %w", err)
 	}
-	nk.blKey = blKey
+	nk.BlSKey = blKey
 
 	return nil
 }

@@ -30,6 +30,12 @@ type BLS12381PrivateKey struct {
 	scalar    [sizeFr]byte      // [s], scalar filed上的点，一个big.int
 }
 
+type NodeCertification struct {
+	NodeID int32
+	SpKey  ecdsa_secp.PublicKey
+	Bpkey  ecdsa_bls12381.PublicKey
+}
+
 type SignedCommitSlot struct {
 	*CommitSlotItem
 	//签名，需要验签
@@ -62,14 +68,14 @@ func DecodeBLS12381PublicKey(key []byte) (BLS12381PublicKey, error) {
 	return blsKey, nil
 }
 
-func DecodeSecpPublicKey(key []byte) (ecdsa_secp.PublicKey, error) {
-	secpKeyBytes, err := base64.StdEncoding.DecodeString(string(key))
+func DecodeSecpPublicKey(key []byte) (BLS12381PublicKey, error) {
+	blsKeyBytes, err := base64.StdEncoding.DecodeString(string(key))
 	if err != nil {
-		return ecdsa_secp.PublicKey{}, fmt.Errorf("failed to decode secp256k1 key: %w", err)
+		return BLS12381PublicKey{}, fmt.Errorf("failed to decode bls12381 key: %w", err)
 	}
-	var secpKey ecdsa_secp.PublicKey
-	if _, err := secpKey.SetBytes(secpKeyBytes); err != nil {
-		return ecdsa_secp.PublicKey{}, fmt.Errorf("failed to set secp256k1 key bytes: %w", err)
+	var blsKey BLS12381PublicKey
+	if _, err := blsKey.SetBytes(blsKeyBytes); err != nil {
+		return BLS12381PublicKey{}, fmt.Errorf("failed to set bls12381 key bytes: %w", err)
 	}
-	return secpKey, nil
+	return blsKey, nil
 }
