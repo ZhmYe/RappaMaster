@@ -39,7 +39,7 @@ func main() {
 	//grpcEngine.Setup(*config)
 	//httpEngine := HTTP.NewFakeHttpEngine(rappaChannel)
 	//httpEngine.Setup(*config)
-	httpEngine := HTTP.NewHttpEngine(rappaChannel)
+	httpEngine := HTTP.NewHttpEngine(rappaChannel, pkiManager)
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel, recovery, pkiManager)

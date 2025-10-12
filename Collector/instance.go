@@ -19,7 +19,7 @@ type CollectSlotInstance struct {
 	Manager *PKI.PKIManager
 }
 
-func (i *CollectSlotInstance) Collect() interface{} {
+func (i *CollectSlotInstance) Collect() (interface{}, error) {
 	// 这里的逻辑是，将要collect的内容发给grpc client，然后通过grpc发送到节点，节点返回ec chunk
 	// 恢复后通过channel返回给http，进而给backend
 	// 启动SlotRecover
@@ -40,6 +40,7 @@ func (i *CollectSlotInstance) Collect() interface{} {
 			dataHash:    "",
 			sign:        slot.Sign,
 			nodeId:      slot.NodeId,
+			nodeSign:    slot.NodeSign,
 			//output:     make([]byte, 0),
 		}
 	}
@@ -68,15 +69,22 @@ func (i *CollectSlotInstance) Collect() interface{} {
 	// 在grpc完成通信后，关闭channel
 	// 此时这里可运行
 	outputs := make([]interface{}, 0)
+	isError := false
+	errorList := make([]string, 0)
 	for _, r := range recovers {
 		//先检查
-		if i.Manager.VertifyNodeSign(r.nodeId, r.sign, r.sign) {
+		if i.Manager.VertifyNodeSign(r.nodeId, r.dataHash, r.nodeSign) {
 			recoverOutput := r.Recover()
 			outputs = append(outputs, recoverOutput)
 		} else {
 			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Node %d sign verify failed", r.nodeId))
+			isError = true
+			errorList = append(errorList, fmt.Sprintf("Node %d sign verify failed", r.nodeId))
 		}
 		//i.Transfer <- recoverOutput
+	}
+	if isError {
+		return nil, fmt.Errorf("Collect failed, error list: %v", errorList)
 	}
 	finalRecover := SlotRecover{
 		slotHash:    "",
@@ -87,9 +95,10 @@ func (i *CollectSlotInstance) Collect() interface{} {
 		outputType:  i.OutputType,
 		paddingSize: nil,
 		storeMethod: 0,
+		nodeSign:    "",
 	}
 	output := finalRecover.merge(outputs)
 	//close(i.Transfer)
-	return output
+	return output, nil
 
 }

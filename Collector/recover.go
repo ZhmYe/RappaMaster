@@ -23,6 +23,7 @@ type SlotRecover struct {
 	dataHash    string
 	sign        string
 	nodeId      int
+	nodeSign    string
 }
 
 func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {

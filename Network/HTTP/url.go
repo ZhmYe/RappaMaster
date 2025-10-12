@@ -130,7 +130,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					requestBody.Size,
 					requestBody.IsReliable,
 				)
-				task.SetCollector(Collector.NewCollector(task.Sign, task.OutputType, e.channel))
+				task.SetCollector(Collector.NewCollector(task.Sign, task.OutputType, e.channel, e.pkiManager))
 				paradigm.Log("HTTP", fmt.Sprintf("Receive Init Task Request: %v, Generate New Task: %s", requestBody, task.Sign))
 				// 新建任务用于上链，然后直接返回response
 				e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: task}

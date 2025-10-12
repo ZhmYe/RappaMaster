@@ -27,7 +27,7 @@ func (nk *BHNodeKey) UnmarshalJSON(data []byte) error {
 	// 定义临时结构体用于解析原始 JSON
 	var raw struct {
 		SecpKey string `json:"spKey"`
-		BlKey   string `json:"blKey"`
+		BlsKey  string `json:"blsKey"`
 	}
 
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -35,27 +35,18 @@ func (nk *BHNodeKey) UnmarshalJSON(data []byte) error {
 	}
 
 	// 解析 secpKey
-	secpBytes, err := base64.StdEncoding.DecodeString(raw.SecpKey)
-	if err != nil {
-		return fmt.Errorf("invalid secpKey: %w", err)
-	}
-	secpKey, err := DecodeSecpPublicKey(secpBytes)
+	secpKey, err := DecodeSecpPublicKey(raw.SecpKey)
 	if err != nil {
 		return fmt.Errorf("invalid secpKey: %w", err)
 	}
 
 	nk.SecpKey = secpKey
-
-	// 解析 blKey（假设是十六进制）
-	blKeyBytes, err := base64.StdEncoding.DecodeString(raw.BlKey)
+	// 解析 blsKey
+	blsKey, err := DecodeBLS12381PublicKey(raw.BlsKey)
 	if err != nil {
-		return fmt.Errorf("invalid blKey: %w", err)
+		return fmt.Errorf("invalid blsKey: %w", err)
 	}
-	blKey, err := DecodeBLS12381PublicKey(blKeyBytes)
-	if err != nil {
-		return fmt.Errorf("invalid blKey: %w", err)
-	}
-	nk.BlSKey = blKey
+	nk.BlSKey = blsKey
 
 	return nil
 }

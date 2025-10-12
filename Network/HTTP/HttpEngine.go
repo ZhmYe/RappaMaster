@@ -1,10 +1,12 @@
 package HTTP
 
 import (
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	"fmt"
-	"github.com/gin-contrib/cors"
 	"time"
+
+	"github.com/gin-contrib/cors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +19,7 @@ type HttpEngine struct {
 	config         paradigm.BHLayer2NodeConfig
 	ip             string // IP 地址
 	port           int    // 端口
+	pkiManager     *PKI.PKIManager
 	// 服务器
 	r *gin.Engine
 }
@@ -112,7 +115,7 @@ func (e *HttpEngine) Setup(config paradigm.BHLayer2NodeConfig) {
 }
 
 // NewHttpEngine 创建并返回一个新的 HttpEngine 实例
-func NewHttpEngine(channel *paradigm.RappaChannel) *HttpEngine {
+func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager) *HttpEngine {
 	http := HttpEngine{
 		//initTasks:          channel.InitTasks,
 		//fakeCollectChannel: channel.FakeCollectSignChannel,
@@ -121,6 +124,7 @@ func NewHttpEngine(channel *paradigm.RappaChannel) *HttpEngine {
 		taskIDProvider: make(chan paradigm.TaskHash, 100), // TODO @SD 加到config
 		taskIDConsumer: make(chan int, 100),               // 这个数字和上面统一 TODO
 		//PendingRequestPool: PendingRequestPool,
+		pkiManager: pkiManager,
 	}
 	http.Setup(*channel.Config)
 	return &http

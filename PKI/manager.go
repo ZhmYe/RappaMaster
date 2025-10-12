@@ -22,9 +22,10 @@ type PKIManager struct {
 
 func NewPKIManager(config *paradigm.BHLayer2NodeConfig) *PKIManager {
 	return &PKIManager{
-		nodeCert: config.BHNodeKeyMap,
-		sk:       config.HostPrivateKey,
-		period:   100,
+		nodeCert:  config.BHNodeKeyMap,
+		sk:        config.HostPrivateKey,
+		nodeCAMap: make(map[int]string),
+		period:    100,
 	}
 }
 
@@ -39,7 +40,7 @@ func (pm *PKIManager) VerifyNodeCA(nodeId int32, currentEpoch int32, caBase64 st
 		return false
 	}
 	serialCA := paradigm.SerializableCA{}
-	err = json.Unmarshal(caBytes, serialCA)
+	err = json.Unmarshal(caBytes, &serialCA)
 	if err != nil {
 		return false
 	}

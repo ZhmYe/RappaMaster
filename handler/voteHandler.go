@@ -7,10 +7,10 @@ import (
 )
 
 type VoteHandler struct {
-	voteInstance map[string]*paradigm.SlotVote // 要处理的所有投票
-	responses    chan *pb.HeartbeatResponse    // 节点对心跳的回复
-	epoch        int                           // 第几个epoch的投票处理
-	accepts      chan paradigm.CommitSlotItem  // 通过投票，用于更新task,taskManager更新完后将其传递到chainUpper
+	voteInstance map[string]*paradigm.SlotVote      // 要处理的所有投票
+	responses    chan *pb.HeartbeatResponse         // 节点对心跳的回复
+	epoch        int                                // 第几个epoch的投票处理
+	accepts      chan paradigm.SignedCommitSlotItem // 通过投票，用于更新task,taskManager更新完后将其传递到chainUpper
 }
 
 func (handler *VoteHandler) Process() {
@@ -45,14 +45,16 @@ func (handler *VoteHandler) Process() {
 			//slot.SetFinalize()
 			paradigm.Log("VOTE", fmt.Sprintf("%s CommitSlot pass the Vote...", instance.Hash))
 			// TODO @YZM 这里简单构造了一个假的commitSlot，因为taskManager只需要hash，可以分成两个channel
-			handler.accepts <- paradigm.NewFakeCommitSlotItem(instance.Hash)
+			fakeCommitSlotItem := paradigm.NewFakeCommitSlotItem(instance.Hash)
+			// TODO @XQ 构造的结构体现在是SignedCommitSlotItem，所以还得带上ca和sign，如果投票用不到可以直接构造假的
+			handler.accepts <- paradigm.NewSignedCommitSlotFrom(&fakeCommitSlotItem, "0xEcnu", "Ecnu")
 		} else {
 			paradigm.Error(paradigm.SlotLifeError, fmt.Sprintf("%s CommitSlot does not pass the Vote", instance.Hash))
 		}
 	}
 }
 
-func NewVoteHandler(heartbeat *pb.HeartbeatRequest, accepts chan paradigm.CommitSlotItem, responses chan *pb.HeartbeatResponse) *VoteHandler {
+func NewVoteHandler(heartbeat *pb.HeartbeatRequest, accepts chan paradigm.SignedCommitSlotItem, responses chan *pb.HeartbeatResponse) *VoteHandler {
 	instances := make(map[string]*paradigm.SlotVote)
 	for hash, commitment := range heartbeat.Commits {
 		instances[fmt.Sprintf("%s", hash)] = paradigm.NewSlotVote(hash, commitment)

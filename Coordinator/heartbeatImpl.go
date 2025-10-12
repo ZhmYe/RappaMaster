@@ -6,9 +6,10 @@ import (
 	pb "BHLayer2Node/pb/service"
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 func (c *Coordinator) sendHeartbeat(heartbeat *pb.HeartbeatRequest) {

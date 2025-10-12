@@ -26,11 +26,11 @@ type CA struct {
 // SerializableCA 用于JSON序列化的中间结构体
 // 将 ecdsa.PublicKey 替换为 []byte
 type SerializableCA struct {
-	PublicKey       []byte `json:"public_key"`
+	PublicKey       string `json:"public_key"`
 	EpochLowerBound int32  `json:"epoch_lower_bound"`
 	EpochUpperBound int32  `json:"epoch_upper_bound"`
-	Signature       []byte `json:"signature"`
-	DecryptKey      []byte `json:"decrypt_key"`
+	Signature       string `json:"signature"`
+	DecryptKey      string `json:"decrypt_key"`
 }
 
 func (ca *CA) Marshal() SerializableCA {
@@ -39,18 +39,18 @@ func (ca *CA) Marshal() SerializableCA {
 	decryptKeyBytes := ca.DecryptKey.Bytes()
 	return SerializableCA{
 		// 使用 elliptic.Marshal 将公钥转换为标准的字节格式
-		PublicKey:       []byte(base64.StdEncoding.EncodeToString(pubkeyBytes[:])),
+		PublicKey:       base64.StdEncoding.EncodeToString(pubkeyBytes[:]),
 		EpochLowerBound: ca.EpochLowerBound,
 		EpochUpperBound: ca.EpochUpperBound,
-		Signature:       []byte(base64.StdEncoding.EncodeToString(ca.Signature)),
-		DecryptKey:      []byte(base64.StdEncoding.EncodeToString(decryptKeyBytes[:])),
+		Signature:       base64.StdEncoding.EncodeToString(ca.Signature),
+		DecryptKey:      base64.StdEncoding.EncodeToString(decryptKeyBytes[:]),
 	}
 }
 
 func (ca *CA) Unmarshal(sca SerializableCA) error {
 	var publicKey ecdsa_secp.PublicKey
 	// 解码base64字符串到字节数组
-	publicKeyBytes, err := base64.StdEncoding.DecodeString(string(sca.PublicKey))
+	publicKeyBytes, err := base64.StdEncoding.DecodeString(sca.PublicKey)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (ca *CA) Unmarshal(sca SerializableCA) error {
 
 	var decryptKey ecdsa_secp.PublicKey
 	// 解码base64字符串到字节数组
-	decryptKeyBytes, err := base64.StdEncoding.DecodeString(string(sca.DecryptKey))
+	decryptKeyBytes, err := base64.StdEncoding.DecodeString(sca.DecryptKey)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (ca *CA) Unmarshal(sca SerializableCA) error {
 	ca.DecryptKey = decryptKey
 	ca.EpochLowerBound = sca.EpochLowerBound
 	ca.EpochUpperBound = sca.EpochUpperBound
-	ca.Signature, err = base64.StdEncoding.DecodeString(string(sca.Signature))
+	ca.Signature, err = base64.StdEncoding.DecodeString(sca.Signature)
 	if err != nil {
 		return err
 	}
@@ -113,6 +113,9 @@ func (ca *CA) Verify() error {
 // 验证是否过期
 func (ca *CA) VerifyExpire(epoch int32) error {
 	// 验证是否过期
+	if ca.EpochLowerBound == ca.EpochUpperBound && ca.EpochUpperBound == -1 {
+		return nil
+	}
 	if epoch < ca.EpochLowerBound || epoch > ca.EpochUpperBound {
 		return fmt.Errorf("expire ca")
 	}

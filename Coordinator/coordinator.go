@@ -6,11 +6,12 @@ import (
 	pb "BHLayer2Node/pb/service"
 	"BHLayer2Node/utils"
 	"fmt"
-	"google.golang.org/grpc"
 	"net"
 	"path/filepath"
 	"strconv"
 	"sync"
+
+	"google.golang.org/grpc"
 )
 
 // Coordinator，用于协调各部分的运行，作为代码的核心进程运行

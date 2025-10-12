@@ -101,7 +101,7 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 		Channel: c.channel,
 		Manager: c.manager,
 	}
-	return collectInstance.Collect(), nil
+	return collectInstance.Collect()
 }
 
 //func (c *Collector) Start() {

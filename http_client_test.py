@@ -7,6 +7,7 @@ def create_task():
         "name": "金融表格数据合成任务",
         "model": "FINKAN",
         "params": {
+            "dataset":"test"
         },
         "size": 1000,
         "isReliable": True
@@ -88,8 +89,8 @@ def oracle_query_tasks():
 def oracle_query_collect():
     request_data = {
         "query": "CollectTaskQuery",
-        "taskID": "SynthTask-0-1739783282",
-        "size": 50
+        "taskID": "SynthTask-0-1760203789",
+        "size": 1000
     }
     url = "http://127.0.0.1:8081/collect"
     send_GET_request(url, request_data)
@@ -159,6 +160,8 @@ def main():
             oracle_query_collect()
         if command == "slot":
             oracle_query_slot()
+        if command == "collect":
+            oracle_query_collect()
         if command == 'exit':
             print("Exiting the client...")
             break

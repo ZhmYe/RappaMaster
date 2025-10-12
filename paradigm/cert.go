@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/pb/service"
 	"encoding/base64"
 	"fmt"
+
 	ecdsa_bls12381 "github.com/consensys/gnark-crypto/ecc/bls12-381/ecdsa"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fp"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -73,8 +74,8 @@ func NewSignedCommitSlotFrom(slot *CommitSlotItem, sign string, ca string) Signe
 	}
 }
 
-func DecodeBLS12381PublicKey(key []byte) (BLS12381PublicKey, error) {
-	blsKeyBytes, err := base64.StdEncoding.DecodeString(string(key))
+func DecodeBLS12381PublicKey(key string) (BLS12381PublicKey, error) {
+	blsKeyBytes, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
 		return BLS12381PublicKey{}, fmt.Errorf("failed to decode bls12381 key: %w", err)
 	}
@@ -85,14 +86,15 @@ func DecodeBLS12381PublicKey(key []byte) (BLS12381PublicKey, error) {
 	return blsKey, nil
 }
 
-func DecodeSecpPublicKey(key []byte) (BLS12381PublicKey, error) {
-	blsKeyBytes, err := base64.StdEncoding.DecodeString(string(key))
+func DecodeSecpPublicKey(key string) (ecdsa_secp.PublicKey, error) {
+	secpKeyBytes, err := base64.StdEncoding.DecodeString(key)
 	if err != nil {
-		return BLS12381PublicKey{}, fmt.Errorf("failed to decode bls12381 key: %w", err)
+		return ecdsa_secp.PublicKey{}, fmt.Errorf("failed to decode secp256k1 key: %w", err)
 	}
-	var blsKey BLS12381PublicKey
-	if _, err := blsKey.SetBytes(blsKeyBytes); err != nil {
-		return BLS12381PublicKey{}, fmt.Errorf("failed to set bls12381 key bytes: %w", err)
+
+	var secpKey ecdsa_secp.PublicKey
+	if _, err := secpKey.SetBytes(secpKeyBytes); err != nil {
+		return ecdsa_secp.PublicKey{}, fmt.Errorf("failed to set secp256k1 key bytes: %w", err)
 	}
-	return blsKey, nil
+	return secpKey, nil
 }
