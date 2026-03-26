@@ -4,8 +4,8 @@ import (
 	"BHLayer2Node/Collector"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
-	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -68,20 +68,20 @@ func (e *HttpEngine) HandleDownload(c *gin.Context) {
 		e.channel.QueryChannel <- query
 		r := query.ReceiveResponse() // 这里会阻塞
 		fileJson := r.ToHttpJson()
-		data := fileJson["file"].([]byte)
+		reader := fileJson["fileReader"].(*io.PipeReader) // 这里改成流式reader
 		filename := fileJson["filename"].(string)
 		// 将 byte 数组转换为 Reader
-		reader := bytes.NewReader(data)
+		//reader := bytes.NewReader(data)
 		// 设置响应头
 		c.Header("Content-Type", "application/octet-stream")
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 		// 流式传输数据
 		c.DataFromReader(
 			http.StatusOK,
-			int64(len(data)), // 数据总大小（Content-Length）
+			-1, // todo 未知
 			"application/octet-stream",
-			reader,
-			nil, // 可选的额外 headers
+			reader, // 流传输
+			nil,    // 可选的额外 headers
 		)
 	} else {
 		c.JSON(http.StatusBadRequest, paradigm.HttpResponse{

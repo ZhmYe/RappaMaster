@@ -4,6 +4,7 @@ import (
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/pb/service"
 	"fmt"
+	"io"
 )
 
 // Collector 作为Task的一部分，收集所有的当前任务的提交的slot
@@ -14,6 +15,10 @@ type Collector struct {
 	//taskSlots map[string][]paradigm.CollectSlotItem
 	channel    *paradigm.RappaChannel
 	outputType paradigm.ModelOutputType
+}
+
+func (c *Collector) OutputType() paradigm.ModelOutputType {
+	return c.outputType
 }
 
 // ProcessSlotUpdate 处理slot的更新，从channel中获取
@@ -65,7 +70,7 @@ func (c *Collector) ProcessSlotUpdate(slot paradigm.CollectSlotItem) {
 	//}
 }
 
-func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (interface{}, error) {
+func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (*io.PipeReader, error) {
 
 	sign := collectRequest.Sign
 	if sign != c.taskID {

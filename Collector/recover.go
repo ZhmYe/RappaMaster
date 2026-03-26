@@ -69,6 +69,7 @@ func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([
 	switch r.storeMethod {
 	case 1:
 		// 本地存储，那么只有可能有一个块
+		// 现在应该只用了这里
 		if len(chunks) != 1 {
 			e := paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Local only have one chunk in each chunk, but receive %d", len(chunks)))
 			return []byte{}, fmt.Errorf(e.Error())
