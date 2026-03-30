@@ -50,10 +50,19 @@ type Task struct {
 	TxReceipt      *types.Receipt         `gorm:"-"`
 	TxBlockHash    string                 `gorm:"-"`
 	HasbeenCollect bool                   `gorm:"-"`
-	StartTime      time.Time              `gorm:"type:datetime;not null;comment:任务启动时间戳"`
-	EndTime        time.Time              `gorm:"type:datetime;comment:任务结束时间戳"`
-	Status         SlotStatus             `gorm:"type:tinyint;not null;comment:完成状态"`
-	Collector      RappaCollector         `gorm:"-"`
+	// 这里本来就有时间
+	StartTime time.Time      `gorm:"type:datetime;not null;comment:任务启动时间戳"`
+	EndTime   time.Time      `gorm:"type:datetime;comment:任务结束时间戳"`
+	Status    SlotStatus     `gorm:"type:tinyint;not null;comment:完成状态"`
+	Collector RappaCollector `gorm:"-"`
+}
+
+func (t *Task) Speed() float64 {
+	if !t.IsFinish() {
+		return -1 // 还没完成
+	}
+	processTime := t.EndTime.Sub(t.StartTime).Seconds()
+	return float64(t.Process) / processTime // 这里用的process
 }
 
 func (t *Task) Print() {
