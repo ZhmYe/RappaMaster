@@ -193,7 +193,7 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	tasks := make([]map[string]interface{}, 0, len(info))
 	for _, task := range info {
 		taskInfo := make(map[string]interface{})
-		taskInfo["speed"] = task.Speed // 速度，单位应该是B/s
+		taskInfo["speed"] = task.Speed() // 速度，单位应该是B/s
 		taskInfo["taskID"] = task.Sign
 		taskInfo["taskName"] = task.Name
 		taskInfo["txHash"] = task.TxReceipt.TransactionHash

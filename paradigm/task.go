@@ -58,10 +58,13 @@ type Task struct {
 }
 
 func (t *Task) Speed() float64 {
-	if !t.IsFinish() {
-		return -1 // 还没完成
-	}
+	//if !t.IsFinish() {
+	//	return -1 // 还没完成
+	//}
 	processTime := t.EndTime.Sub(t.StartTime).Seconds()
+	if processTime == 0 {
+		return -1 // 极短的时间，这里前端要适配，比如--MB/s
+	}
 	return float64(t.Process) / processTime // 这里用的process
 }
 
