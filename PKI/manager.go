@@ -2,6 +2,7 @@ package PKI
 
 import (
 	"BHLayer2Node/paradigm"
+	"crypto/sha256"
 	"encoding/base64"
 	ecdsa_secp "github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	"github.com/goccy/go-json"
@@ -75,9 +76,11 @@ func (pm *PKIManager) VertifyNodeSign(nodeId int, data string, signBase64 string
 	if err != nil {
 		return false
 	}
+	// executor 侧当前签名对象为 sha256(data) 的 32 字节摘要，这里保持同一语义
+	dataHash := sha256.Sum256([]byte(data))
 	// 验证签名
 	nodePK := pm.nodeCert[nodeId].SecpKey
-	flag, _ := nodePK.Verify(signBytes, []byte(data), sha3.New256())
+	flag, _ := nodePK.Verify(signBytes, dataHash[:], sha3.New256())
 	// 验证签名是否正确
 	return flag
 }
