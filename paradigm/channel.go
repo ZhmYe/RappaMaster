@@ -27,7 +27,7 @@ type RappaChannel struct {
 	MonitorQueryChannel         chan Query
 
 	ToCollectorRequestChannel chan HttpCollectRequest
-	SlotCollectChannel        chan RecoverConnection
+	SlotCollectChannel        chan SlotRecoverConnection
 	QueryChannel              chan Query
 	EpochInitTaskChannel      chan *Task
 	UnScheduledSlotChannel    chan *Slot //临时处理不能调度的slot
@@ -55,12 +55,12 @@ func NewRappaChannel(config *BHLayer2NodeConfig) *RappaChannel {
 		ToCollectorRequestChannel:   make(chan HttpCollectRequest, config.MaxCommitSlotItemPoolSize),   // todo
 		BlockchainQueryChannel:      make(chan Query, config.MaxCommitSlotItemPoolSize),                // todo
 		BlockchainInfoUpdateChannel: make(chan bool, 1),
-		MonitorAdviceChannel:        make(chan *AdviceRequest, config.MaxCommitSlotItemPoolSize),      // todo
-		MonitorHeartbeatChannel:     make(chan NodeHeartbeatReport, config.MaxCommitSlotItemPoolSize), // todo
-		MonitorOracleChannel:        make(chan interface{}, config.MaxCommitSlotItemPoolSize),         // todo
-		MonitorQueryChannel:         make(chan Query, config.MaxCommitSlotItemPoolSize),               // todo
-		SlotCollectChannel:          make(chan RecoverConnection, config.MaxCommitSlotItemPoolSize),   // todo
-		QueryChannel:                make(chan Query, config.MaxCommitSlotItemPoolSize),               // todo
+		MonitorAdviceChannel:        make(chan *AdviceRequest, config.MaxCommitSlotItemPoolSize),        // todo
+		MonitorHeartbeatChannel:     make(chan NodeHeartbeatReport, config.MaxCommitSlotItemPoolSize),   // todo
+		MonitorOracleChannel:        make(chan interface{}, config.MaxCommitSlotItemPoolSize),           // todo
+		MonitorQueryChannel:         make(chan Query, config.MaxCommitSlotItemPoolSize),                 // todo
+		SlotCollectChannel:          make(chan SlotRecoverConnection, config.MaxCommitSlotItemPoolSize), // todo
+		QueryChannel:                make(chan Query, config.MaxCommitSlotItemPoolSize),                 // todo
 		EpochInitTaskChannel:        make(chan *Task, config.MaxCommitSlotItemPoolSize),
 		UnScheduledSlotChannel:      make(chan *Slot, config.MaxCommitSlotItemPoolSize),
 		FakeCollectSignChannel:      make(chan [2]interface{}, config.MaxCommitSlotItemPoolSize), // todo

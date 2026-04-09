@@ -30,6 +30,7 @@ func (q *CollectTaskQuery) TaskID() paradigm.TaskHash {
 	return q.request.Sign
 }
 
+// todo 这里要改，因为ProcessCollect返回值变了
 func (q *UploadTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	task := data.(paradigm.Task)
 	collector := task.GetCollector()
@@ -135,27 +136,26 @@ func (q *UploadTaskQuery) ParseRawDataFromHttpEngine(rawData map[interface{}]int
 	return true
 }
 
-// 上传任务
 func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	collector := data.(paradigm.RappaCollector)
-	output, err := collector.ProcessCollect(q.request)
+	reader, err := collector.ProcessCollect(q.request) // 这里的output现在是reader
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
 	}
-	if output == nil {
+	if reader == nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, "Recover Output is nil"))
 	}
-	fileByte, fileType, err := paradigm.DataToFile(output)
-	if err != nil {
-		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
-	}
+	//fileByte, fileType, err := paradigm.DataToFile(output)
+	//if err != nil {
+	//	return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
+	//}
 	//fmt.Println(fileByte)
 	result := make(map[string]interface{})
 	generateFileName := func() string {
-		return fmt.Sprintf("%s_%d_%s.%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"), fileType)
+		return fmt.Sprintf("%s_%d_%s.%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"), collector.OutputType())
 	}
 	result["filename"] = generateFileName()
-	result["file"] = fileByte
+	result["fileReader"] = reader
 	return paradigm.NewSuccessResponse(result)
 
 }
@@ -193,6 +193,7 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	tasks := make([]map[string]interface{}, 0, len(info))
 	for _, task := range info {
 		taskInfo := make(map[string]interface{})
+		taskInfo["speed"] = task.Speed() // 速度，单位应该是B/s
 		taskInfo["taskID"] = task.Sign
 		taskInfo["taskName"] = task.Name
 		taskInfo["txHash"] = task.TxReceipt.TransactionHash

@@ -2,6 +2,7 @@ package paradigm
 
 import (
 	pb "BHLayer2Node/pb/service"
+	"io"
 )
 
 // HttpCollectRequest 表示一个来自前端的收集请求
@@ -15,7 +16,8 @@ type HttpCollectRequest struct {
 }
 type RappaCollector interface {
 	ProcessSlotUpdate(slot CollectSlotItem)
-	ProcessCollect(collectRequest HttpCollectRequest) (interface{}, error)
+	ProcessCollect(collectRequest HttpCollectRequest) (*io.PipeReader, error)
+	OutputType() ModelOutputType
 }
 
 // CollectSlotItem 这里的Slot已经经过了finalized，无需记录其他的状态
@@ -32,8 +34,14 @@ type CollectSlotItem struct {
 	NodeId      int     //节点公钥
 }
 
-type RecoverConnection struct {
-	//Mission         string
-	Hashs           []SlotHash              // 多个slotHash todo 考虑分批?
-	ResponseChannel chan pb.RecoverResponse // 这里是grpc收到response以后通过这个channel传回collector
+//type RecoverConnection struct {
+//	//Mission         string
+//	Hashs           []SlotHash              // 多个slotHash todo 考虑分批?
+//	ResponseChannel chan pb.RecoverResponse // 这里是grpc收到response以后通过这个channel传回collector
+//}
+
+// SlotRecoverConnection 单个Slot
+type SlotRecoverConnection struct {
+	Hash            SlotHash
+	ResponseChannel chan pb.RecoverResponse
 }
