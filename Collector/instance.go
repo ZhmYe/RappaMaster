@@ -38,7 +38,7 @@ func (i *CollectSlotInstance) Collect() (*io.PipeReader, error) {
 			outputType:  i.OutputType,
 			paddingSize: slot.PaddingSize,
 			storeMethod: slot.StoreMethod,
-			dataHash:    slot.DataHash,
+			dataHash:    "",
 			sign:        slot.Sign,
 			nodeId:      slot.NodeId,
 			nodeSign:    slot.NodeSign,

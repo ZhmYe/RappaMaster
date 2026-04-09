@@ -35,6 +35,7 @@ func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {
 	for row >= int32(len(r.chunks)) {
 		r.chunks = append(r.chunks, []*pb.RecoverSlotChunk{})
 	}
+	r.dataHash += string(chunk.Chunk)
 	r.chunks[row] = append(r.chunks[row], chunk)
 }
 
