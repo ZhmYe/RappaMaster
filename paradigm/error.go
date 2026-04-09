@@ -32,6 +32,7 @@ const (
 	SlotLifeError
 	DatabaseError
 	UpchainError
+	SignatureVerifyError
 )
 
 func ErrorToString(error ErrorEnum) string {
@@ -52,6 +53,12 @@ func ErrorToString(error ErrorEnum) string {
 		return "ExecutorError"
 	case SlotLifeError:
 		return "SlotLifeError"
+	case DatabaseError:
+		return "DatabaseError"
+	case UpchainError:
+		return "UpchainError"
+	case SignatureVerifyError:
+		return "SignatureVerifyError"
 	default:
 		return "Unknown Error"
 	}

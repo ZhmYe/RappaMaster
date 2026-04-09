@@ -59,3 +59,13 @@ func ModelOutputTypeToString(t ModelOutputType) string {
 		panic(e.Error())
 	}
 }
+func ModelOutputTypeToFileExt(t ModelOutputType) string {
+	switch t {
+	case DATAFRAME:
+		return "csv"
+	case NETWORK:
+		return "json"
+	default:
+		return "txt"
+	}
+}

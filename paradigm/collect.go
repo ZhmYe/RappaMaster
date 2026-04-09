@@ -32,6 +32,7 @@ type CollectSlotItem struct {
 	StoreMethod int32   // 存储方式
 	NodeSign    string  //节点签名
 	NodeId      int     //节点公钥
+	DataHash    string  // 数据哈希
 }
 
 //type RecoverConnection struct {
@@ -43,5 +44,6 @@ type CollectSlotItem struct {
 // SlotRecoverConnection 单个Slot
 type SlotRecoverConnection struct {
 	Hash            SlotHash
-	ResponseChannel chan pb.RecoverResponse
+	NodeId          int
+	ResponseChannel chan *pb.RecoverResponse
 }

@@ -7,6 +7,7 @@ import (
 	"BHLayer2Node/paradigm"
 	"BHLayer2Node/utils"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 )
@@ -39,20 +40,23 @@ func (q *UploadTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		Size: task.Size,
 	}
 	// 先创建收集任务
-	output, err := collector.ProcessCollect(request)
+	reader, err := collector.ProcessCollect(request)
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
 	}
-	if output == nil {
+	if reader == nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, "Recover Output is nil"))
 	}
-	fileByte, fileType, err := paradigm.DataToFile(output)
+
+	// 此时逻辑改变：ProcessCollect返回读管道，我们要把里面的东西全部读出来上传
+	fileByte, err := io.ReadAll(reader)
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))
 	}
-	//fmt.Println(fileByte)
 
 	result := make(map[string]interface{})
+	fileType := paradigm.ModelOutputTypeToFileExt(collector.OutputType())
+
 	generateFileName := func() string {
 		return fmt.Sprintf("%s_%d_%s.%s", request.Sign, request.Size, time.Now().Format("2006-01-02_15-04-05"), fileType)
 	}
@@ -152,7 +156,7 @@ func (q *CollectTaskQuery) GenerateResponse(data interface{}) paradigm.Response 
 	//fmt.Println(fileByte)
 	result := make(map[string]interface{})
 	generateFileName := func() string {
-		return fmt.Sprintf("%s_%d_%s.%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"), collector.OutputType())
+		return fmt.Sprintf("%s_%d_%s.%s", q.request.Sign, q.request.Size, time.Now().Format("2006-01-02_15-04-05"), paradigm.ModelOutputTypeToFileExt(collector.OutputType()))
 	}
 	result["filename"] = generateFileName()
 	result["fileReader"] = reader

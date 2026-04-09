@@ -36,9 +36,8 @@ func (r *SlotRecover) Add(chunk *pb.RecoverSlotChunk) {
 		r.chunks = append(r.chunks, []*pb.RecoverSlotChunk{})
 	}
 	r.chunks[row] = append(r.chunks[row], chunk)
-	r.dataHash += string(chunk.Chunk)
-	//r.chunks = append(r.chunks, chunk)
 }
+
 func (r *SlotRecover) Recover() interface{} {
 	// todo 这里还需要check，以及最好是及时的recover这样可以并行
 	// 针对每一个行块进行恢复
@@ -46,13 +45,13 @@ func (r *SlotRecover) Recover() interface{} {
 	var recoverOutputs []interface{}
 	for row, rowChunks := range r.chunks {
 		if len(rowChunks) == 0 {
-
 			paradigm.Error(paradigm.ChunkRecoverError, fmt.Sprintf("Recover %s row %d chunk failed: Empty Chunks", r.slotHash, row))
 		} else {
 			rowChunkRecoverOutput, err := r.recoverRowChunk(rowChunks, row)
 			if err != nil {
 				paradigm.Error(paradigm.ChunkRecoverError, fmt.Sprintf("Recover %s row %d chunk failed: %v", rowChunks[0].Hash, rowChunks[0].Row, err))
 			}
+
 			transformer := OutputTransformer{outputType: r.outputType} // 统一转化
 			paradigm.Log("COLLECT", fmt.Sprintf("Try to transform to original output type, type: %s", paradigm.ModelOutputTypeToString(r.outputType)))
 
@@ -61,11 +60,8 @@ func (r *SlotRecover) Recover() interface{} {
 				paradigm.Error(paradigm.DataTransformError, fmt.Sprintf("Transform to %s Error: %v", paradigm.ModelOutputTypeToString(r.outputType), err))
 			}
 			recoverOutputs = append(recoverOutputs, output)
-			//output = append(output, rowChunkRecoverOutput)
 		}
 	}
-	// 到这里得到了所有的rawData: [][]byte，每一维是rowChunk
-	// 下面要恢复成正常的输出
 	return r.merge(recoverOutputs)
 }
 
@@ -113,6 +109,9 @@ func (r *SlotRecover) recoverRowChunk(chunks []*pb.RecoverSlotChunk, row int) ([
 // merge 将若干个一样的内容合并成一个，比如dataframe的合并
 // todo 这里应该有error
 func (r *SlotRecover) merge(rowChunksOutputs []interface{}) interface{} {
+	if len(rowChunksOutputs) == 0 {
+		return nil
+	}
 	switch r.outputType {
 	case paradigm.DATAFRAME:
 		mergeDf, ok := rowChunksOutputs[0].(dataframe.DataFrame)

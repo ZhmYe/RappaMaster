@@ -101,26 +101,13 @@ func (c *Collector) ProcessCollect(collectRequest paradigm.HttpCollectRequest) (
 		OutputType: c.outputType,
 		Slots:      slotList,
 		//Transfer:        collectRequest.TransferChannel,
-		ResponseChannel: make(chan service.RecoverResponse, paradigm.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
+		ResponseChannel: make(chan *service.RecoverResponse, paradigm.DefaultBHLayer2NodeConfig.MaxCommitSlotItemPoolSize), // TODO
 		//Connection:      c.channel.SlotCollectChannel,
 		Channel: c.channel,
 		Manager: c.manager,
 	}
 	return collectInstance.Collect()
 }
-
-//func (c *Collector) Start() {
-//	for {
-//		select {
-//		case request := <-c.channel.ToCollectorRequestChannel:
-//			c.ProcessCollect(request)
-//		case slot := <-c.channel.ToCollectorSlotChannel:
-//			c.ProcessSlotUpdate(slot)
-//		default:
-//			continue
-//		}
-//	}
-//}
 
 func NewCollector(taskID paradigm.TaskHash, outputType paradigm.ModelOutputType, channel *paradigm.RappaChannel, manager *PKI.PKIManager) *Collector {
 	return &Collector{

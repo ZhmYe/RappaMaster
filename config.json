@@ -40,12 +40,84 @@
     "0": {
       "NodeIPAddress": "127.0.0.1",
       "NodeGrpcPort": 1234
+    },
+    "1": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1236
+    },
+    "2": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1238
+    },
+    "3": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1240
+    },
+    "4": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1242
+    },
+    "5": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1244
+    },
+    "6": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1246
+    },
+    "7": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1248
+    },
+    "8": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1250
+    },
+    "9": {
+      "NodeIPAddress": "127.0.0.1",
+      "NodeGrpcPort": 1252
     }
   },
   "BHNodeKeyMap": {
     "0": {
-      "spKey": "blqDHJiKplAyXoO5aO7jcy/uE1WlYy0/i/XpzJEre95EOWvtI10wFyDxI+aq4opspkrBzdGIaDwqklpDieRirw==",
-      "blsKey": "j13Z6k13ZjbvdPszJARLV3nxEZeHL774XkHac6uyzZPU87cSdhcIPDm/hEoGoCxs"
+      "spKey": "mtC5jLrVuytyt/jgbLqP3aDE8V/BFxo0kZwtNsNxtr0tJGfAyG+iR/YqFkCN2LoemBNiwj4u1WZoPtuEMoFCig==",
+      "blsKey": "j75aamItmf1ydbMBsoXFrp4Qk6fBYMlUdDOT1pVj0QBSron0gSiZDks8Jcfv1mNJ"
+    },
+    "1": {
+      "spKey": "OsFXTj0NpP8JpXuU84TLCChMS5v984iwrxjOCNjzlw8LR9THmDFcGDu0MGfJJeqnZLTHIqQhXafgndTDGTZyWw==",
+      "blsKey": "pHdukrn188/ltxNDEtFPCiMkmj9MkaAdvcQwpYThrZVVWurfnrYlpmuDxV5Ixqhp"
+    },
+    "2": {
+      "spKey": "ldqNinFc640sEZVf7pefNFmMDBXk0zXJEYdHK2Q2Iaf4F2vvcLJbAF9VXkq7WG3ZH3clAN/KFURQk2dNKsB3Rw==",
+      "blsKey": "kqyJFKyK1s2prqoOSBL4GpZc+MrgWK14wXTZAFynz83CwkgY7sMc7CJ1rjHSJIc1"
+    },
+    "3": {
+      "spKey": "FWiEGXiiJIhPjaeqodjAiI9YP8SALQZ0xei+d2drr5Nj0Un05eSNMCBsSlp2PKJd0CAX7d9Qpf5Uyndhq5w5bw==",
+      "blsKey": "lcTabRQuU5mzLGFoEFps+dlHjyYEWcbPs5GwkfoGBCs6NjvcUmKJ/0tHh1ankg0d"
+    },
+    "4": {
+      "spKey": "xT5FtlrrVX26lbPcKxA8ZH0BeptyiIBE7/Zjo0BooaNN/aLtr5KVQW45NAiLmB7qNNui5t88LEHmLt49XEjwHw==",
+      "blsKey": "uFusmPVxmaEdPm7c9mN0HP6Spp1gwnZ5VyYO6uu/YojSMhDDbGwBZCRWZR6a+1Ng"
+    },
+    "5": {
+      "spKey": "nMC+hZdVVTotMqI68KNsYvrdAxEDMhHsiAvyutEIYJnRybAajnoBhuJTnnJx4+lH0VdP5f6OgMkmdDTV6d9Xvg==",
+      "blsKey": "hUP/ItztLAZmDYJ8QbaQqcrn+SqbJrPTIeV8IHoEjkDhc9bddbq8TGNCibdJSxbd"
+    },
+    "6": {
+      "spKey": "Ut6rkO5o/HX5V2QXZSYTzFQ7KlZOShFN7PDWVljha31kM8N74dPQJBAdKzszh4XNYoyb8H9U90Fn+EoIwaHlaw==",
+      "blsKey": "lP8uTXpJT8KtIfZNUJ8ILwc1j/oMHuur9KrFXzqLcoppSjx0ZeScNZm6GlXJ6gJj"
+    },
+    "7": {
+      "spKey": "F9KrIYsxDAjqD57deBBYD3pehFSC5OK8YOxHmmh1pu4l0rk1DSo1T8xwOGCVzX+THmzf9ShZIRYwgS8DXJRMIQ==",
+      "blsKey": "syPlsfpapAmt0yYIrFunxug2h/k8rgF4IQ+d2dmjCpmKykZRz4JRYz+b21VcI0CS"
+    },
+    "8": {
+      "spKey": "WPf5b9xwKc4ipcQIODVG112vLqtVUYmiDBIuPXzYA0YxXPNaOZX+p83i77WBCSUh26lA9fXzsPdphRCjFkFCxw==",
+      "blsKey": "qBqv9RT4+mqQSPcprLpyFqeelOIc44byNukilANBzqrfzKVkn/AXsoBnPLT5c0oi"
+    },
+    "9": {
+      "spKey": "oNsEYIReC1gSNx3WlOGvlqK7SlxUCmYYeGvdSCIbZHeclpq/iHRvvp0y2b5cmhktUcYRjKQ+FWMmZ5axMDXN4A==",
+      "blsKey": "pzOAolLOmHfcVGwFN3nDGehM92MR7jHCvFxCpLlzLuLTWOC4yPpntaVXFOEJQ8pE"
     }
   }
 }
