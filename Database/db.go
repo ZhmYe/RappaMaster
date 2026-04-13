@@ -64,6 +64,7 @@ func (o DatabaseService) AutoMigrate() error {
 		&paradigm.DevEpoch{},
 		&paradigm.DevReference{},
 		&Date.DateRecord{},
+		&paradigm.PlatformTask{},
 	)
 }
 

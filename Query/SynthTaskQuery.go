@@ -48,7 +48,7 @@ func (q *UploadTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, "Recover Output is nil"))
 	}
 
-	// 此时逻辑改变：ProcessCollect返回读管道，我们要把里面的东西全部读出来上传
+	// ProcessCollect返回读管道，我们要把里面的东西全部读出来上传
 	fileByte, err := io.ReadAll(reader)
 	if err != nil {
 		return paradigm.NewErrorResponse(paradigm.NewRappaError(paradigm.ChunkRecoverError, err.Error()))

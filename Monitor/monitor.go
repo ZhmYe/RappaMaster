@@ -99,6 +99,25 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	request.SendResponse(*response)
 }
 
+// SelectLeastLoadedNode 选择负载最低的节点（根据处理中的 Slot 数量）
+func (m *Monitor) SelectLeastLoadedNode() int32 {
+	if len(m.nodeStatus) == 0 {
+		return -1
+	}
+
+	bestNodeID := int32(0)
+	minLoad := len(m.nodeStatus[0].PendingSlots)
+
+	for i := 1; i < len(m.nodeStatus); i++ {
+		load := len(m.nodeStatus[i].PendingSlots)
+		if load < minLoad {
+			minLoad = load
+			bestNodeID = int32(i)
+		}
+	}
+	return bestNodeID
+}
+
 func (m *Monitor) Start() {
 	go m.processHeartbeatResponse()
 	go m.processOracleInfo()

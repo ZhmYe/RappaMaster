@@ -53,8 +53,9 @@ type Task struct {
 	// 这里本来就有时间
 	StartTime time.Time      `gorm:"type:datetime;not null;comment:任务启动时间戳"`
 	EndTime   time.Time      `gorm:"type:datetime;comment:任务结束时间戳"`
-	Status    SlotStatus     `gorm:"type:tinyint;not null;comment:完成状态"`
-	Collector RappaCollector `gorm:"-"`
+	Status         SlotStatus     `gorm:"type:tinyint;not null;comment:完成状态"`
+	PlatformTaskID *string        `gorm:"type:varchar(256);index;comment:所属平台任务ID"`
+	Collector      RappaCollector `gorm:"-"`
 }
 
 func (t *Task) Speed() float64 {

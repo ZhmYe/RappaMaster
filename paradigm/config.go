@@ -116,11 +116,12 @@ type BHLayer2NodeConfig struct {
 	// ContractAddress       string // 链上合约地址
 	QueueBufferSize int // 上链队列缓冲区大小
 	WorkerCount     int // Worker 的数量
-	BatchSize       int
-	IsAutoMigrate   bool
 	IsRecovery      bool
+	IsAutoMigrate   bool
+	BatchSize       int
 
-	Database *DatabaseConfig
+	Database      *DatabaseConfig
+	AbmParameters map[string]interface{} `json:"-"` // 不直接从 config.json 解析，从独立文件加载
 }
 
 // DefaultBHLayer2NodeConfig 定义默认的配置值
@@ -203,6 +204,20 @@ func LoadBHLayer2NodeConfig(path string) *BHLayer2NodeConfig {
 			// 文件打开失败时保留默认值
 			println("Failed to open config file, using default values:", err.Error())
 		}
+	}
+
+	// 加载默认 ABM 参数
+	abmPath := "Config/abm_parameters.json"
+	abmFile, err := os.Open(abmPath)
+	if err == nil {
+		defer abmFile.Close()
+		abmDecoder := json.NewDecoder(abmFile)
+		err = abmDecoder.Decode(&config.AbmParameters)
+		if err != nil {
+			println("Failed to parse ABM config file:", err.Error())
+		}
+	} else {
+		println("Failed to open ABM config file, /api/simulation/abm-parameters may return empty:", err.Error())
 	}
 
 	// 设置全局配置

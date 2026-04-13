@@ -39,13 +39,13 @@ func main() {
 	//grpcEngine.Setup(*config)
 	//httpEngine := HTTP.NewFakeHttpEngine(rappaChannel)
 	//httpEngine.Setup(*config)
-	httpEngine := HTTP.NewHttpEngine(rappaChannel, pkiManager)
 	event := Event.NewEvent(rappaChannel)
 	coordinator := Coordinator.NewCoordinator(rappaChannel)
 	epochManager := Epoch.NewEpochManager(rappaChannel, recovery, pkiManager)
 	//chainUpper, _ := ChainUpper.NewMockerChainUpper(rappaChannel) // todo @XQ 测试的时候用的是这个mocker
 	oracle := Oracle.NewPersistedOracle(rappaChannel, dbService, pkiManager)
 	monitor := Monitor.NewMonitor(rappaChannel)
+	httpEngine := HTTP.NewHttpEngine(rappaChannel, pkiManager, dbService, monitor)
 	chainUpper, err := ChainUpper.NewChainUpper(rappaChannel, config)
 	if err != nil {
 		paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to initialize ChainUpper: %v", err))

@@ -1,0 +1,9 @@
+{
+  "N_FT": { "min": 1, "default": 300, "type": "int" },
+  "S_FT": { "min": 1, "default": 1, "type": "int" },
+  "N_LMT": { "min": 1, "default": 300, "type": "int" },
+  "ALPHA_L": { "min": 0.000001, "default": 0.001, "type": "float", "step": 0.001 },
+  "N_SMT": { "min": 1, "default": 300, "type": "int" },
+  "ALPHA_S": { "min": 0.000001, "default": 0.9, "type": "float", "step": 0.1 },
+  "N_NT": { "min": 1, "default": 300, "type": "int" }
+}

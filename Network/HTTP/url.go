@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,10 +31,14 @@ const (
 	UPLOAD_TASK
 	BLOCKCHAIN_QUERY
 	DATASYNTH_QUERY
+	EXECUTION_LOG
+	CREATE_SIM_TASK
+	ANALYZED_STOCKS
+	ABM_PARAMETERS
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, EXECUTION_LOG, CREATE_SIM_TASK, ANALYZED_STOCKS, ABM_PARAMETERS}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -178,6 +183,180 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:     "/dataSynth",
 			Method:  "GET",
 			Handler: e.HandleGET,
+		}
+		return &httpService, nil
+	case EXECUTION_LOG:
+		httpService := HttpService{
+			Url:    "/dashboard/execution_log",
+			Method: "GET",
+			Handler: func(c *gin.Context) {
+				tasks, err := e.dbService.GetAllPlatformTasks()
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"message": "获取执行日志失败",
+						"code":    "E100001",
+						"data":    nil,
+					})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"message": "操作成功",
+					"data":    tasks,
+					"code":    "S000000",
+				})
+			},
+		}
+		return &httpService, nil
+	case CREATE_SIM_TASK:
+		httpService := HttpService{
+			Url:    "/simulation/create-task",
+			Method: "POST",
+			Handler: func(c *gin.Context) {
+				var rawTasks []map[string]interface{}
+				if err := c.ShouldBindJSON(&rawTasks); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{
+						"message": "参数格式错误",
+						"code":    "E100002",
+						"data":    false,
+					})
+					return
+				}
+
+				isScheduled := c.Query("isScheduled") == "true"
+
+				// 生成ID
+				taskID, _ := e.dbService.GetNextPlatformTaskID()
+
+				var subTasks []paradigm.Task
+				for _, raw := range rawTasks {
+					// 调度逻辑：为每个子任务分配一个节点
+					nodeID := e.monitor.SelectLeastLoadedNode()
+
+					// 复用 Task 结构
+					task := paradigm.Task{
+						Sign:      fmt.Sprintf("%s-%s", taskID, raw["stockCode"]),
+						Name:      fmt.Sprintf("%s推演", raw["stockName"]),
+						Params:    make(map[string]interface{}),
+						Status:    paradigm.Processing,
+						StartTime: time.Now(),
+					}
+
+					// 将参数存到 params 字段里，保留横线
+					for k, v := range raw {
+						task.Params[k] = v
+					}
+
+					// 记录分配的节点 (在 Schedule 层级处理，或者临时记在某处)
+					// 这里先简单记录到 Params 里或者 Task 的某个字段
+					task.Params["assigned_node_id"] = nodeID
+
+					subTasks = append(subTasks, task)
+				}
+
+				platformTask := &paradigm.PlatformTask{
+					ID:          taskID,
+					TaskName:    "平台任务申报",
+					SubTasks:    subTasks,
+					IsScheduled: isScheduled,
+					Status:      "running",
+					CreatedAt:   time.Now(),
+				}
+
+				if isScheduled {
+					platformTask.ExecutionType = "每天下午8点"
+					platformTask.User = "系统定时"
+				} else {
+					platformTask.ExecutionType = "即时任务"
+					platformTask.User = "张研"
+				}
+
+				// 汇总参数描述
+				if len(subTasks) > 0 {
+					platformTask.Parameters = fmt.Sprintf("Stock: %s (%s); Horizon: %v", subTasks[0].Params["stockName"], subTasks[0].Params["stockCode"], subTasks[0].Params["horizon"])
+					if len(subTasks) > 1 {
+						platformTask.Parameters += fmt.Sprintf("... (共%d个子任务)", len(subTasks))
+					}
+				}
+
+				err := e.dbService.SetPlatformTask(platformTask)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"message": "任务持久化失败",
+						"code":    "E100003",
+						"data":    false,
+					})
+					return
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"message": "操作成功",
+					"data":    true,
+					"code":    "S000000",
+				})
+			},
+		}
+		return &httpService, nil
+	case ANALYZED_STOCKS:
+		httpService := HttpService{
+			Url:    "/market/analyzed-stocks",
+			Method: "GET",
+			Handler: func(c *gin.Context) {
+				tasks, err := e.dbService.GetFinishedTasks()
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"message": "获取分析已完成任务失败",
+						"code":    "E100004",
+						"data":    nil,
+					})
+					return
+				}
+
+				result := make([]map[string]interface{}, 0)
+				for _, t := range tasks {
+					p := t.Params
+					stock := map[string]interface{}{
+						"stockId":   p["stockId"],
+						"stockCode": p["stockCode"],
+						"stockName": p["stockName"],
+						"label":     fmt.Sprintf("%v %v", p["stockCode"], p["stockName"]),
+						"taskId":    t.PlatformTaskID,
+						"taskName":  fmt.Sprintf("%s 风险监测", p["stockName"]), // 如果没有platform task name就拼一下
+					}
+
+					// 如果有关联的平台任务，可以尝试获取它的名字
+					if t.PlatformTaskID != nil {
+						pt, err := e.dbService.GetPlatformTaskByID(*t.PlatformTaskID)
+						if err == nil && pt != nil {
+							stock["taskName"] = pt.TaskName
+						}
+					}
+
+					result = append(result, stock)
+				}
+
+				c.JSON(http.StatusOK, gin.H{
+					"message": "操作成功",
+					"data":    result,
+					"code":    "S000000",
+				})
+			},
+		}
+		return &httpService, nil
+	case ABM_PARAMETERS:
+		httpService := HttpService{
+			Url:    "/api/simulation/abm-parameters",
+			Method: "GET",
+			Handler: func(c *gin.Context) {
+				// 获取预定义的 ABM 模型结构参数 (从配置加载)
+				parameters := e.config.AbmParameters
+
+				c.JSON(http.StatusOK, gin.H{
+					"message": "操作成功",
+					"data":    parameters,
+					"code":    "S000000",
+				})
+			},
 		}
 		return &httpService, nil
 	default:

@@ -1,6 +1,8 @@
 package HTTP
 
 import (
+	"BHLayer2Node/Database"
+	"BHLayer2Node/Monitor"
 	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
 	"fmt"
@@ -20,6 +22,8 @@ type HttpEngine struct {
 	ip             string // IP 地址
 	port           int    // 端口
 	pkiManager     *PKI.PKIManager
+	dbService      *Database.DatabaseService
+	monitor        *Monitor.Monitor
 	// 服务器
 	r *gin.Engine
 }
@@ -35,43 +39,6 @@ func (e *HttpEngine) AccumulateTaskID() {
 	}
 
 }
-
-// HandleRequest 处理请求
-// 模拟从外部收到请求并将其推送到 pendingRequestPool
-//func (e *HttpEngine) HandleRequest(c *gin.Context) {
-//	var requestBody HttpTaskRequest
-//
-//	// 解析请求体中的 JSON 数据
-//	if err := c.ShouldBindJSON(&requestBody); err != nil {
-//		// 如果解析失败，返回错误信息
-//		c.JSON(http.StatusBadRequest, HttpResponse{
-//			Message: "Invalid JSON data",
-//			Code:    "error",
-//			Data:    nil,
-//		})
-//		return
-//	}
-//
-//	task := paradigm.UnprocessedTask{
-//		Sign:   requestBody.Sign,
-//		Slot:   requestBody.Slot,
-//		Size:   requestBody.Size,
-//		Model:  paradigm.NameToModelType(requestBody.Model),
-//		Params: requestBody.Params,
-//	}
-//
-//	e.channel.InitTasks <- task
-//
-//	// 构造响应体
-//	response := HttpResponse{
-//		Message: "Received JSON data successfully",
-//		Code:    "success",
-//		Data:    requestBody, // 直接将请求体作为数据返回
-//	}
-//
-//	// 返回 JSON 响应
-//	c.JSON(http.StatusOK, response)
-//}
 
 func (e *HttpEngine) Start() {
 	go e.AccumulateTaskID()
@@ -115,7 +82,7 @@ func (e *HttpEngine) Setup(config paradigm.BHLayer2NodeConfig) {
 }
 
 // NewHttpEngine 创建并返回一个新的 HttpEngine 实例
-func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager) *HttpEngine {
+func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager, dbService *Database.DatabaseService, monitor *Monitor.Monitor) *HttpEngine {
 	http := HttpEngine{
 		//initTasks:          channel.InitTasks,
 		//fakeCollectChannel: channel.FakeCollectSignChannel,
@@ -125,6 +92,8 @@ func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager) *
 		taskIDConsumer: make(chan int, 100),               // 这个数字和上面统一 TODO
 		//PendingRequestPool: PendingRequestPool,
 		pkiManager: pkiManager,
+		dbService:  dbService,
+		monitor:    monitor,
 	}
 	http.Setup(*channel.Config)
 	return &http
