@@ -11,7 +11,6 @@ type PlatformTask struct {
 	Parameters     string    `gorm:"type:text" json:"parameters"`
 	ExecutionType  string    `gorm:"type:varchar(128)" json:"executionType"`
 	Status         string    `gorm:"type:varchar(64)" json:"status"`
-	User           string    `gorm:"type:varchar(128)" json:"user"`
 	CompletionTime string    `gorm:"type:varchar(128)" json:"completionTime"`
 	IsScheduled    bool      `gorm:"type:tinyint;default:0" json:"isScheduled"`
 	SubTasks       []Task    `gorm:"foreignKey:PlatformTaskID" json:"subTasks"` // 一对多关系

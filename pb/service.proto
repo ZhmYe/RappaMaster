@@ -157,7 +157,7 @@ message RecoverResponse {
 }
 
 message AnalyticalRequest {
-  string sign = 1;          // 任务标识 taskId-stockId
+  string sign = 1;          // 任务标识 SubTask-taskId-stockId
   string analysisType = 2;  // 分析类型 (order_dynamics, price_synthesis, crash_risk, etc.)
 }
 

@@ -101,8 +101,8 @@ func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager, d
 }
 
 // FetchNodeAnalytics 向执行子任务的节点请求分析数据
-func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId, analType string) (interface{}, error) {
-	sign := fmt.Sprintf("%s-%s", taskId, stockId)
+func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId string, analType paradigm.AnalysisType) (interface{}, error) {
+	sign := fmt.Sprintf("SubTask-%s-%s", taskId, stockId)
 	task, err := e.dbService.GetTaskByID(sign)
 	if err != nil {
 		return nil, fmt.Errorf("task %s not found: %v", sign, err)
@@ -127,7 +127,7 @@ func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId, analType string) (inter
 	client := service.NewRappaExecutorClient(conn)
 	resp, err := client.GetAnalytics(context.Background(), &service.AnalyticalRequest{
 		Sign:         sign,
-		AnalysisType: analType,
+		AnalysisType: analType.String(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("grpc GetAnalytics error: %v", err)

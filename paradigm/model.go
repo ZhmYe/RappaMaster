@@ -69,3 +69,30 @@ func ModelOutputTypeToFileExt(t ModelOutputType) string {
 		return "txt"
 	}
 }
+
+type AnalysisType int
+
+const (
+	OrderDynamics AnalysisType = iota
+	PriceSynthesis
+	CrashRisk
+	InvestorComposition
+	PerformanceComparison
+)
+
+func (t AnalysisType) String() string {
+	switch t {
+	case OrderDynamics:
+		return "order_dynamics"
+	case PriceSynthesis:
+		return "price_synthesis"
+	case CrashRisk:
+		return "crash_risk"
+	case InvestorComposition:
+		return "investor_composition"
+	case PerformanceComparison:
+		return "performance_comparison"
+	default:
+		return "unknown"
+	}
+}

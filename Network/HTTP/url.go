@@ -76,17 +76,17 @@ func (e *HttpEngine) HandleSimulationDownload(c *gin.Context) {
 	taskId := c.Query("taskId")
 	stockId := c.Query("stockId")
 	if taskId == "" || stockId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100005"})
+		c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100005", Data: nil})
 		return
 	}
 
-	// 映射到系统的 Sign (taskId-stockId)
-	sign := fmt.Sprintf("%s-%s", taskId, stockId)
+	// 映射到系统的 Sign (SubTask-taskId-stockId)
+	sign := fmt.Sprintf("SubTask-%s-%s", taskId, stockId)
 
 	// 获取任务信息来确定Size
 	task, err := e.dbService.GetTaskByID(sign)
 	if err != nil || task == nil {
-		c.JSON(http.StatusNotFound, gin.H{"message": "任务未找到", "code": "E100006"})
+		c.JSON(http.StatusNotFound, paradigm.HttpResponse{Message: "任务未找到", Code: "E100006", Data: nil})
 		return
 	}
 
@@ -101,7 +101,7 @@ func (e *HttpEngine) HandleSimulationDownload(c *gin.Context) {
 	fileJson := r.ToHttpJson()
 	interfaceReader, ok := fileJson["fileReader"]
 	if !ok || interfaceReader == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "结果文件尚未准备好", "code": "E100007"})
+		c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{Message: "结果文件尚未准备好", Code: "E100007", Data: nil})
 		return
 	}
 
@@ -131,7 +131,7 @@ func (e *HttpEngine) HandleDownload(c *gin.Context) {
 		// 流式传输数据
 		c.DataFromReader(
 			http.StatusOK,
-			-1, // todo 未知
+			-1, // 内容长度未知，使用 -1
 			"application/octet-stream",
 			reader, // 流传输
 			nil,    // 可选的额外 headers
@@ -240,18 +240,18 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Handler: func(c *gin.Context) {
 				tasks, err := e.dbService.GetAllPlatformTasks()
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取执行日志失败",
-						"code":    "E100001",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取执行日志失败",
+						Code:    "E100001",
+						Data:    nil,
 					})
 					return
 				}
 
-				c.JSON(http.StatusOK, gin.H{
-					"message": "操作成功",
-					"data":    tasks,
-					"code":    "S000000",
+				c.JSON(http.StatusOK, paradigm.HttpResponse{
+					Message: "操作成功",
+					Data:    tasks,
+					Code:    "S000000",
 				})
 			},
 		}
@@ -263,10 +263,10 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Handler: func(c *gin.Context) {
 				var rawTasks []map[string]interface{}
 				if err := c.ShouldBindJSON(&rawTasks); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{
-						"message": "参数格式错误",
-						"code":    "E100002",
-						"data":    false,
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: "参数格式错误",
+						Code:    "E100002",
+						Data:    false,
 					})
 					return
 				}
@@ -283,7 +283,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 					// 复用 Task 结构
 					task := paradigm.Task{
-						Sign:      fmt.Sprintf("%s-%s", taskID, raw["stockCode"]),
+						Sign:      fmt.Sprintf("SubTask-%s-%s", taskID, raw["stockCode"]),
 						Name:      fmt.Sprintf("%s推演", raw["stockName"]),
 						Params:    make(map[string]interface{}),
 						Status:    paradigm.Processing,
@@ -312,11 +312,9 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				}
 
 				if isScheduled {
-					platformTask.ExecutionType = "每天下午8点"
-					platformTask.User = "系统定时"
+					platformTask.ExecutionType = "定时任务"
 				} else {
 					platformTask.ExecutionType = "即时任务"
-					platformTask.User = "张研"
 				}
 
 				// 汇总参数描述
@@ -329,18 +327,42 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 				err := e.dbService.SetPlatformTask(platformTask)
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "任务持久化失败",
-						"code":    "E100003",
-						"data":    false,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "任务持久化失败",
+						Code:    "E100003",
+						Data:    false,
 					})
 					return
 				}
 
-				c.JSON(http.StatusOK, gin.H{
-					"message": "操作成功",
-					"data":    true,
-					"code":    "S000000",
+				// 平台任务的子任务只调度一次：直接推入调度队列，不经过区块链/Tracker
+				for _, subTask := range subTasks {
+					t := subTask // capture loop variable
+					// 从请求参数中读取数据量，未提供则使用默认 SlotSize
+					taskSize := int32(3000)
+					if v, ok := t.Params["size"]; ok {
+						switch s := v.(type) {
+						case float64:
+							taskSize = int32(s)
+						case int:
+							taskSize = int32(s)
+						case int32:
+							taskSize = s
+						}
+					}
+					e.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
+						TaskID:   t.Sign,
+						SlotSize: taskSize,
+						Size:     taskSize,
+						Model:    paradigm.ABM,
+						Params:   t.Params,
+					}
+				}
+
+				c.JSON(http.StatusOK, paradigm.HttpResponse{
+					Message: "操作成功",
+					Data:    true,
+					Code:    "S000000",
 				})
 			},
 		}
@@ -352,10 +374,10 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Handler: func(c *gin.Context) {
 				tasks, err := e.dbService.GetFinishedTasks()
 				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取分析已完成任务失败",
-						"code":    "E100004",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取分析已完成任务失败",
+						Code:    "E100004",
+						Data:    nil,
 					})
 					return
 				}
@@ -383,10 +405,10 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					result = append(result, stock)
 				}
 
-				c.JSON(http.StatusOK, gin.H{
-					"message": "操作成功",
-					"data":    result,
-					"code":    "S000000",
+				c.JSON(http.StatusOK, paradigm.HttpResponse{
+					Message: "操作成功",
+					Data:    result,
+					Code:    "S000000",
 				})
 			},
 		}
@@ -399,10 +421,10 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				// 获取预定义的 ABM 模型结构参数 (从配置加载)
 				parameters := e.config.AbmParameters
 
-				c.JSON(http.StatusOK, gin.H{
-					"message": "操作成功",
-					"data":    parameters,
-					"code":    "S000000",
+				c.JSON(http.StatusOK, paradigm.HttpResponse{
+					Message: "操作成功",
+					Data:    parameters,
+					Code:    "S000000",
 				})
 			},
 		}
@@ -415,22 +437,22 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskId := c.Query("taskId")
 				stockId := c.Query("stockId")
 				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100008"})
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
 					return
 				}
 
 				// 从节点获取实时数据
-				data, err := e.FetchNodeAnalytics(taskId, stockId, "order_dynamics")
+				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.OrderDynamics)
 				if err != nil {
 					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live dynamics: %v", err))
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取实时订单态势失败: " + err.Error(),
-						"code":    "E100009",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取实时订单态势失败: " + err.Error(),
+						Code:    "E100009",
+						Data:    nil,
 					})
 					return
 				}
-				c.JSON(http.StatusOK, gin.H{"message": "操作成功", "data": data, "code": "S000000"})
+				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
 		return &httpService, nil
@@ -449,21 +471,21 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskId := c.Query("taskId")
 				stockId := c.Query("stockId")
 				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100008"})
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
 					return
 				}
 
-				data, err := e.FetchNodeAnalytics(taskId, stockId, "price_synthesis")
+				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.PriceSynthesis)
 				if err != nil {
 					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live price synthesis: %v", err))
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取价格合成分析失败: " + err.Error(),
-						"code":    "E100010",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取价格合成分析失败: " + err.Error(),
+						Code:    "E100010",
+						Data:    nil,
 					})
 					return
 				}
-				c.JSON(http.StatusOK, gin.H{"message": "操作成功", "data": data, "code": "S000000"})
+				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
 		return &httpService, nil
@@ -475,21 +497,21 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskId := c.Query("taskId")
 				stockId := c.Query("stockId")
 				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100008"})
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
 					return
 				}
 
-				data, err := e.FetchNodeAnalytics(taskId, stockId, "crash_risk")
+				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.CrashRisk)
 				if err != nil {
 					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live crash risk: %v", err))
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取崩盘风险预警失败: " + err.Error(),
-						"code":    "E100011",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取崩盘风险预警失败: " + err.Error(),
+						Code:    "E100011",
+						Data:    nil,
 					})
 					return
 				}
-				c.JSON(http.StatusOK, gin.H{"message": "操作成功", "data": data, "code": "S000000"})
+				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
 		return &httpService, nil
@@ -501,21 +523,21 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskId := c.Query("taskId")
 				stockId := c.Query("stockId")
 				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100008"})
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
 					return
 				}
 
-				data, err := e.FetchNodeAnalytics(taskId, stockId, "investor_composition")
+				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.InvestorComposition)
 				if err != nil {
 					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live investor composition: %v", err))
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取投资者构成失败: " + err.Error(),
-						"code":    "E100012",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取投资者构成失败: " + err.Error(),
+						Code:    "E100012",
+						Data:    nil,
 					})
 					return
 				}
-				c.JSON(http.StatusOK, gin.H{"message": "操作成功", "data": data, "code": "S000000"})
+				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
 		return &httpService, nil
@@ -527,21 +549,21 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskId := c.Query("taskId")
 				stockId := c.Query("stockId")
 				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, gin.H{"message": "taskId and stockId required", "code": "E100008"})
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
 					return
 				}
 
-				data, err := e.FetchNodeAnalytics(taskId, stockId, "performance_comparison")
+				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.PerformanceComparison)
 				if err != nil {
 					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live performance comparison: %v", err))
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"message": "获取模型评估失败: " + err.Error(),
-						"code":    "E100013",
-						"data":    nil,
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取模型评估失败: " + err.Error(),
+						Code:    "E100013",
+						Data:    nil,
 					})
 					return
 				}
-				c.JSON(http.StatusOK, gin.H{"message": "操作成功", "data": data, "code": "S000000"})
+				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
 		return &httpService, nil

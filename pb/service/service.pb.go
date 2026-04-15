@@ -7,11 +7,12 @@
 package service
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	_struct "github.com/golang/protobuf/ptypes/struct"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -878,7 +879,7 @@ type AnalyticalRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Sign         string `protobuf:"bytes,1,opt,name=sign,proto3" json:"sign,omitempty"`                 // 任务标识 taskId-stockId
+	Sign         string `protobuf:"bytes,1,opt,name=sign,proto3" json:"sign,omitempty"`                 // 任务标识 SubTask-taskId-stockId
 	AnalysisType string `protobuf:"bytes,2,opt,name=analysisType,proto3" json:"analysisType,omitempty"` // 分析类型 (order_dynamics, price_synthesis, crash_risk, etc.)
 }
 
