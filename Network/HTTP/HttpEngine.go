@@ -3,10 +3,11 @@ package HTTP
 import (
 	"BHLayer2Node/Database"
 	"BHLayer2Node/Monitor"
-	"BHLayer2Node/PKI"
 	"BHLayer2Node/Network/Grpc"
-	"BHLayer2Node/pb/service"
+	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
+	"BHLayer2Node/pb/service"
+	"BHLayer2Node/utils"
 	"context"
 	"fmt"
 	"time"
@@ -108,20 +109,14 @@ func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId string, analType paradig
 		return nil, fmt.Errorf("task %s not found: %v", sign, err)
 	}
 
-	// 从任务参数中获取分配的节点 ID
-	assignedNodeId, ok := task.Params["assigned_node_id"].(float64) // JSON 数值默认为 float64
-	if !ok {
-		// 尝试 int
-		if id, ok := task.Params["assigned_node_id"].(int); ok {
-			assignedNodeId = float64(id)
-		} else {
-			return nil, fmt.Errorf("assigned_node_id not found for task %s", sign)
-		}
+	nodeID, err := resolveAnalyticsNodeID(task)
+	if err != nil {
+		return nil, err
 	}
 
-	conn, err := e.grpcManager.GetConn(int(assignedNodeId))
+	conn, err := e.grpcManager.GetConn(nodeID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get node %d connection: %v", int(assignedNodeId), err)
+		return nil, fmt.Errorf("failed to get node %d connection: %v", nodeID, err)
 	}
 
 	client := service.NewRappaExecutorClient(conn)
@@ -137,4 +132,12 @@ func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId string, analType paradig
 		return resp.Data.AsMap(), nil
 	}
 	return nil, nil
+}
+
+func resolveAnalyticsNodeID(task *paradigm.Task) (int, error) {
+	if nodeID, ok := utils.ExtractAssignedNodeID(task.Params); ok {
+		return int(nodeID), nil
+	}
+
+	return 0, fmt.Errorf("assigned_node_id not found for task %s", task.Sign)
 }

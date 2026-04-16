@@ -27,7 +27,9 @@ func (c *Coordinator) sendSchedule(schedule paradigm.SynthTaskSchedule) {
 	var wg sync.WaitGroup
 	successChannel := make(chan *paradigm.Slot, len(nodeAddresses)) // 用于统计成功的任务大小
 	rejectChannel := make(chan [2]interface{}, len(nodeAddresses))  // 用于统计失败的任务
-	wg.Add(len(nodeAddresses))                                      // 增加 WaitGroup 计数器
+	// 这里只等待真正参与本次调度的节点。
+	// ABM_V2 是单股票单节点任务，如果按全部节点数 Add，会导致 sendSchedule 永远卡在 Wait。
+	wg.Add(len(schedule.NodeIDMap))
 	// 遍历所有节点
 	for nID, index := range schedule.NodeIDMap {
 		//for nodeID, address := range nodeAddresses {

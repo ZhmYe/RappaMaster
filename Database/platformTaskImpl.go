@@ -4,12 +4,27 @@ import (
 	"BHLayer2Node/paradigm"
 	"errors"
 	"fmt"
+	"time"
+
 	"gorm.io/gorm"
 )
 
 // SetPlatformTask 创建或更新大任务
 func (o DatabaseService) SetPlatformTask(task *paradigm.PlatformTask) error {
-	return o.db.Save(task).Error
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Omit("SubTasks").Save(task).Error; err != nil {
+			return err
+		}
+
+		for i := range task.SubTasks {
+			task.SubTasks[i].PlatformTaskID = &task.ID
+			if err := tx.Omit("EndTime").Save(&task.SubTasks[i]).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 // GetAllPlatformTasks 获取所有大任务, 按创建时间倒序
@@ -40,6 +55,45 @@ func (o DatabaseService) UpdatePlatformTask(task *paradigm.PlatformTask) error {
 	return o.db.Model(task).Updates(task).Error
 }
 
+// RefreshPlatformTaskStatus 根据子任务状态刷新平台任务总状态，便于 execution_log 直接展示。
+func (o DatabaseService) RefreshPlatformTaskStatus(platformTaskID string) error {
+	task, err := o.GetPlatformTaskByID(platformTaskID)
+	if err != nil {
+		return err
+	}
+	if task == nil {
+		return nil
+	}
+
+	allFinished := len(task.SubTasks) > 0
+	hasFailed := false
+	for _, subTask := range task.SubTasks {
+		switch subTask.Status {
+		case paradigm.Finished:
+			continue
+		case paradigm.Failed:
+			hasFailed = true
+			allFinished = false
+		default:
+			allFinished = false
+		}
+	}
+
+	switch {
+	case hasFailed:
+		task.Status = "failed"
+		task.CompletionTime = time.Now().Format(time.RFC3339)
+	case allFinished:
+		task.Status = "finished"
+		task.CompletionTime = time.Now().Format(time.RFC3339)
+	default:
+		task.Status = "running"
+		task.CompletionTime = ""
+	}
+
+	return o.db.Model(task).Select("status", "completion_time").Updates(task).Error
+}
+
 // GetNextPlatformTaskID 获取下一个可用的 TSK ID
 func (o DatabaseService) GetNextPlatformTaskID() (string, error) {
 	var count int64
@@ -53,8 +107,10 @@ func (o DatabaseService) GetNextPlatformTaskID() (string, error) {
 // GetFinishedTasks 获取所有已完成的任务，用于分析股票列表
 func (o DatabaseService) GetFinishedTasks() ([]*paradigm.Task, error) {
 	var tasks []*paradigm.Task
-	// 查询已完成的任务，并且预加载所属的平台任务以获取平台任务名称
-	err := o.db.Where("status = ?", paradigm.Finished).Find(&tasks).Error
+	// 这里只返回平台分析任务。
+	// 老的普通合成任务虽然也可能是 finished，但它们没有平台任务ID，也没有 stockCode/stockName，
+	// 不能混入 analyzed-stocks 的返回结果里。
+	err := o.db.Where("status = ? AND platform_task_id IS NOT NULL AND model = ?", paradigm.Finished, paradigm.ABM_V2).Find(&tasks).Error
 	if err != nil {
 		return nil, err
 	}

@@ -217,6 +217,11 @@ func (o *PersistedOracle) Start() {
 								//d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
 								o.dbService.UpdateTask(task)
+								if task.PlatformTaskID != nil {
+									if err := o.dbService.RefreshPlatformTaskStatus(*task.PlatformTaskID); err != nil {
+										paradigm.Log("ERROR", fmt.Sprintf("refresh platform task %s failed: %v", *task.PlatformTaskID, err))
+									}
+								}
 								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
 							}
 							//更新task

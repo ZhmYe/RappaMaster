@@ -99,23 +99,46 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 	request.SendResponse(*response)
 }
 
-// SelectLeastLoadedNode 选择负载最低的节点（根据处理中的 Slot 数量）
-func (m *Monitor) SelectLeastLoadedNode() int32 {
+// SelectLeastLoadedNodeExcluding 选择负载最低的节点，并允许排除当前批次中已经预留过的节点。
+// 这样平台一次创建多个“单股票单节点”子任务时，不会因为监控状态尚未刷新而都落到同一个节点。
+func (m *Monitor) SelectLeastLoadedNodeExcluding(excluded map[int32]struct{}) int32 {
 	if len(m.nodeStatus) == 0 {
 		return -1
 	}
 
-	bestNodeID := int32(0)
-	minLoad := len(m.nodeStatus[0].PendingSlots)
+	bestNodeID := int32(-1)
+	minLoad := -1
 
-	for i := 1; i < len(m.nodeStatus); i++ {
+	for i := 0; i < len(m.nodeStatus); i++ {
+		nodeID := int32(i)
+		if _, skip := excluded[nodeID]; skip {
+			continue
+		}
 		load := len(m.nodeStatus[i].PendingSlots)
-		if load < minLoad {
+		if bestNodeID == -1 || load < minLoad {
 			minLoad = load
-			bestNodeID = int32(i)
+			bestNodeID = nodeID
+		}
+	}
+
+	// 如果可选节点都被排除了，就退化回原来的“全局最小负载”策略。
+	if bestNodeID == -1 {
+		bestNodeID = int32(0)
+		minLoad = len(m.nodeStatus[0].PendingSlots)
+		for i := 1; i < len(m.nodeStatus); i++ {
+			load := len(m.nodeStatus[i].PendingSlots)
+			if load < minLoad {
+				minLoad = load
+				bestNodeID = int32(i)
+			}
 		}
 	}
 	return bestNodeID
+}
+
+// SelectLeastLoadedNode 保留旧接口，供现有调用方继续复用。
+func (m *Monitor) SelectLeastLoadedNode() int32 {
+	return m.SelectLeastLoadedNodeExcluding(map[int32]struct{}{})
 }
 
 func (m *Monitor) Start() {

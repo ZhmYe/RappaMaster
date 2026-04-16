@@ -41,6 +41,8 @@ func (t *Tracker) UpdateTask(sign string) {
 		expireTime = time.Now().Add(40 * time.Second) // todo @SD 这里的时间写成config
 	case paradigm.ABM:
 		expireTime = time.Now().Add(120 * time.Second)
+	case paradigm.ABM_V2:
+		expireTime = time.Now().Add(200 * time.Second) // todo: 根据实际参数设置调整超时(abm训练epochs=3,gan_epochs=1时任务运行170s)
 	default:
 		panic("unhandled default case")
 	}
@@ -62,7 +64,13 @@ func (t *Tracker) Commit(slot *paradigm.SignedCommitSlotItem) error {
 
 // UpdateSlot 更新一个slot,等待其提交
 func (t *Tracker) UpdateSlot(commitSlotItem paradigm.SignedCommitSlotItem) {
-	slot := paradigm.NewPendingCommitSlotTrack(&commitSlotItem, t.checkIsReliable(commitSlotItem.Sign)) // 等待verify
+	isReliable := t.checkIsReliable(commitSlotItem.Sign)
+	slot := paradigm.NewPendingCommitSlotTrack(&commitSlotItem, isReliable) // 等待verify
+	// 对不要求可信证明的任务，沿用原有“无需额外 proof 即可进入 finalize 检查”的行为，
+	// 只要投票通过就可以继续推进，避免平台 ABM_V2 任务卡在 pending。
+	if !isReliable {
+		slot.ReceiveProof()
+	}
 	t.pendingCommitSlot[commitSlotItem.SlotHash()] = slot
 	// 每个slot设置比较长的时间，因为是zkp，设置1分钟吧先 todo @SD 这里的时间写成config，按秒
 	expireTime := time.Now().Add(1 * time.Minute)

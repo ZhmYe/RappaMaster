@@ -59,17 +59,17 @@ func NewDatabaseService(config *paradigm.BHLayer2NodeConfig, channel *paradigm.R
 
 func (o DatabaseService) AutoMigrate() error {
 	return o.db.AutoMigrate(
+		&paradigm.PlatformTask{},
 		&paradigm.Slot{},
 		&paradigm.Task{},
 		&paradigm.DevEpoch{},
 		&paradigm.DevReference{},
 		&Date.DateRecord{},
-		&paradigm.PlatformTask{},
 	)
 }
 
 func (o DatabaseService) TruncateAll() error {
-	tables := []string{"date_records", "dev_epoches", "dev_references", "slots", "tasks"}
+	tables := []string{"date_records", "dev_epoches", "dev_references", "slots", "tasks", "platform_tasks"}
 	for _, table := range tables {
 		if err := o.db.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table)).Error; err != nil {
 			return fmt.Errorf("failed to truncate table %s: %v", table, err)

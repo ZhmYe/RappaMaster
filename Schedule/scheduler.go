@@ -2,6 +2,7 @@ package Schedule
 
 import (
 	"BHLayer2Node/paradigm"
+	"BHLayer2Node/utils"
 	"fmt"
 	"sync"
 )
@@ -36,27 +37,57 @@ func (s *Scheduler) process(task paradigm.UnprocessedTask) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 获取节点列表
-	// 这里测试分配到所有节点
-	//nIDs := make([]int, 0, len(s.channel.Config.BHNodeAddressMap))
-	//for key := range s.channel.Config.BHNodeAddressMap {
-	//	nIDs = append(nIDs, key)
-	//}
-	//
-	//if len(nIDs) == 0 {
-	//	LogWriter.Log("ERROR", "No connected nodes available for scheduling")
-	//	return
-	//}
-	adviceRequest := paradigm.NewAdviceRequest(task.Size, task.SlotSize)
-	s.channel.MonitorAdviceChannel <- adviceRequest
-	resp := adviceRequest.ReceiveResponse()
-	//allocSizes := s.monitor.Advice(nIDs, task.Size) // todo
-	//allocSizes := resp.ScheduleSize
-	if len(resp.ScheduleSize) != len(resp.NodeIDs) {
-		panic("Error in Monitor Advice(), len(nIDs) != len(allocSizes)")
+	// // 获取节点列表
+	// // 这里测试分配到所有节点
+	// //nIDs := make([]int, 0, len(s.channel.Config.BHNodeAddressMap))
+	// //for key := range s.channel.Config.BHNodeAddressMap {
+	// //	nIDs = append(nIDs, key)
+	// //}
+	// //
+	// //if len(nIDs) == 0 {
+	// //	LogWriter.Log("ERROR", "No connected nodes available for scheduling")
+	// //	return
+	// //}
+	// adviceRequest := paradigm.NewAdviceRequest(task.Size, task.SlotSize)
+	// s.channel.MonitorAdviceChannel <- adviceRequest
+	// resp := adviceRequest.ReceiveResponse()
+	// //allocSizes := s.monitor.Advice(nIDs, task.Size) // todo
+	// //allocSizes := resp.ScheduleSize
+	// if len(resp.ScheduleSize) != len(resp.NodeIDs) {
+	// 	panic("Error in Monitor Advice(), len(nIDs) != len(allocSizes)")
+	// }
+	// // 构建分配计划
+	// schedule := s.generateSynthSchedule(task, resp.NodeIDs, resp.ScheduleSize)
+
+	var nodeIDs []int32
+	var scheduleSizes []int32
+
+	if task.Model == paradigm.ABM_V2 {
+		if nodeID, ok := utils.ExtractAssignedNodeID(task.Params); ok {
+			nodeIDs = []int32{nodeID}
+			scheduleSizes = []int32{1}
+		} else {
+			adviceRequest := paradigm.NewAdviceRequest(1, 1)
+			s.channel.MonitorAdviceChannel <- adviceRequest
+			resp := adviceRequest.ReceiveResponse()
+			if len(resp.NodeIDs) == 0 {
+				panic("Error in Monitor Advice(), no node available for ABM_V2")
+			}
+			nodeIDs = []int32{resp.NodeIDs[0]}
+			scheduleSizes = []int32{1}
+		}
+	} else {
+		adviceRequest := paradigm.NewAdviceRequest(task.Size, task.SlotSize)
+		s.channel.MonitorAdviceChannel <- adviceRequest
+		resp := adviceRequest.ReceiveResponse()
+		if len(resp.ScheduleSize) != len(resp.NodeIDs) {
+			panic("Error in Monitor Advice(), len(nIDs) != len(allocSizes)")
+		}
+		nodeIDs = resp.NodeIDs
+		scheduleSizes = resp.ScheduleSize
 	}
 	// 构建分配计划
-	schedule := s.generateSynthSchedule(task, resp.NodeIDs, resp.ScheduleSize)
+	schedule := s.generateSynthSchedule(task, nodeIDs, scheduleSizes)
 	paradigm.Print("SCHEDULE", fmt.Sprintf("New Schedule for Task %s, Schedule: %d, Size: %d", task.TaskID, schedule.ScheduleID, schedule.Size))
 	s.channel.PendingSchedules <- schedule
 }

@@ -37,7 +37,7 @@ type Task struct {
 	Name string `gorm:"type:varchar(256)"`
 	// TODO 这里我改成指定slot的大小
 	Slot           int32                  `gorm:"type:int;not null"`
-	Model          SupportModelType       `gorm:"type:tinyint;not null;comment:支持的模型类型（必填，0=CTGAN, 1=BAED, 2=FINKAN, 3=ABM）"`
+	Model          SupportModelType       `gorm:"type:tinyint;not null;comment:支持的模型类型（必填，0=CTGAN, 1=BAED, 2=FINKAN, 3=ABM, 4=ABM_V2）"`
 	Params         map[string]interface{} `gorm:"type:json;serializer:json"`
 	Size           int32                  `gorm:"type:int;not null;default:0;comment:总数据处理量（必填，默认0）"`
 	Process        int32                  `gorm:"type:int;not null;default:0;comment:已完成数据量（必填，默认0）"`
@@ -51,8 +51,8 @@ type Task struct {
 	TxBlockHash    string                 `gorm:"-"`
 	HasbeenCollect bool                   `gorm:"-"`
 	// 这里本来就有时间
-	StartTime time.Time      `gorm:"type:datetime;not null;comment:任务启动时间戳"`
-	EndTime   time.Time      `gorm:"type:datetime;comment:任务结束时间戳"`
+	StartTime      time.Time      `gorm:"type:datetime;not null;comment:任务启动时间戳"`
+	EndTime        time.Time      `gorm:"type:datetime;comment:任务结束时间戳"`
 	Status         SlotStatus     `gorm:"type:tinyint;not null;comment:完成状态"`
 	PlatformTaskID *string        `gorm:"type:varchar(256);index;comment:所属平台任务ID"`
 	Collector      RappaCollector `gorm:"-"`
@@ -222,6 +222,8 @@ func NewTask(sign string, name string, model SupportModelType, slotSize int32, p
 	case FINKAN:
 		outputType = DATAFRAME
 	case ABM:
+		outputType = DATAFRAME
+	case ABM_V2:
 		outputType = DATAFRAME
 	default:
 		e := Error(RuntimeError, "Unsupported Model Type!!!")

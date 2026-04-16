@@ -10,21 +10,38 @@ import (
 	"gorm.io/gorm"
 )
 
+// attachTaskTxInfo 只给真正上链初始化过的任务补充交易信息。
+// 平台任务直接落库，故意保持 TID=0，这里不能再把它当成异常。
+func (o DatabaseService) attachTaskTxInfo(task *paradigm.Task) error {
+	if task == nil || task.TID == 0 {
+		return nil
+	}
+
+	tx := paradigm.DevReference{}
+	if err := o.db.Take(&tx, task.TID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("failed to get associated transaction: %v", err)
+	}
+
+	task.TxReceipt = &tx.TxReceipt
+	task.TxBlockHash = tx.TxBlockHash
+	task.TxHash = tx.TxHash
+	return nil
+}
+
 // 获取任务
 func (o DatabaseService) GetTask(taskHash paradigm.TaskHash) (*paradigm.Task, error) {
 	taskQuery := paradigm.Task{}
 	err := o.db.Where(paradigm.Task{Sign: taskHash}).Take(&taskQuery).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return nil, err
-	} else {
-		// 获取txHash
-		tx := paradigm.DevReference{}
-		o.db.Take(&tx, taskQuery.TID)
-		taskQuery.TxReceipt = &tx.TxReceipt
-		taskQuery.TxBlockHash = tx.TxBlockHash
-		taskQuery.TxHash = tx.TxHash
-		return &taskQuery, nil
 	}
+	if err := o.attachTaskTxInfo(&taskQuery); err != nil {
+		return nil, err
+	}
+	return &taskQuery, nil
 }
 
 // 更新任务schedule
@@ -33,6 +50,12 @@ func (o DatabaseService) UpdateScheduleInTask(schedule *paradigm.SynthTaskSchedu
 	if err != nil {
 		panic(fmt.Sprintf("task not found of %s", schedule.TaskID))
 	}
+	if task.Schedules == nil {
+		task.Schedules = make([]*paradigm.SynthTaskSchedule, 0)
+	}
+	if task.ScheduleMap == nil {
+		task.ScheduleMap = make(map[paradigm.ScheduleHash]int)
+	}
 	task.Schedules = append(task.Schedules, schedule)
 	task.ScheduleMap[schedule.ScheduleID] = len(task.Schedules)
 	o.db.Model(task).Select("schedules", "schedule_map").Updates(task)
@@ -40,7 +63,9 @@ func (o DatabaseService) UpdateScheduleInTask(schedule *paradigm.SynthTaskSchedu
 
 // 创建任务
 func (o DatabaseService) SetTask(task *paradigm.Task) {
-	o.db.Omit("end_time").Create(task)
+	// 平台任务会先落库，再在链上确认 InitTaskTx；
+	// 这里统一用 Save，兼容“首次插入”和“链上确认后回填 TID”等更新场景。
+	o.db.Omit("end_time").Save(task)
 }
 
 // 更新任务
@@ -82,14 +107,9 @@ func (o DatabaseService) GetTaskByID(taskID string) (*paradigm.Task, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	tx := paradigm.DevReference{}
-	if err = o.db.Take(&tx, task.TID).Error; err != nil {
-		return nil, fmt.Errorf("failed to get associated transaction: %v", err)
+	if err = o.attachTaskTxInfo(&task); err != nil {
+		return nil, err
 	}
-	task.TxReceipt = &tx.TxReceipt
-	task.TxBlockHash = tx.TxBlockHash
-	task.TxHash = tx.TxHash
 
 	// 更新每个schedule中的slots信息
 	for i, schedule := range task.Schedules {
@@ -141,11 +161,8 @@ func (o DatabaseService) GetAllTasks() ([]*paradigm.Task, error) {
 	}
 
 	for _, task := range tasks {
-		tx := paradigm.DevReference{}
-		if err := o.db.Take(&tx, task.TID).Error; err == nil {
-			task.TxReceipt = &tx.TxReceipt
-			task.TxBlockHash = tx.TxBlockHash
-			task.TxHash = tx.TxHash
+		if err := o.attachTaskTxInfo(task); err != nil {
+			return nil, err
 		}
 	}
 

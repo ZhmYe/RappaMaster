@@ -49,7 +49,7 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 			"NbJustified": nbJustified,
 			"NbFinalized": NbFinalized,
 			"NbInvalid":   len(epoch.Invalids),
-			"TxHash":      epoch.TxReceipt.TransactionHash,
+			"TxHash":      safeReceiptTxHash(epoch.TxReceipt),
 		})
 	}
 	response["LatestEpoch"] = le
@@ -67,10 +67,10 @@ func (q *BlockchainLatestInfoQuery) GenerateResponse(data interface{}) paradigm.
 			continue
 		}
 		lt = append(lt, map[string]interface{}{
-			"txHash":      tx.TxReceipt.TransactionHash,
+			"txHash":      safeReceiptTxHash(&tx.TxReceipt),
 			"txType":      txType,
 			"blockHash":   tx.TxBlockHash,
-			"contract":    tx.TxReceipt.To,
+			"contract":    safeReceiptContract(&tx.TxReceipt),
 			"upchainTime": paradigm.TimeFormat(tx.UpchainTime),
 		})
 	}

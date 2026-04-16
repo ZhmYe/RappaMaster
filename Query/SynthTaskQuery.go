@@ -200,7 +200,13 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 		taskInfo["speed"] = task.Speed() // 速度，单位应该是B/s
 		taskInfo["taskID"] = task.Sign
 		taskInfo["taskName"] = task.Name
-		taskInfo["txHash"] = task.TxReceipt.TransactionHash
+		if task.TxReceipt != nil {
+			taskInfo["txHash"] = task.TxReceipt.TransactionHash
+		} else {
+			// 平台任务或尚未补齐链上交易信息的任务允许没有 TxReceipt，
+			// 这里返回空字符串，避免任务列表查询直接 panic。
+			taskInfo["txHash"] = ""
+		}
 		taskInfo["total"] = task.Size // 数据总量
 		//taskInfo["process"] = min(task.Process, task.Size) // 已合成
 		taskInfo["process"] = task.Process

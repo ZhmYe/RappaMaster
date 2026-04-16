@@ -277,27 +277,39 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				taskID, _ := e.dbService.GetNextPlatformTaskID()
 
 				var subTasks []paradigm.Task
+				reservedNodeIDs := make(map[int32]struct{})
 				for _, raw := range rawTasks {
-					// 调度逻辑：为每个子任务分配一个节点
-					nodeID := e.monitor.SelectLeastLoadedNode()
+					// 调度逻辑：每个股票子任务绑定一个节点。
+					// 这里先做批内去重，避免同一次请求里的多只股票在调度状态尚未刷新前都选到同一个节点。
+					nodeID := e.monitor.SelectLeastLoadedNodeExcluding(reservedNodeIDs)
+					reservedNodeIDs[nodeID] = struct{}{}
+					taskSize := int32(1)
+					taskParams, err := buildABMV2TaskParams(raw, nodeID)
+					if err != nil {
+						c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+							Message: "ABM_V2 参数错误: " + err.Error(),
+							Code:    "E100002",
+							Data:    false,
+						})
+						return
+					}
 
 					// 复用 Task 结构
 					task := paradigm.Task{
-						Sign:      fmt.Sprintf("SubTask-%s-%s", taskID, raw["stockCode"]),
-						Name:      fmt.Sprintf("%s推演", raw["stockName"]),
-						Params:    make(map[string]interface{}),
-						Status:    paradigm.Processing,
-						StartTime: time.Now(),
+						Sign:        fmt.Sprintf("SubTask-%s-%s", taskID, taskParams["stockCode"]),
+						Name:        fmt.Sprintf("%s推演", taskParams["stockName"]),
+						Slot:        1,
+						Model:       paradigm.ABM_V2,
+						Params:      taskParams,
+						Size:        taskSize,
+						Process:     0,
+						OutputType:  paradigm.DATAFRAME,
+						Schedules:   make([]*paradigm.SynthTaskSchedule, 0),
+						ScheduleMap: make(map[paradigm.ScheduleHash]int),
+						Status:      paradigm.Processing,
+						StartTime:   time.Now(),
 					}
-
-					// 将参数存到 params 字段里，保留横线
-					for k, v := range raw {
-						task.Params[k] = v
-					}
-
-					// 记录分配的节点 (在 Schedule 层级处理，或者临时记在某处)
-					// 这里先简单记录到 Params 里或者 Task 的某个字段
-					task.Params["assigned_node_id"] = nodeID
+					task.SetCollector(Collector.NewCollector(task.Sign, task.OutputType, e.channel, e.pkiManager))
 
 					subTasks = append(subTasks, task)
 				}
@@ -335,28 +347,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					return
 				}
 
-				// 平台任务的子任务只调度一次：直接推入调度队列，不经过区块链/Tracker
+				// 平台子任务也走普通任务的上链初始化流程：
+				// 1. 先记录到 platform_tasks/tasks，保证 execution_log 能立即看到任务
+				// 2. 再发起 InitTaskTransaction，由 Oracle 在链上确认后统一进入 Tracker/Scheduler
+				// 这样后续的进度推进、下载、分析、平台状态刷新都复用原有链路。
 				for _, subTask := range subTasks {
-					t := subTask // capture loop variable
-					// 从请求参数中读取数据量，未提供则使用默认 SlotSize
-					taskSize := int32(3000)
-					if v, ok := t.Params["size"]; ok {
-						switch s := v.(type) {
-						case float64:
-							taskSize = int32(s)
-						case int:
-							taskSize = int32(s)
-						case int32:
-							taskSize = s
-						}
-					}
-					e.channel.UnprocessedTasks <- paradigm.UnprocessedTask{
-						TaskID:   t.Sign,
-						SlotSize: taskSize,
-						Size:     taskSize,
-						Model:    paradigm.ABM,
-						Params:   t.Params,
-					}
+					t := subTask
+					e.channel.PendingTransactions <- &paradigm.InitTaskTransaction{Task: &t}
 				}
 
 				c.JSON(http.StatusOK, paradigm.HttpResponse{
@@ -385,13 +382,24 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 				result := make([]map[string]interface{}, 0)
 				for _, t := range tasks {
 					p := t.Params
+					stockCode := p["stockCode"]
+					stockName := p["stockName"]
+					if stockCode == nil || stockName == nil {
+						// 历史脏数据或非平台分析任务不应出现在股票分析列表里，直接跳过。
+						continue
+					}
+					stockID := p["stockId"]
+					if stockID == nil {
+						// ABM_V2 当前请求体只稳定传 stockCode，这里回退保证前端有可用主键。
+						stockID = stockCode
+					}
 					stock := map[string]interface{}{
-						"stockId":   p["stockId"],
-						"stockCode": p["stockCode"],
-						"stockName": p["stockName"],
-						"label":     fmt.Sprintf("%v %v", p["stockCode"], p["stockName"]),
+						"stockId":   stockID,
+						"stockCode": stockCode,
+						"stockName": stockName,
+						"label":     fmt.Sprintf("%v %v", stockCode, stockName),
 						"taskId":    t.PlatformTaskID,
-						"taskName":  fmt.Sprintf("%s 风险监测", p["stockName"]), // 如果没有platform task name就拼一下
+						"taskName":  fmt.Sprintf("%v 风险监测", stockName), // 如果没有platform task name就拼一下
 					}
 
 					// 如果有关联的平台任务，可以尝试获取它的名字

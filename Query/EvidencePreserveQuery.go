@@ -32,13 +32,13 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	info["status"] = task.Status
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
-	tx["txHash"] = task.TxReceipt.TransactionHash                   // 交易哈希
-	tx["blockHash"] = task.TxBlockHash                              // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
-	tx["blockHeight"] = task.TxReceipt.BlockNumber                  // 区块高度
-	tx["contractAddress"] = task.TxReceipt.To                       // 合约地址
-	tx["abi"] = "InitTask"                                          // todo @XQ 根据你的合约修改，这里因为是查询Task，所以就是Task初始化的那个交易接口
-	tx["MerkleRoot"] = paradigm.CalculateMerkleRoot(task.TxReceipt) // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
-	tx["MerkleProof"] = task.TxReceipt.ReceiptProof                 // todo @XQ 这里就是正常的proof
+	tx["txHash"] = safeReceiptTxHash(task.TxReceipt)            // 交易哈希
+	tx["blockHash"] = task.TxBlockHash                          // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
+	tx["blockHeight"] = safeReceiptBlockHeight(task.TxReceipt)  // 区块高度
+	tx["contractAddress"] = safeReceiptContract(task.TxReceipt) // 合约地址
+	tx["abi"] = "InitTask"                                      // todo @XQ 根据你的合约修改，这里因为是查询Task，所以就是Task初始化的那个交易接口
+	tx["MerkleRoot"] = safeReceiptMerkleRoot(task.TxReceipt)    // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
+	tx["MerkleProof"] = safeReceiptProof(task.TxReceipt)        // todo @XQ 这里就是正常的proof
 	// 验证merkleRoot
 	// if !paradigm.VerifyMerkleRoot(task.TxReceipt, task.TxBlock) {
 	// 	LogWriter.Log("ERROR", "Merkle proof verification FAILED ❌")
@@ -50,7 +50,7 @@ func (q *BasicEvidencePreserveTaskQuery) GenerateResponse(data interface{}) para
 	// 根据epoch得到时间轴，就是一些字符串 TODO 看一下具体的格式
 	timeline := make([][2]string, 0) // 这里暂时就先写成这样
 	// 第一个时间是initTask的时间 TODO @XQ 所以每一笔交易在上链的时候都要记录时间，可以作为一个字段放在Task/Slot/Epoch中
-	timeline = append(timeline, [2]string{"initTask Time", fmt.Sprintf("向区块链提交合成任务, 任务标识: %s, 交易哈希: %s", task.Sign, task.TxReceipt.TransactionHash)}) // 这里的时间要换成具体的时间，然后后面的文字就中文吧，因为前端要求是中文
+	timeline = append(timeline, [2]string{"initTask Time", fmt.Sprintf("向区块链提交合成任务, 任务标识: %s, 交易哈希: %s", task.Sign, safeReceiptTxHash(task.TxReceipt))}) // 这里的时间要换成具体的时间，然后后面的文字就中文吧，因为前端要求是中文
 	// 然后根据epoch来写,写在下面
 	totalCommitNumber, totalInvalidNumber, totalSlotNumber := 0, 0, 0
 	epochs := make([]int32, 0)               // 这里是epoch的列表，因为会有一些epoch是空的，所以这里后面要排序，下面用一个map
@@ -220,13 +220,13 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 
 	// 2. 交易的基本信息
 	tx := make(map[string]interface{})
-	tx["txHash"] = epoch.TxReceipt.TransactionHash                   // 交易哈希
-	tx["blockHash"] = epoch.TxBlockHash                              // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
-	tx["blockHeight"] = epoch.TxReceipt.BlockNumber                  // 区块高度
-	tx["contractAddress"] = epoch.TxReceipt.To                       // 合约地址
-	tx["abi"] = "EpochRecord"                                        // todo @XQ 根据你的合约修改，这里因为是查询Epoch，所以就是更新Epoch的那个交易接口
-	tx["MerkleRoot"] = paradigm.CalculateMerkleRoot(epoch.TxReceipt) // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
-	tx["MerkleProof"] = epoch.TxReceipt.ReceiptProof                 // todo @XQ 这里就是正常的proof
+	tx["txHash"] = safeReceiptTxHash(epoch.TxReceipt)            // 交易哈希
+	tx["blockHash"] = epoch.TxBlockHash                          // 区块哈希 TODO @XQ 如果Receipt里没有，那么就想办法在上链的时候拿到然后放到task里
+	tx["blockHeight"] = safeReceiptBlockHeight(epoch.TxReceipt)  // 区块高度
+	tx["contractAddress"] = safeReceiptContract(epoch.TxReceipt) // 合约地址
+	tx["abi"] = "EpochRecord"                                    // todo @XQ 根据你的合约修改，这里因为是查询Epoch，所以就是更新Epoch的那个交易接口
+	tx["MerkleRoot"] = safeReceiptMerkleRoot(epoch.TxReceipt)    // todo @XQ 看一下这个东西要怎么拿到root以及怎么验证，这里暂时后面要改成只有一个root
+	tx["MerkleProof"] = safeReceiptProof(epoch.TxReceipt)        // todo @XQ 这里就是正常的proof
 	// 验证merkleRoot
 	// if !paradigm.VerifyMerkleRoot(epoch.TxReceipt, epoch.TxBlock) {
 	// 	LogWriter.Log("ERROR", "Merkle proof verification FAILED ❌")
@@ -304,7 +304,7 @@ func (q *BasicEvidencePreserveEpochQuery) GenerateResponse(data interface{}) par
 		taskInfo := make(map[string]interface{})
 		taskInfo["taskID"] = task.Sign
 		taskInfo["taskName"] = task.Name
-		taskInfo["TxHash"] = task.TxReceipt.TransactionHash
+		taskInfo["TxHash"] = safeReceiptTxHash(task.TxReceipt)
 		taskInfo["Total"] = task.Size
 		taskInfo["Process"] = task.Process
 		taskInfo["Model"] = task.Model

@@ -7,6 +7,7 @@ const (
 	BAED
 	FINKAN
 	ABM
+	ABM_V2
 	// TODO 后续有支持的新模型在这里加上
 )
 
@@ -20,6 +21,8 @@ func ModelTypeToString(t SupportModelType) string {
 		return "FINKAN"
 	case ABM:
 		return "ABM"
+	case ABM_V2:
+		return "ABM_V2"
 	default:
 		panic("Unknown model type!!!")
 	}
@@ -35,6 +38,8 @@ func NameToModelType(name string) SupportModelType {
 		return FINKAN
 	case "ABM":
 		return ABM
+	case "ABM_V2":
+		return ABM_V2
 	default:
 		e := Error(RuntimeError, "Unknown model type")
 		panic(e.Error())

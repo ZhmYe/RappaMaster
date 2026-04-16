@@ -112,6 +112,32 @@ func Bytes32ListToStrings(in [][32]byte) []string {
 	return out
 }
 
+// ExtractAssignedNodeID 从任务参数中提取预分配节点。
+// 该字段主要用于 ABM_V2 这类单股票单节点执行任务。
+func ExtractAssignedNodeID(params map[string]interface{}) (int32, bool) {
+	if params == nil {
+		return 0, false
+	}
+	value, ok := params["assigned_node_id"]
+	if !ok {
+		return 0, false
+	}
+	switch v := value.(type) {
+	case float64:
+		return int32(v), true
+	case float32:
+		return int32(v), true
+	case int:
+		return int32(v), true
+	case int32:
+		return v, true
+	case int64:
+		return int32(v), true
+	default:
+		return 0, false
+	}
+}
+
 //// BinarySearch 二分查找
 //func BinarySearch(arr []interface{}, target interface{}, compare func(element interface{}, target interface{}) bool) int {
 //	left, right := 0, len(arr)-1
