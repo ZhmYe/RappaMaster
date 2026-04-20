@@ -77,7 +77,8 @@ func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]
 		evaluationCfg["market"] = "SM"
 	}
 	if _, ok := evaluationCfg["generate_models"]; !ok {
-		evaluationCfg["generate_models"] = false
+		// 默认生成 ABM/GBM/GAN 三种模型的评估结果，供 performance_comparison 按 selectedModel 切换。
+		evaluationCfg["generate_models"] = true
 	}
 	if _, ok := evaluationCfg["gan_epochs"]; !ok {
 		evaluationCfg["gan_epochs"] = 1

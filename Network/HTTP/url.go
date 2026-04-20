@@ -4,9 +4,11 @@ import (
 	"BHLayer2Node/Collector"
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -142,6 +144,28 @@ func (e *HttpEngine) HandleDownload(c *gin.Context) {
 			Code:    "ERROR",
 			Data:    nil,
 		})
+	}
+}
+
+func matchAnalyzedStockFilter(searchType, keyword string, stock map[string]interface{}) bool {
+	if searchType == "" || keyword == "" {
+		return true
+	}
+
+	lowerKeyword := strings.ToLower(strings.TrimSpace(keyword))
+	match := func(value interface{}) bool {
+		return strings.Contains(strings.ToLower(fmt.Sprintf("%v", value)), lowerKeyword)
+	}
+
+	switch searchType {
+	case "stockCode":
+		return match(stock["stockCode"])
+	case "stockName":
+		return match(stock["stockName"])
+	case "task":
+		return match(stock["taskId"]) || match(stock["taskName"])
+	default:
+		return true
 	}
 }
 
@@ -358,17 +382,30 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 				c.JSON(http.StatusOK, paradigm.HttpResponse{
 					Message: "操作成功",
-					Data:    true,
-					Code:    "S000000",
+					Data: map[string]interface{}{
+						"taskId": taskID,
+					},
+					Code: "S000000",
 				})
 			},
 		}
 		return &httpService, nil
 	case ANALYZED_STOCKS:
 		httpService := HttpService{
-			Url:    "/market/analyzed-stocks",
+			Url:    "/market/analyzed_stocks",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
+				searchType := strings.TrimSpace(c.Query("searchType"))
+				keyword := strings.TrimSpace(c.Query("keyword"))
+				if searchType != "" && searchType != "stockCode" && searchType != "stockName" && searchType != "task" {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: "searchType must be one of stockCode, stockName, task",
+						Code:    "E100014",
+						Data:    nil,
+					})
+					return
+				}
+
 				tasks, err := e.dbService.GetFinishedTasks()
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
@@ -393,13 +430,18 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 						// ABM_V2 当前请求体只稳定传 stockCode，这里回退保证前端有可用主键。
 						stockID = stockCode
 					}
+					taskID := t.Sign
+					if t.PlatformTaskID != nil && strings.TrimSpace(*t.PlatformTaskID) != "" {
+						taskID = *t.PlatformTaskID
+					}
 					stock := map[string]interface{}{
 						"stockId":   stockID,
 						"stockCode": stockCode,
 						"stockName": stockName,
 						"label":     fmt.Sprintf("%v %v", stockCode, stockName),
-						"taskId":    t.PlatformTaskID,
+						"taskId":    taskID,
 						"taskName":  fmt.Sprintf("%v 风险监测", stockName), // 如果没有platform task name就拼一下
+						"date":      t.StartTime.Format("2006-01-02"),
 					}
 
 					// 如果有关联的平台任务，可以尝试获取它的名字
@@ -408,6 +450,10 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 						if err == nil && pt != nil {
 							stock["taskName"] = pt.TaskName
 						}
+					}
+
+					if !matchAnalyzedStockFilter(searchType, keyword, stock) {
+						continue
 					}
 
 					result = append(result, stock)
@@ -423,7 +469,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 		return &httpService, nil
 	case ABM_PARAMETERS:
 		httpService := HttpService{
-			Url:    "/simulation/abm-parameters",
+			Url:    "/simulation/abm_parameters",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
 				// 获取预定义的 ABM 模型结构参数 (从配置加载)
@@ -442,25 +488,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/dashboard/order_dynamics",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				taskId := c.Query("taskId")
-				stockId := c.Query("stockId")
-				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
-					return
-				}
-
-				// 从节点获取实时数据
-				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.OrderDynamics)
-				if err != nil {
-					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live dynamics: %v", err))
-					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
-						Message: "获取实时订单态势失败: " + err.Error(),
-						Code:    "E100009",
-						Data:    nil,
-					})
-					return
-				}
-				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
+				e.handleAnalyticsQuery(c, paradigm.OrderDynamics, "未找到订单态势分析结果", "获取实时订单态势失败", "E100009")
 			},
 		}
 		return &httpService, nil
@@ -476,24 +504,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/dashboard/price_synthesis",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				taskId := c.Query("taskId")
-				stockId := c.Query("stockId")
-				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
-					return
-				}
-
-				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.PriceSynthesis)
-				if err != nil {
-					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live price synthesis: %v", err))
-					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
-						Message: "获取价格合成分析失败: " + err.Error(),
-						Code:    "E100010",
-						Data:    nil,
-					})
-					return
-				}
-				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
+				e.handleAnalyticsQuery(c, paradigm.PriceSynthesis, "未找到价格合成分析结果", "获取价格合成分析失败", "E100010")
 			},
 		}
 		return &httpService, nil
@@ -502,24 +513,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/dashboard/crash_risk_warning",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				taskId := c.Query("taskId")
-				stockId := c.Query("stockId")
-				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
-					return
-				}
-
-				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.CrashRisk)
-				if err != nil {
-					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live crash risk: %v", err))
-					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
-						Message: "获取崩盘风险预警失败: " + err.Error(),
-						Code:    "E100011",
-						Data:    nil,
-					})
-					return
-				}
-				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
+				e.handleAnalyticsQuery(c, paradigm.CrashRisk, "未找到崩盘风险预警结果", "获取崩盘风险预警失败", "E100011")
 			},
 		}
 		return &httpService, nil
@@ -528,16 +522,29 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/dashboard/investor_composition",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				taskId := c.Query("taskId")
-				stockId := c.Query("stockId")
-				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
+				selectedType := strings.TrimSpace(strings.ToLower(c.Query("type")))
+				if selectedType != "" && selectedType != "history" && selectedType != "custom" {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: "type must be one of history, custom",
+						Code:    "E100012",
+						Data:    nil,
+					})
 					return
 				}
 
-				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.InvestorComposition)
+				taskID := strings.TrimSpace(c.Query("taskId"))
+				stockID := strings.TrimSpace(c.Query("stockId"))
+				data, err := e.QueryAnalytics(taskID, stockID, paradigm.InvestorComposition, nil)
 				if err != nil {
-					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live investor composition: %v", err))
+					if errors.Is(err, errAnalyticsNotFound) {
+						c.JSON(http.StatusNotFound, paradigm.HttpResponse{
+							Message: "未找到投资者构成结果: " + err.Error(),
+							Code:    "E100012",
+							Data:    nil,
+						})
+						return
+					}
+					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch investor composition: %v", err))
 					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
 						Message: "获取投资者构成失败: " + err.Error(),
 						Code:    "E100012",
@@ -545,6 +552,8 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					})
 					return
 				}
+
+				data = normalizeInvestorCompositionResponse(data, c.Query("date"), selectedType)
 				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
 			},
 		}
@@ -554,24 +563,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/dashboard/performance_comparison",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				taskId := c.Query("taskId")
-				stockId := c.Query("stockId")
-				if taskId == "" || stockId == "" {
-					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{Message: "taskId and stockId required", Code: "E100008", Data: nil})
-					return
-				}
-
-				data, err := e.FetchNodeAnalytics(taskId, stockId, paradigm.PerformanceComparison)
-				if err != nil {
-					paradigm.Log("ERROR", fmt.Sprintf("Failed to fetch live performance comparison: %v", err))
-					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
-						Message: "获取模型评估失败: " + err.Error(),
-						Code:    "E100013",
-						Data:    nil,
-					})
-					return
-				}
-				c.JSON(http.StatusOK, paradigm.HttpResponse{Message: "操作成功", Data: data, Code: "S000000"})
+				e.handleAnalyticsQuery(c, paradigm.PerformanceComparison, "未找到模型评估结果", "获取模型评估失败", "E100013")
 			},
 		}
 		return &httpService, nil

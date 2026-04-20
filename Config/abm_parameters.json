@@ -1,9 +1,51 @@
 {
-  "N_FT": { "min": 1, "default": 300, "type": "int" },
-  "S_FT": { "min": 1, "default": 1, "type": "int" },
-  "N_LMT": { "min": 1, "default": 300, "type": "int" },
-  "ALPHA_L": { "min": 0.000001, "default": 0.001, "type": "float", "step": 0.001 },
-  "N_SMT": { "min": 1, "default": 300, "type": "int" },
-  "ALPHA_S": { "min": 0.000001, "default": 0.9, "type": "float", "step": 0.1 },
-  "N_NT": { "min": 1, "default": 300, "type": "int" }
+  "N_FT": {
+    "label": "基本面交易者数量",
+    "type": "int",
+    "default": 300,
+    "min": 10,
+    "max": 8000
+  },
+  "S_FT": {
+    "label": "基本面交易者交易间隔（step 维度）",
+    "type": "int",
+    "default": 1,
+    "min": 1,
+    "max": 20
+  },
+  "N_LMT": {
+    "label": "长期动量交易者数量",
+    "type": "int",
+    "default": 300,
+    "min": 10,
+    "max": 8000
+  },
+  "ALPHA_L": {
+    "label": "长期动量趋势信号衰减/更新权重（EMA 系数）",
+    "type": "float",
+    "default": 0.001,
+    "min": 0.001,
+    "max": 1
+  },
+  "N_SMT": {
+    "label": "短期动量交易者数量",
+    "type": "int",
+    "default": 300,
+    "min": 10,
+    "max": 8000
+  },
+  "ALPHA_S": {
+    "label": "短期动量趋势信号衰减/更新权重（EMA 系数）",
+    "type": "float",
+    "default": 0.9,
+    "min": 0.001,
+    "max": 1
+  },
+  "N_NT": {
+    "label": "噪音交易者数量",
+    "type": "int",
+    "default": 300,
+    "min": 10,
+    "max": 8000
+  }
 }

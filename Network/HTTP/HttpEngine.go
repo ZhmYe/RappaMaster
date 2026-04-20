@@ -6,9 +6,6 @@ import (
 	"BHLayer2Node/Network/Grpc"
 	"BHLayer2Node/PKI"
 	"BHLayer2Node/paradigm"
-	"BHLayer2Node/pb/service"
-	"BHLayer2Node/utils"
-	"context"
 	"fmt"
 	"time"
 
@@ -99,45 +96,4 @@ func NewHttpEngine(channel *paradigm.RappaChannel, pkiManager *PKI.PKIManager, d
 	}
 	http.Setup(*channel.Config)
 	return &http
-}
-
-// FetchNodeAnalytics 向执行子任务的节点请求分析数据
-func (e *HttpEngine) FetchNodeAnalytics(taskId, stockId string, analType paradigm.AnalysisType) (interface{}, error) {
-	sign := fmt.Sprintf("SubTask-%s-%s", taskId, stockId)
-	task, err := e.dbService.GetTaskByID(sign)
-	if err != nil {
-		return nil, fmt.Errorf("task %s not found: %v", sign, err)
-	}
-
-	nodeID, err := resolveAnalyticsNodeID(task)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := e.grpcManager.GetConn(nodeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get node %d connection: %v", nodeID, err)
-	}
-
-	client := service.NewRappaExecutorClient(conn)
-	resp, err := client.GetAnalytics(context.Background(), &service.AnalyticalRequest{
-		Sign:         sign,
-		AnalysisType: analType.String(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("grpc GetAnalytics error: %v", err)
-	}
-
-	if resp.Data != nil {
-		return resp.Data.AsMap(), nil
-	}
-	return nil, nil
-}
-
-func resolveAnalyticsNodeID(task *paradigm.Task) (int, error) {
-	if nodeID, ok := utils.ExtractAssignedNodeID(task.Params); ok {
-		return int(nodeID), nil
-	}
-
-	return 0, fmt.Errorf("assigned_node_id not found for task %s", task.Sign)
 }
