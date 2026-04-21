@@ -60,7 +60,14 @@ func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]
 	if len(structuralParams) == 0 {
 		structuralParams = map[string]interface{}{}
 	}
-	for _, key := range []string{"N_FT", "N_LMT", "N_SMT", "N_NT", "S_FT", "ALPHA_L", "ALPHA_S"} {
+	if tunedParams, ok := loadABMStockTunedParams(stockCode); ok {
+		for _, key := range abmTunableParamKeys {
+			if value, exists := tunedParams[key]; exists {
+				structuralParams[key] = value
+			}
+		}
+	}
+	for _, key := range abmTunableParamKeys {
 		if value, ok := raw[key]; ok && value != nil {
 			structuralParams[key] = value
 		}
@@ -77,11 +84,20 @@ func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]
 		evaluationCfg["market"] = "SM"
 	}
 	if _, ok := evaluationCfg["generate_models"]; !ok {
-		// 默认生成 ABM/GBM/GAN 三种模型的评估结果，供 performance_comparison 按 selectedModel 切换。
+		// 默认生成 ABM/VRNN/TimeGAN 三种模型的评估结果，供 performance_comparison 按 selectedModel 切换。
 		evaluationCfg["generate_models"] = true
 	}
-	if _, ok := evaluationCfg["gan_epochs"]; !ok {
-		evaluationCfg["gan_epochs"] = 1
+	if _, ok := evaluationCfg["vrnn_epochs"]; !ok {
+		evaluationCfg["vrnn_epochs"] = 1
+	}
+	if _, ok := evaluationCfg["timegan_epochs"]; !ok {
+		evaluationCfg["timegan_epochs"] = 1
+	}
+	if _, ok := evaluationCfg["min_deep_samples"]; !ok {
+		evaluationCfg["min_deep_samples"] = 200
+	}
+	if _, ok := evaluationCfg["allow_fallback"]; !ok {
+		evaluationCfg["allow_fallback"] = true
 	}
 	params["evaluation"] = evaluationCfg
 

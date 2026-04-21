@@ -472,8 +472,12 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Url:    "/simulation/abm_parameters",
 			Method: "GET",
 			Handler: func(c *gin.Context) {
-				// 获取预定义的 ABM 模型结构参数 (从配置加载)
-				parameters := e.config.AbmParameters
+				// 获取 ABM 模型结构参数：未指定股票时返回通用默认值；指定股票时优先使用该股票已调好的参数。
+				stockCode := strings.TrimSpace(c.Query("stockCode"))
+				if stockCode == "" {
+					stockCode = strings.TrimSpace(c.Query("stockId"))
+				}
+				parameters := e.buildABMParametersResponse(stockCode)
 
 				c.JSON(http.StatusOK, paradigm.HttpResponse{
 					Message: "操作成功",

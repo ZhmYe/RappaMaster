@@ -252,42 +252,21 @@ func extractCrashRiskScore(data interface{}) (float64, bool) {
 	}
 
 	best := math.Inf(-1)
-	updateBest := func(value interface{}) {
-		if score, ok := parseFloat64(value); ok && !math.IsNaN(score) {
-			if score > best {
-				best = score
-			}
-		}
-	}
-
 	if series, ok := payload["forecastSeries"].([]interface{}); ok {
+		// 风险榜单按 5% 跌幅出现概率排序，对应 predict_fv.csv 中的 Prob_Drop_5pct。
 		for _, raw := range series {
 			row, ok := raw.(map[string]interface{})
 			if !ok {
 				continue
 			}
-			updateBest(row["crashProb"])
+			if score, ok := parseFloat64(row["probDrop5pct"]); ok && !math.IsNaN(score) {
+				if score > best {
+					best = score
+				}
+			}
 		}
 		if !math.IsInf(best, -1) {
 			return clampProbability(best), true
-		}
-		for _, field := range []string{"probDrop10pct", "probDrop5pct", "probDrop3pct"} {
-			for _, raw := range series {
-				row, ok := raw.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				updateBest(row[field])
-			}
-			if !math.IsInf(best, -1) {
-				return clampProbability(best), true
-			}
-		}
-	}
-
-	if summary, ok := payload["summary"].(map[string]interface{}); ok {
-		if score, ok := parseFloat64(summary["predictionProbability"]); ok {
-			return clampProbability(score), true
 		}
 	}
 	return 0, false

@@ -42,7 +42,7 @@ func (t *Tracker) UpdateTask(sign string) {
 	case paradigm.ABM:
 		expireTime = time.Now().Add(120 * time.Second)
 	case paradigm.ABM_V2:
-		expireTime = time.Now().Add(500 * time.Second) // todo: 调整超时(训练epochs=3,gan_epochs=1时运行超200s)
+		expireTime = time.Now().Add(2000 * time.Second) // todo: 调整超时(训练epochs=3,gan_epochs=1时运行超200s)
 	default:
 		panic("unhandled default case")
 	}

@@ -21,8 +21,8 @@ func TestEncodeAnalysisTypeRequest(t *testing.T) {
 		{
 			name:     "performance comparison with selected model",
 			analType: paradigm.PerformanceComparison,
-			options:  map[string]string{"selectedModel": "GBM"},
-			expected: "performance_comparison?selectedModel=GBM",
+			options:  map[string]string{"selectedModel": "VRNN"},
+			expected: "performance_comparison?selectedModel=VRNN",
 		},
 		{
 			name:     "empty options",
@@ -49,8 +49,8 @@ func TestBuildCrashRiskTopRiskList(t *testing.T) {
 			StockName: "浦发银行",
 			Data: map[string]interface{}{
 				"forecastSeries": []interface{}{
-					map[string]interface{}{"crashProb": 0.12},
-					map[string]interface{}{"crashProb": 0.35},
+					map[string]interface{}{"crashProb": 0.9, "probDrop5pct": 0.12},
+					map[string]interface{}{"crashProb": 0.8, "probDrop5pct": 0.35},
 				},
 			},
 		},
@@ -59,7 +59,7 @@ func TestBuildCrashRiskTopRiskList(t *testing.T) {
 			StockName: "平安银行",
 			Data: map[string]interface{}{
 				"forecastSeries": []interface{}{
-					map[string]interface{}{"crashProb": 0.28},
+					map[string]interface{}{"crashProb": 1.0, "probDrop5pct": 0.28},
 				},
 			},
 		},
@@ -67,14 +67,18 @@ func TestBuildCrashRiskTopRiskList(t *testing.T) {
 			StockCode: "600519",
 			StockName: "贵州茅台",
 			Data: map[string]interface{}{
-				"summary": map[string]interface{}{"predictionProbability": 0.18},
+				"summary": map[string]interface{}{"predictionProbability": 0.99},
+				"forecastSeries": []interface{}{
+					map[string]interface{}{"crashProb": 0.99, "probDrop10pct": 0.7},
+					map[string]interface{}{"crashProb": 0.88, "probDrop3pct": 0.8},
+				},
 			},
 		},
 	}
 
 	got := buildCrashRiskTopRiskList(items)
-	if len(got) != 3 {
-		t.Fatalf("expected 3 ranked items, got %d", len(got))
+	if len(got) != 2 {
+		t.Fatalf("expected 2 ranked items, got %d", len(got))
 	}
 
 	if got[0]["code"] != "600000" || got[0]["probability"] != 0.35 {
@@ -82,9 +86,6 @@ func TestBuildCrashRiskTopRiskList(t *testing.T) {
 	}
 	if got[1]["code"] != "000001" || got[1]["probability"] != 0.28 {
 		t.Fatalf("unexpected rank2 item: %#v", got[1])
-	}
-	if got[2]["code"] != "600519" || got[2]["probability"] != 0.18 {
-		t.Fatalf("unexpected rank3 item: %#v", got[2])
 	}
 }
 
@@ -95,7 +96,7 @@ func TestAttachCrashRiskTopRiskListToItems(t *testing.T) {
 			StockName: "浦发银行",
 			Data: map[string]interface{}{
 				"summary":        map[string]interface{}{"predictionProbability": 0.22},
-				"forecastSeries": []interface{}{map[string]interface{}{"crashProb": 0.22}},
+				"forecastSeries": []interface{}{map[string]interface{}{"crashProb": 0.22, "probDrop5pct": 0.22}},
 				"topRiskList":    []interface{}{},
 			},
 		},
@@ -104,7 +105,7 @@ func TestAttachCrashRiskTopRiskListToItems(t *testing.T) {
 			StockName: "平安银行",
 			Data: map[string]interface{}{
 				"summary":        map[string]interface{}{"predictionProbability": 0.31},
-				"forecastSeries": []interface{}{map[string]interface{}{"crashProb": 0.31}},
+				"forecastSeries": []interface{}{map[string]interface{}{"crashProb": 0.31, "probDrop5pct": 0.31}},
 				"topRiskList":    []interface{}{},
 			},
 		},

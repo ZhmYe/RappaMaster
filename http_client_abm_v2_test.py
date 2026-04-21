@@ -7,7 +7,7 @@ import requests
 BASE_URL = "http://127.0.0.1:8081"
 
 # 手动测试时优先修改这几个值
-DEFAULT_TASK_ID = "TSK-1001"
+DEFAULT_TASK_ID = "TSK-1024"
 DEFAULT_STOCK_ID = "600000"
 DEFAULT_SECOND_STOCK_ID = "000001"
 CACHE_PATH = Path(__file__).resolve().with_name(".abm_v2_http_client_cache.json")
@@ -90,8 +90,11 @@ def create_abm_v2_task():
         print("Create succeeded, but failed to infer latest taskId from execution log.")
 
 
-def query_abm_parameters():
-    send_get("/simulation/abm_parameters")
+def query_abm_parameters(stock_code=None):
+    query = {}
+    if stock_code:
+        query["stockCode"] = stock_code
+    send_get("/simulation/abm_parameters", query)
 
 
 def query_execution_log():
@@ -258,7 +261,8 @@ def print_help():
     print("ABM_V2 HTTP client")
     print("Commands:")
     print("  create              创建 ABM_V2 测试任务")
-    print("  abm_params          查询 ABM 参数模板")
+    print("  abm_params          查询 ABM 通用参数模板")
+    print("  abm_params_600000   查询 600000 已调参参数模板")
     print("  exec_log            查询执行日志")
     print("  analyzed            查询已完成分析股票列表")
     print("  analyzed_code       按股票代码查询已分析股票列表")
@@ -284,8 +288,8 @@ def print_help():
     print("  investor_custom     查询 600000 投资者构成(type=custom)")
     print("  investor_history    查询 600000 投资者构成(type=history,date=2026-04-19)")
     print("  perf                精确查询 600000 性能对比(taskId+stockId)")
-    print("  perf_gbm            精确查询 600000 性能对比(selectedModel=GBM)")
-    print("  perf_gan            精确查询 600000 性能对比(selectedModel=GAN)")
+    print("  perf_vrnn           精确查询 600000 性能对比(selectedModel=VRNN)")
+    print("  perf_timegan        精确查询 600000 性能对比(selectedModel=TimeGAN)")
     print("  perf_task           按任务查询性能对比(仅 taskId)")
     print("  perf_latest         查询 600000 最新性能对比(仅 stockId)")
     print("  perf_all            查询全部股票最新性能对比(无参数)")
@@ -310,6 +314,8 @@ def main():
             create_abm_v2_task()
         elif command == "abm_params":
             query_abm_parameters()
+        elif command == "abm_params_600000":
+            query_abm_parameters(DEFAULT_STOCK_ID)
         elif command == "exec_log":
             query_execution_log()
         elif command == "analyzed":
@@ -360,10 +366,10 @@ def main():
             query_investor_composition(get_current_task_id(), DEFAULT_STOCK_ID, date="2026-04-19", investor_type="history")
         elif command == "perf":
             query_performance_comparison(get_current_task_id(), DEFAULT_STOCK_ID)
-        elif command == "perf_gbm":
-            query_performance_comparison(get_current_task_id(), DEFAULT_STOCK_ID, selected_model="GBM")
-        elif command == "perf_gan":
-            query_performance_comparison(get_current_task_id(), DEFAULT_STOCK_ID, selected_model="GAN")
+        elif command == "perf_vrnn":
+            query_performance_comparison(get_current_task_id(), DEFAULT_STOCK_ID, selected_model="VRNN")
+        elif command == "perf_timegan":
+            query_performance_comparison(get_current_task_id(), DEFAULT_STOCK_ID, selected_model="TimeGAN")
         elif command == "perf_task":
             query_performance_comparison(get_current_task_id(), None)
         elif command == "perf_latest":
