@@ -41,6 +41,7 @@ func (q *NodesStatusQuery) GenerateResponse(data interface{}) paradigm.Response 
 		nodeInfo["storage"] = node.DiskStorage
 		nodeInfo["cpu"] = node.AverageCPUUsage
 		nodeInfo["disk"] = node.DiskUsage
+		nodeInfo["synth_speed"] = node.SynthSpeed
 		nodeInfo["errorMessage"] = node.ErrorMessage()
 		//合成详情就给出这个节点的合成总量，和所有完成的任务 todo 按时间有个图？
 		// 节点状态，就上面的状态的信息，和pending

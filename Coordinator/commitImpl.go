@@ -22,9 +22,12 @@ func (c *Coordinator) CommitSlot(ctx context.Context, req *pb.SlotCommitRequest)
 		Padding:    req.Padding,
 		Store:      req.Store,
 		Commitment: req.Commitment,
+		UploadSize: req.UploadSize,
+		Speed:      req.Speed,
 	}, req.NodeSign, req.Ca)
 	item.SetHash(req.Hash) // 设置slotHash
 	c.channel.CommitSlots <- item
+	c.channel.MonitorHeartbeatChannel <- paradigm.NewNodeHeartbeatReportFromCommit(req)
 	//paradigm.Print("COORDINATOR", fmt.Sprintf("Successfully receive commit slot: {%s}, commitment: {%v}", item.SlotHash(), item.Commitment))
 	generateRandomSeed := func() []byte {
 		size := 256 // 暂定

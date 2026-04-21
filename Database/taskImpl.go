@@ -34,7 +34,7 @@ func (o DatabaseService) UpdateScheduleInTask(schedule *paradigm.SynthTaskSchedu
 		panic(fmt.Sprintf("task not found of %s", schedule.TaskID))
 	}
 	task.Schedules = append(task.Schedules, schedule)
-	task.ScheduleMap[schedule.ScheduleID] = len(task.Schedules)
+	task.ScheduleMap[schedule.ScheduleID] = len(task.Schedules) - 1
 	o.db.Model(task).Select("schedules", "schedule_map").Updates(task)
 }
 
@@ -49,21 +49,26 @@ func (o DatabaseService) UpdateTask(task *paradigm.Task) {
 }
 
 func (o DatabaseService) IncrementTaskProcess(taskSign string, slot *paradigm.CommitRecord) error {
-	// 使用原子操作增加任务进度
-	if slot.State() != paradigm.FINALIZE {
-		return fmt.Errorf("the commit Slot is not finalized") // 只能提交finalized的，因为已经通过投票了所以不需要check
-	}
-	query := "UPDATE tasks SET process = process + ? WHERE sign = ?"
-	result := o.db.Exec(query, slot.Process, taskSign)
-	if result.Error != nil {
-		return fmt.Errorf("failed to increment task process: %v", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("task with sign %s not found or no update needed", taskSign)
-	}
-	// debug
-	paradigm.Log("DEBUG", fmt.Sprintf("Atomically incremented task %s process by %d", taskSign, slot.Process))
-	return nil
+	// 使用事务确保原子性
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		var task paradigm.Task
+		if err := tx.Where("sign = ?", taskSign).First(&task).Error; err != nil {
+			return err
+		}
+
+		task.Process += slot.Process
+		task.UploadSize += slot.UploadSize
+
+		// 更新各调度的累加速度
+		if task.ScheduleSpeeds == nil {
+			task.ScheduleSpeeds = make(map[string]float64)
+		}
+		schIDStr := fmt.Sprintf("%d", slot.Slot)
+		task.ScheduleSpeeds[schIDStr] += slot.Speed
+
+		// 保存更新
+		return tx.Save(&task).Error
+	})
 }
 
 // 增量更新并返回更新后的任务

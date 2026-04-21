@@ -197,18 +197,19 @@ func (q *SynthTaskQuery) GenerateResponse(data interface{}) paradigm.Response {
 	tasks := make([]map[string]interface{}, 0, len(info))
 	for _, task := range info {
 		taskInfo := make(map[string]interface{})
-		taskInfo["speed"] = task.Speed() // 速度，单位应该是B/s
+		taskInfo["speed"] = task.Speed() / (1024 * 1024) // 速度，单位 MB/s
 		taskInfo["taskID"] = task.Sign
 		taskInfo["taskName"] = task.Name
 		taskInfo["txHash"] = task.TxReceipt.TransactionHash
 		taskInfo["total"] = task.Size // 数据总量
 		//taskInfo["process"] = min(task.Process, task.Size) // 已合成
 		taskInfo["process"] = task.Process
+		taskInfo["dataSizeMB"] = float64(task.UploadSize) / (1024 * 1024) // 合成的数据大小，单位MB
 		taskInfo["status"] = task.Status
 		taskInfo["model"] = paradigm.ModelTypeToString(task.Model)
 		taskInfo["startTime"] = paradigm.TimeFormat(task.StartTime)
-		if task.Status == paradigm.Finished {
-			taskInfo["endTime"] = paradigm.TimeFormat(task.EndTime)
+		if task.Status == paradigm.Finished && task.EndTime != nil {
+			taskInfo["endTime"] = paradigm.TimeFormat(*task.EndTime)
 		} else {
 			taskInfo["endTime"] = ""
 		}

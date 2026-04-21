@@ -11,6 +11,7 @@ type NodeHeartbeatReport struct {
 	CPUUsage    int
 	DiskUsage   int32
 	DiskStorage int32
+	SynthSpeed  float64
 	IsError     bool
 	ErrMessage  string
 }
@@ -47,12 +48,31 @@ func NewNodeHeartbeatReportFromHeartbeat(heartbeat *service.HeartbeatResponse) N
 		e := Error(ExecutorError, fmt.Sprintf("Invalid Heartbeat Node Status, Error disk storage value: %s", t))
 		return NewErrorNodeHeartbeatReport(nodeID, e.Error())
 	}
-	Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, CPU Usage: %d %%, Disk Usage: %d, Total Disk Space: %d", heartbeat.NodeId, cpuUsage, diskUsage, diskStorage))
+	synthSpeed := 0.0
+	if s, exist := status["synth_speed"]; exist {
+		speedBytes, _ := strconv.ParseFloat(s, 64)
+		synthSpeed = speedBytes / (1024 * 1024)
+	}
+
+	Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, CPU Usage: %d %%, Disk Usage: %d, Total Disk Space: %d, Synth Speed: %.2f MB/s", heartbeat.NodeId, cpuUsage, diskUsage, diskStorage, synthSpeed))
 	return NodeHeartbeatReport{
 		NodeID:      nodeID,
 		CPUUsage:    cpuUsage,
 		DiskUsage:   int32(diskUsage),
 		DiskStorage: int32(diskStorage),
+		SynthSpeed:  synthSpeed,
+		IsError:     false,
+		ErrMessage:  "",
+	}
+}
+
+func NewNodeHeartbeatReportFromCommit(req *service.SlotCommitRequest) NodeHeartbeatReport {
+	return NodeHeartbeatReport{
+		NodeID:      req.NodeId,
+		CPUUsage:    -1,                        // 不更新
+		DiskUsage:   -1,                        // 不更新
+		DiskStorage: -1,                        // 不更新
+		SynthSpeed:  req.Speed / (1024 * 1024), // 转换为 MB/s
 		IsError:     false,
 		ErrMessage:  "",
 	}
@@ -77,12 +97,13 @@ type NodeStatus struct {
 	PendingSlots    map[SlotHash]bool          // 处理中的任务 todo 同上
 	SynthData       map[SupportModelType]int32 // 合成数据总量, 根据modeltype划分 todo 同上
 	DiskStorage     int32                      // 磁盘总量，GB为单位
+	SynthSpeed      float64                    // 节点当前的合成速度
 	isError         bool                       // 是否存在错误
 	errMessage      string                     // 错误信息
 	Rate            float64                    // 评分，用于Monitor Advice，暂时先不写
 }
 
-func (s *NodeStatus) UpdateUsage(cpu int, disk int32, total int32) {
+func (s *NodeStatus) UpdateUsage(cpu int, disk int32, total int32, speed float64) {
 	if cpu >= 0 {
 		s.AverageCPUUsage = cpu
 	}
@@ -91,6 +112,9 @@ func (s *NodeStatus) UpdateUsage(cpu int, disk int32, total int32) {
 	}
 	if total >= 0 {
 		s.DiskStorage = total
+	}
+	if speed >= 0 {
+		s.SynthSpeed = speed
 	}
 	s.DiscardError()
 }

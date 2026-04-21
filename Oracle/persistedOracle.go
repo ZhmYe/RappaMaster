@@ -217,7 +217,7 @@ func (o *PersistedOracle) Start() {
 								//d.channel.FakeCollectSignChannel <- [2]interface{}{task.Sign, task.Process}
 								task.SetCollected()
 								o.dbService.UpdateTask(task)
-								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d", task.Sign, task.Size, task.Process))
+								paradigm.Print("INFO", fmt.Sprintf("Task %s finished, expected: %d, processed: %d, speed: %.2f MB/s", task.Sign, task.Size, task.Process, task.Speed()/(1024*1024)))
 							}
 							//更新task
 							// o.dbService.UpdateTask(task)

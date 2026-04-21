@@ -41,6 +41,7 @@ type Task struct {
 	Params         map[string]interface{} `gorm:"type:json;serializer:json"`
 	Size           int32                  `gorm:"type:int;not null;default:0;comment:总数据处理量（必填，默认0）"`
 	Process        int32                  `gorm:"type:int;not null;default:0;comment:已完成数据量（必填，默认0）"`
+	UploadSize     int64                  `gorm:"type:bigint;not null;default:0;comment:已完成上传数据量（单位bytes）"`
 	isReliable     bool                   `gorm:"type:tinyint;not null;default:false;comment:任务可信标记（必填，默认false）"`
 	OutputType     ModelOutputType        `gorm:"type:tinyint;not null;comment:模型输出类型（必填，0=DATAFRAME, 1=NETWORK）"`
 	Schedules      []*SynthTaskSchedule   `gorm:"type:json;serializer:json"`
@@ -52,20 +53,32 @@ type Task struct {
 	HasbeenCollect bool                   `gorm:"-"`
 	// 这里本来就有时间
 	StartTime time.Time      `gorm:"type:datetime;not null;comment:任务启动时间戳"`
-	EndTime   time.Time      `gorm:"type:datetime;comment:任务结束时间戳"`
-	Status    SlotStatus     `gorm:"type:tinyint;not null;comment:完成状态"`
-	Collector RappaCollector `gorm:"-"`
+	EndTime   *time.Time     `gorm:"type:datetime;comment:任务结束时间戳"`
+	Status         SlotStatus         `gorm:"type:tinyint;not null;comment:完成状态"`
+	ScheduleSpeeds map[string]float64 `gorm:"type:json;serializer:json;comment:各次调度的速度累加（Key为ScheduleID）"`
+	Collector      RappaCollector     `gorm:"-"`
 }
 
 func (t *Task) Speed() float64 {
-	//if !t.IsFinish() {
-	//	return -1 // 还没完成
-	//}
-	processTime := t.EndTime.Sub(t.StartTime).Seconds()
-	if processTime == 0 {
-		return -1 // 极短的时间，这里前端要适配，比如--MB/s
+	if len(t.ScheduleSpeeds) == 0 {
+		return 0
 	}
-	return float64(t.Process) / processTime // 这里用的process
+	var totalWeightedSpeed float64
+	var totalSize int32
+	for schIDStr, speed := range t.ScheduleSpeeds {
+		var schID int32
+		fmt.Sscanf(schIDStr, "%d", &schID)
+		idx, exist := t.ScheduleMap[schID]
+		if exist {
+			schSize := t.Schedules[idx].Size
+			totalWeightedSpeed += speed * float64(schSize)
+			totalSize += schSize
+		}
+	}
+	if totalSize == 0 {
+		return 0
+	}
+	return totalWeightedSpeed / float64(totalSize)
 }
 
 func (t *Task) Print() {
@@ -149,6 +162,7 @@ func (t *Task) Commit(slot *CommitRecord) error {
 	//slotRecord := t.records[slot.Slot]
 	//slotRecord.Process = append(slotRecord.Process, slot.Record())
 	t.Process += slot.Process
+	t.UploadSize += slot.UploadSize
 	t.Collector.ProcessSlotUpdate(CollectSlotItem{
 		Sign: slot.Sign,
 		Hash: slot.SlotHash(),
@@ -197,7 +211,8 @@ func (t *Task) SetCollected() {
 	t.HasbeenCollect = true
 }
 func (t *Task) SetEndTime() {
-	t.EndTime = time.Now()
+	now := time.Now()
+	t.EndTime = &now
 	t.Status = Finished
 }
 func (t *Task) SetCollector(c RappaCollector) {
@@ -237,10 +252,12 @@ func NewTask(sign string, name string, model SupportModelType, slotSize int32, p
 		Params:      params,
 		Size:        total,
 		Process:     0,
+		UploadSize:  0,
 		Status:      Processing,
 		//records:    make([]paradigm.SlotRecord, 0),
 		isReliable:     isReliable,
 		HasbeenCollect: false,
 		StartTime:      time.Now(), // 包括上链时间
+		ScheduleSpeeds: make(map[string]float64),
 	}
 }

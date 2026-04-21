@@ -19,7 +19,7 @@ func (m *Monitor) processHeartbeatResponse() {
 			// 发现是错误的，那么对NodeStatus更新错误
 			m.nodeStatus[int(report.NodeID)].SetError(report.ErrMessage)
 		} else {
-			m.nodeStatus[int(report.NodeID)].UpdateUsage(report.CPUUsage, report.DiskUsage, report.DiskStorage)
+			m.nodeStatus[int(report.NodeID)].UpdateUsage(report.CPUUsage, report.DiskUsage, report.DiskStorage, report.SynthSpeed)
 		}
 	}
 }

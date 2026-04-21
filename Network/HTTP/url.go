@@ -118,7 +118,7 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 
 				//如果没有指定，设置默认值
 				if requestBody.SlotSize == 0 {
-					requestBody.SlotSize = 3000
+					requestBody.SlotSize = 10000
 				}
 
 				task := paradigm.NewTask(

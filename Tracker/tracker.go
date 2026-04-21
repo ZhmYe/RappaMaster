@@ -37,12 +37,13 @@ func (t *Tracker) UpdateTask(sign string) {
 	trackItem := t.taskTracks[sign]
 	var expireTime time.Time
 	switch trackItem.Model {
-	case paradigm.FINKAN, paradigm.BAED:
+	case paradigm.FINKAN, paradigm.BAED, paradigm.CTGAN:
 		expireTime = time.Now().Add(40 * time.Second) // todo @SD 这里的时间写成config
 	case paradigm.ABM:
 		expireTime = time.Now().Add(120 * time.Second)
 	default:
-		panic("unhandled default case")
+		paradigm.Log("ERROR", fmt.Sprintf("Unhandled model type in Tracker for task %s, using default 40s", sign))
+		expireTime = time.Now().Add(40 * time.Second)
 	}
 	expireTask := &paradigm.ExpireTask{
 		BasicTimeExpire: paradigm.NewBasicTimeExpire(expireTime),
