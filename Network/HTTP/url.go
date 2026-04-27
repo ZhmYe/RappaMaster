@@ -43,10 +43,11 @@ const (
 	CRASH_RISK
 	INVESTOR_COMP
 	PERF_COMPARISON
+	PLATFORM_TASK_DOWNLOAD
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, EXECUTION_LOG, CREATE_SIM_TASK, ANALYZED_STOCKS, ABM_PARAMETERS, ORDER_DYNAMICS, PRICE_SYNTH_DOWNLOAD, PRICE_SYNTH, CRASH_RISK, INVESTOR_COMP, PERF_COMPARISON}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, EXECUTION_LOG, CREATE_SIM_TASK, ANALYZED_STOCKS, ABM_PARAMETERS, ORDER_DYNAMICS, PRICE_SYNTH_DOWNLOAD, PRICE_SYNTH, CRASH_RISK, INVESTOR_COMP, PERF_COMPARISON, PLATFORM_TASK_DOWNLOAD}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -569,6 +570,13 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			Handler: func(c *gin.Context) {
 				e.handleAnalyticsQuery(c, paradigm.PerformanceComparison, "未找到模型评估结果", "获取模型评估失败", "E100013")
 			},
+		}
+		return &httpService, nil
+	case PLATFORM_TASK_DOWNLOAD:
+		httpService := HttpService{
+			Url:     "/dashboard/platform_task/download",
+			Method:  "GET",
+			Handler: e.HandlePlatformTaskDownload,
 		}
 		return &httpService, nil
 	default:
