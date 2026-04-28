@@ -20,6 +20,8 @@
   "QueueBufferSize": 100000,
   "WorkerCount": 3,
   "BatchSize": 1,
+  "ABMStockDataDir": "/root/rappa/stockdata",
+  "ABMStockParamDir": "/root/rappa/stockdata/params",
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
   "Database": {

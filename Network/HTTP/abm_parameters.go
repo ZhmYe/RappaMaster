@@ -1,15 +1,14 @@
 package HTTP
 
 import (
-	"bufio"
+	"BHLayer2Node/paradigm"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
-
-const defaultABMStockParamDir = "/root/rappa/RappaMaster/Config/abm_stock_params"
 
 var abmTunableParamKeys = []string{
 	"N_FT",
@@ -82,13 +81,17 @@ var abmRuntimeParamDefaults = map[string]interface{}{
 	"GAMMA":    10,
 }
 
-var abmPythonAssignRegexp = regexp.MustCompile(`^\s*([A-Z][A-Z0-9_]*)\s*=\s*([-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\b`)
 var stockCodeRegexp = regexp.MustCompile(`\d{6}`)
+
+type abmModelParamsFile struct {
+	StructuralParams map[string]interface{} `json:"structural_params"`
+	CalibratedParams map[string]interface{} `json:"calibrated_params"`
+}
 
 func (e *HttpEngine) buildABMParametersResponse(stockCode string) map[string]interface{} {
 	response := cloneABMParameters(e.config.AbmParameters)
 	stockCode = normalizeABMStockCode(stockCode)
-	tunedParams, hasTunedParams := loadABMStockTunedParams(stockCode)
+	tunedParams, hasTunedParams := loadABMStockTunedParams(stockCode, &e.config)
 
 	for _, key := range abmTunableParamKeys {
 		spec := ensureABMParamSpec(response, key)
@@ -142,18 +145,15 @@ func ensureABMParamSpec(parameters map[string]interface{}, key string) map[strin
 	return spec
 }
 
-func loadABMStockTunedParams(stockCode string) (map[string]interface{}, bool) {
+func loadABMStockTunedParams(stockCode string, config *paradigm.BHLayer2NodeConfig) (map[string]interface{}, bool) {
 	stockCode = normalizeABMStockCode(stockCode)
 	if stockCode == "" {
 		return map[string]interface{}{}, false
 	}
 
-	paramsDir := strings.TrimSpace(os.Getenv("ABM_STOCK_PARAM_DIR"))
-	if paramsDir == "" {
-		paramsDir = defaultABMStockParamDir
-	}
+	paramsDir := abmStockParamDir(config)
 
-	path := filepath.Join(paramsDir, "config_"+stockCode+".py")
+	path := filepath.Join(paramsDir, stockCode, "model_params.json")
 	file, err := os.Open(path)
 	if err != nil {
 		return map[string]interface{}{}, false
@@ -165,31 +165,72 @@ func loadABMStockTunedParams(stockCode string) (map[string]interface{}, bool) {
 		allowed[key] = true
 	}
 
+	var payload abmModelParamsFile
+	decoder := json.NewDecoder(file)
+	decoder.UseNumber()
+	if err := decoder.Decode(&payload); err != nil {
+		return map[string]interface{}{}, false
+	}
+
 	result := map[string]interface{}{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		matches := abmPythonAssignRegexp.FindStringSubmatch(scanner.Text())
-		if len(matches) != 3 || !allowed[matches[1]] {
+	mergeABMParamValues(result, payload.StructuralParams, allowed)
+	mergeABMParamValues(result, payload.CalibratedParams, allowed)
+	return result, len(result) > 0
+}
+
+func mergeABMParamValues(dst map[string]interface{}, src map[string]interface{}, allowed map[string]bool) {
+	for key, raw := range src {
+		if !allowed[key] {
 			continue
 		}
-		value, err := strconv.ParseFloat(matches[2], 64)
-		if err != nil {
-			continue
-		}
-		key := matches[1]
-		if abmIntParamKeys[key] {
-			result[key] = int(value)
-		} else {
-			result[key] = value
+		value, ok := normalizeABMParamValue(key, raw)
+		if ok {
+			dst[key] = value
 		}
 	}
-	return result, len(result) > 0
+}
+
+func normalizeABMParamValue(key string, raw interface{}) (interface{}, bool) {
+	value, ok := abmNumericValue(raw)
+	if !ok {
+		return nil, false
+	}
+	if abmIntParamKeys[key] {
+		return int(value), true
+	}
+	return value, true
+}
+
+func abmNumericValue(raw interface{}) (float64, bool) {
+	switch value := raw.(type) {
+	case json.Number:
+		parsed, err := value.Float64()
+		return parsed, err == nil
+	case float64:
+		return value, true
+	case float32:
+		return float64(value), true
+	case int:
+		return float64(value), true
+	case int64:
+		return float64(value), true
+	case int32:
+		return float64(value), true
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+		return parsed, err == nil
+	default:
+		return 0, false
+	}
 }
 
 func normalizeABMStockCode(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return ""
+	}
+	if _, err := strconv.Atoi(raw); err == nil && len(raw) < 6 {
+		return strings.Repeat("0", 6-len(raw)) + raw
 	}
 	match := stockCodeRegexp.FindString(raw)
 	return match

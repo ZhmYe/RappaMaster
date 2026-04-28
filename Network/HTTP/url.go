@@ -34,6 +34,7 @@ const (
 	BLOCKCHAIN_QUERY
 	DATASYNTH_QUERY
 	EXECUTION_LOG
+	EXECUTION_LOG_TASK
 	CREATE_SIM_TASK
 	ANALYZED_STOCKS
 	ABM_PARAMETERS
@@ -46,7 +47,7 @@ const (
 )
 
 func (e *HttpEngine) SupportUrl() []HttpServiceEnum {
-	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, EXECUTION_LOG, CREATE_SIM_TASK, ANALYZED_STOCKS, ABM_PARAMETERS, ORDER_DYNAMICS, PRICE_SYNTH_DOWNLOAD, PRICE_SYNTH, CRASH_RISK, INVESTOR_COMP, PERF_COMPARISON}
+	return []HttpServiceEnum{INIT_TASK, ORACLE_QUERY, BLOCKCHAIN_QUERY, DATASYNTH_QUERY, COLLECT_TASK, EXECUTION_LOG, EXECUTION_LOG_TASK, CREATE_SIM_TASK, ANALYZED_STOCKS, ABM_PARAMETERS, ORDER_DYNAMICS, PRICE_SYNTH_DOWNLOAD, PRICE_SYNTH, CRASH_RISK, INVESTOR_COMP, PERF_COMPARISON}
 }
 func (e *HttpEngine) HandleGET(c *gin.Context) {
 	var requestBody Query.HttpOracleQueryRequest
@@ -280,13 +281,66 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 			},
 		}
 		return &httpService, nil
+	case EXECUTION_LOG_TASK:
+		httpService := HttpService{
+			Url:    "/dashboard/execution_log/task",
+			Method: "GET",
+			Handler: func(c *gin.Context) {
+				taskID := strings.TrimSpace(c.Query("taskId"))
+				if taskID == "" {
+					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
+						Message: "taskId is required",
+						Code:    "E100015",
+						Data:    nil,
+					})
+					return
+				}
+
+				task, err := e.dbService.GetPlatformTaskByID(taskID)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+						Message: "获取平台任务失败",
+						Code:    "E100016",
+						Data:    nil,
+					})
+					return
+				}
+				if task == nil {
+					c.JSON(http.StatusNotFound, paradigm.HttpResponse{
+						Message: "平台任务不存在",
+						Code:    "E100017",
+						Data:    nil,
+					})
+					return
+				}
+
+				c.JSON(http.StatusOK, paradigm.HttpResponse{
+					Message: "操作成功",
+					Data:    task,
+					Code:    "S000000",
+				})
+			},
+		}
+		return &httpService, nil
 	case CREATE_SIM_TASK:
 		httpService := HttpService{
 			Url:    "/simulation/create-task",
 			Method: "POST",
 			Handler: func(c *gin.Context) {
+				isScheduled := isScheduledCreateTask(c)
 				var rawTasks []map[string]interface{}
-				if err := c.ShouldBindJSON(&rawTasks); err != nil {
+				if isScheduled {
+					var err error
+					rawTasks, err = e.buildScheduledABMV2RawTasks()
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, paradigm.HttpResponse{
+							Message: "定时任务参数构造失败: " + err.Error(),
+							Code:    "E100018",
+							Data:    false,
+						})
+						return
+					}
+				} else if err := c.ShouldBindJSON(&rawTasks); err != nil {
 					c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
 						Message: "参数格式错误",
 						Code:    "E100002",
@@ -295,20 +349,15 @@ func (e *HttpEngine) GetHttpService(service HttpServiceEnum) (*HttpService, erro
 					return
 				}
 
-				isScheduled := c.Query("isScheduled") == "true"
-
 				// 生成ID
 				taskID, _ := e.dbService.GetNextPlatformTaskID()
 
 				var subTasks []paradigm.Task
-				reservedNodeIDs := make(map[int32]struct{})
 				for _, raw := range rawTasks {
-					// 调度逻辑：每个股票子任务绑定一个节点。
-					// 这里先做批内去重，避免同一次请求里的多只股票在调度状态尚未刷新前都选到同一个节点。
-					nodeID := e.monitor.SelectLeastLoadedNodeExcluding(reservedNodeIDs)
-					reservedNodeIDs[nodeID] = struct{}{}
 					taskSize := int32(1)
-					taskParams, err := buildABMV2TaskParams(raw, nodeID)
+					// ABM_V2 不在创建阶段预分配节点；Scheduler 每轮根据 Monitor 当前负载动态选择节点。
+					// 最终产出节点以 slots 表中 Finished slot 的 node_id 为准，供分析接口定位。
+					taskParams, err := buildABMV2TaskParamsWithConfig(raw, -1, &e.config)
 					if err != nil {
 						c.JSON(http.StatusBadRequest, paradigm.HttpResponse{
 							Message: "ABM_V2 参数错误: " + err.Error(),

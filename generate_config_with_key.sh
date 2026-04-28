@@ -55,6 +55,32 @@ fi
 
 echo ""
 
+ABM_STOCK_DATA_DIR="/root/rappa/stockdata"
+ABM_STOCK_PARAM_DIR=""
+
+for node_file in $(ls $NODE_ROOT); do
+  node_config_path="$NODE_ROOT/$node_file/RappaExecutor/config.json"
+  if [ -f "$node_config_path" -a -r "$node_config_path" ]; then
+    NODE_ABM_STOCK_DATA_DIR=$(awk -F'"' '/"ABMStockDataDir"/ {print $4; exit}' "$node_config_path")
+    NODE_ABM_STOCK_PARAM_DIR=$(awk -F'"' '/"ABMStockParamDir"/ {print $4; exit}' "$node_config_path")
+    if [ -n "$NODE_ABM_STOCK_DATA_DIR" ]; then
+      ABM_STOCK_DATA_DIR="$NODE_ABM_STOCK_DATA_DIR"
+    fi
+    if [ -n "$NODE_ABM_STOCK_PARAM_DIR" ]; then
+      ABM_STOCK_PARAM_DIR="$NODE_ABM_STOCK_PARAM_DIR"
+    fi
+    break
+  fi
+done
+
+if [ -z "$ABM_STOCK_PARAM_DIR" ]; then
+  ABM_STOCK_PARAM_DIR="$ABM_STOCK_DATA_DIR/params"
+fi
+
+echo "ABM stock data dir: $ABM_STOCK_DATA_DIR"
+echo "ABM stock param dir: $ABM_STOCK_PARAM_DIR"
+echo ""
+
 cat <<EOL >$config_path
 {
   "GrpcPort": 50051,
@@ -78,6 +104,8 @@ cat <<EOL >$config_path
   "QueueBufferSize": 100000,
   "WorkerCount": 3,
   "BatchSize": 1,
+  "ABMStockDataDir": "$ABM_STOCK_DATA_DIR",
+  "ABMStockParamDir": "$ABM_STOCK_PARAM_DIR",
   "ErasureCodeParamN": 9,
   "ErasureCodeParamK": 6,
   "Database": {
@@ -102,6 +130,14 @@ for node_file in $(ls $NODE_ROOT); do
     node_config_path="$NODE_ROOT/$node_file/RappaExecutor/config.json"
     if [ -f $node_config_path -a -r $node_config_path ]; then
         echo "Get config from NODE($node_file) successfully."
+        NODE_ABM_STOCK_DATA_DIR=$(awk -F'"' '/"ABMStockDataDir"/ {print $4; exit}' "$node_config_path")
+        NODE_ABM_STOCK_PARAM_DIR=$(awk -F'"' '/"ABMStockParamDir"/ {print $4; exit}' "$node_config_path")
+        if [ -n "$NODE_ABM_STOCK_DATA_DIR" -a "$NODE_ABM_STOCK_DATA_DIR" != "$ABM_STOCK_DATA_DIR" ]; then
+            echo "  - Warning: NODE($node_file) ABMStockDataDir differs: $NODE_ABM_STOCK_DATA_DIR"
+        fi
+        if [ -n "$NODE_ABM_STOCK_PARAM_DIR" -a "$NODE_ABM_STOCK_PARAM_DIR" != "$ABM_STOCK_PARAM_DIR" ]; then
+            echo "  - Warning: NODE($node_file) ABMStockParamDir differs: $NODE_ABM_STOCK_PARAM_DIR"
+        fi
         NODE_ID_LINE=$(awk -F'[:, ]+' "/NODE_ID/{print \$3}" $node_config_path)
         NODE_IP_LINE=$(awk "/NODE_IP/{print}" $node_config_path | sed "s/NODE_IP/NodeIPAddress/")
         GRPC_PORT_LINE=$(awk "/GRPC_PORT/{print}" $node_config_path | sed "s/GRPC_PORT/NodeGrpcPort/;s/,\$//" )

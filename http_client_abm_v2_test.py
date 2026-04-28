@@ -45,6 +45,26 @@ def build_abm_v2_payload():
     ]
 
 
+def build_abm_v2_scheduled_payload():
+    # 定时全市场任务由 Master 端按当前可支持股票全集固定构造。
+    # 这里保留一个哨兵请求体，便于手动验证后端会忽略请求体中的股票、参数和 horizon。
+    return [
+        {
+            "stockCode": "SHOULD_BE_IGNORED",
+            "stockName": "SHOULD_BE_IGNORED",
+            "N_FT": 9999,
+            "N_LMT": 9999,
+            "N_SMT": 9999,
+            "N_NT": 9999,
+            "ALPHA_L": 0.5,
+            "ALPHA_S": 0.5,
+            "S_FT": 9,
+            "horizon": "custom",
+            "custom_horizon_date": ["2026-01-01", "2026-12-31"],
+        }
+    ]
+
+
 def send_post(path, body, params=None):
     response = requests.post(
         f"{BASE_URL}{path}",
@@ -72,6 +92,15 @@ def send_get(path, query=None):
 
 def create_abm_v2_task():
     response = send_post("/simulation/create-task", build_abm_v2_payload(), params={"isScheduled": "false"})
+    cache_task_id_from_create_response(response)
+
+
+def create_abm_v2_scheduled_task():
+    response = send_post("/simulation/create-task", build_abm_v2_scheduled_payload(), params={"isScheduled": "true"})
+    cache_task_id_from_create_response(response)
+
+
+def cache_task_id_from_create_response(response):
     if response.status_code != 200:
         print("Create request failed, skip taskId cache update.")
         return
@@ -99,6 +128,10 @@ def query_abm_parameters(stock_code=None):
 
 def query_execution_log():
     send_get("/dashboard/execution_log")
+
+
+def query_execution_log_task(task_id=None):
+    send_get("/dashboard/execution_log/task", {"taskId": task_id or get_current_task_id()})
 
 
 def query_analyzed_stocks(search_type=None, keyword=None):
@@ -261,9 +294,11 @@ def print_help():
     print("ABM_V2 HTTP client")
     print("Commands:")
     print("  create              创建 ABM_V2 测试任务")
+    print("  create_scheduled    创建 ABM_V2 定时全市场任务(isScheduled=true)")
     print("  abm_params          查询 ABM 通用参数模板")
     print("  abm_params_600000   查询 600000 已调参参数模板")
     print("  exec_log            查询执行日志")
+    print("  exec_task           查询当前平台任务运行状态")
     print("  analyzed            查询已完成分析股票列表")
     print("  analyzed_code       按股票代码查询已分析股票列表")
     print("  analyzed_name       按股票简称查询已分析股票列表")
@@ -312,12 +347,16 @@ def main():
         command = input("> ").strip().lower()
         if command == "create":
             create_abm_v2_task()
+        elif command == "create_scheduled":
+            create_abm_v2_scheduled_task()
         elif command == "abm_params":
             query_abm_parameters()
         elif command == "abm_params_600000":
             query_abm_parameters(DEFAULT_STOCK_ID)
         elif command == "exec_log":
             query_execution_log()
+        elif command == "exec_task":
+            query_execution_log_task()
         elif command == "analyzed":
             query_analyzed_stocks()
         elif command == "analyzed_code":

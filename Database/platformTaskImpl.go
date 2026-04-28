@@ -55,6 +55,25 @@ func (o DatabaseService) UpdatePlatformTask(task *paradigm.PlatformTask) error {
 	return o.db.Model(task).Updates(task).Error
 }
 
+// DownUnFinishedPlatformTasks 将 Master 重启前仍在运行的平台任务标记为失败。
+// 子任务会由 DownUnFinishedTasks 按原逻辑置 Failed，这里同步维护 platform_tasks 总状态，
+// 避免 execution_log 中平台任务长期停留在 running。
+func (o DatabaseService) DownUnFinishedPlatformTasks() error {
+	now := time.Now().Format(time.RFC3339)
+	result := o.db.Model(&paradigm.PlatformTask{}).
+		Where("status = ?", "running").
+		Updates(map[string]interface{}{
+			"status":          "failed",
+			"completion_time": now,
+		})
+	if result.Error != nil {
+		return fmt.Errorf("failed to reset running platform tasks: %w", result.Error)
+	}
+
+	paradigm.Log("INFO", fmt.Sprintf("Reset %d running platform tasks to failed status", result.RowsAffected))
+	return nil
+}
+
 // RefreshPlatformTaskStatus 根据子任务状态刷新平台任务总状态，便于 execution_log 直接展示。
 func (o DatabaseService) RefreshPlatformTaskStatus(platformTaskID string) error {
 	task, err := o.GetPlatformTaskByID(platformTaskID)

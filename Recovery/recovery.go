@@ -36,6 +36,11 @@ func RecoverFromDataBase(config *paradigm.BHLayer2NodeConfig, service *Database.
 			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to process unFinishedTask: %v", err))
 			return nil
 		}
+		err = service.DownUnFinishedPlatformTasks()
+		if err != nil {
+			paradigm.Error(paradigm.RuntimeError, fmt.Sprintf("Failed to process unFinishedPlatformTask: %v", err))
+			return nil
+		}
 		return &RappaRecovery{EpochID: maxEpochID}
 	} else {
 		//这里要做清空数据库操作

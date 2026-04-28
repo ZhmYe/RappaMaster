@@ -495,7 +495,7 @@ func (e *HttpEngine) fetchNodeAnalyticsByTask(task *paradigm.Task, analType para
 		return nil, fmt.Errorf("%w: empty task", errAnalyticsNotFound)
 	}
 
-	nodeID, err := resolveAnalyticsNodeID(task)
+	nodeID, err := e.resolveAnalyticsNodeID(task)
 	if err != nil {
 		return nil, err
 	}
@@ -626,10 +626,26 @@ func matchTaskStock(task *paradigm.Task, stockID string) bool {
 	return strings.EqualFold(extractTaskStockID(task), target) || strings.EqualFold(extractTaskStockCode(task), target)
 }
 
-func resolveAnalyticsNodeID(task *paradigm.Task) (int, error) {
+func (e *HttpEngine) resolveAnalyticsNodeID(task *paradigm.Task) (int, error) {
+	if task != nil {
+		slots := e.dbService.QueryFinishedSlotsByTask(task.Sign)
+		if len(slots) > 0 {
+			sort.Slice(slots, func(i, j int) bool {
+				if slots[i].ScheduleID == slots[j].ScheduleID {
+					return slots[i].SlotID > slots[j].SlotID
+				}
+				return slots[i].ScheduleID > slots[j].ScheduleID
+			})
+			return int(slots[0].NodeID), nil
+		}
+	}
+
+	if task == nil {
+		return 0, fmt.Errorf("finished slot node_id not found for empty task")
+	}
 	if nodeID, ok := utils.ExtractAssignedNodeID(task.Params); ok {
 		return int(nodeID), nil
 	}
 
-	return 0, fmt.Errorf("assigned_node_id not found for task %s", task.Sign)
+	return 0, fmt.Errorf("finished slot node_id not found for task %s", task.Sign)
 }

@@ -1,6 +1,7 @@
 package HTTP
 
 import (
+	"BHLayer2Node/paradigm"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -13,6 +14,10 @@ var horizonRegexp = regexp.MustCompile(`T\+(\d+)`)
 // buildABMV2TaskParams 将前端的扁平 ABM_V2 请求补齐成执行链路需要的完整 payload。
 // 前端只传股票信息 + 结构参数，predict/abm/evaluation 等运行参数由这里兜底构造。
 func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]interface{}, error) {
+	return buildABMV2TaskParamsWithConfig(raw, nodeID, nil)
+}
+
+func buildABMV2TaskParamsWithConfig(raw map[string]interface{}, nodeID int32, config *paradigm.BHLayer2NodeConfig) (map[string]interface{}, error) {
 	stockCode := strings.TrimSpace(stringValue(raw["stockCode"]))
 	if stockCode == "" {
 		return nil, fmt.Errorf("stockCode is required")
@@ -31,7 +36,9 @@ func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]
 	params["stockCode"] = stockCode
 	params["stockName"] = stockName
 	params["dataset"] = stockCode
-	params["assigned_node_id"] = nodeID
+	if nodeID >= 0 {
+		params["assigned_node_id"] = nodeID
+	}
 	// 不再接受前端传绝对路径，统一只传逻辑文件名，由节点在本地数据目录解析。
 	params["input_csv"] = fmt.Sprintf("%s.csv", stockCode)
 
@@ -47,20 +54,30 @@ func buildABMV2TaskParams(raw map[string]interface{}, nodeID int32) (map[string]
 	}
 	predictCfg["enabled"] = true
 	if strings.TrimSpace(stringValue(predictCfg["method"])) == "" {
-		predictCfg["method"] = "auto"
+		predictCfg["method"] = "kalman_rw"
 	}
 	predictCfg["horizon"] = horizonDays
+	if _, ok := predictCfg["risk_drop_levels"]; !ok {
+		predictCfg["risk_drop_levels"] = []interface{}{0.05}
+	}
 	params["predict"] = predictCfg
 
 	abmCfg := mapFromAny(raw["abm"])
 	if len(abmCfg) == 0 {
 		abmCfg = map[string]interface{}{}
 	}
+	if strings.TrimSpace(stringValue(abmCfg["mode"])) == "" {
+		abmCfg["mode"] = "auto"
+	}
+	if strings.TrimSpace(stringValue(abmCfg["model_params_root"])) == "" {
+		// 离线参数按股票统一放在共享目录，避免多节点重复复制大规模参数文件。
+		abmCfg["model_params_root"] = abmStockParamDir(config)
+	}
 	structuralParams := mapFromAny(abmCfg["structural_params"])
 	if len(structuralParams) == 0 {
 		structuralParams = map[string]interface{}{}
 	}
-	if tunedParams, ok := loadABMStockTunedParams(stockCode); ok {
+	if tunedParams, ok := loadABMStockTunedParams(stockCode, config); ok {
 		for _, key := range abmTunableParamKeys {
 			if value, exists := tunedParams[key]; exists {
 				structuralParams[key] = value

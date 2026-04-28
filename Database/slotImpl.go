@@ -28,6 +28,7 @@ func (o DatabaseService) SetSlotError(slotHash paradigm.SlotHash, e paradigm.Inv
 	slotQuery := o.GetSlot(slotHash)
 	slotQuery.Epoch = epoch
 	slotQuery.Err = fmt.Sprintf("%s||%s", paradigm.InvalidCommitTypeToString(e.Error), e.ErrorMessage)
+	slotQuery.Status = paradigm.Failed
 	//slot.CommitSlot.SetEpoch(epoch)
 	o.db.Model(slotQuery).Select("epoch", "err", "status").Updates(slotQuery)
 }
@@ -78,7 +79,9 @@ func (o DatabaseService) DownUnFinishedSlots(epoch int32) error {
 // 查询单个任务的slot的并行完成情况的组成
 func (o DatabaseService) QueryFinishedSlotsByTask(taskId paradigm.TaskHash) []*paradigm.Slot {
 	var slots []*paradigm.Slot
-	o.db.Where(map[string]interface{}{"task_id": taskId, "status": paradigm.Finished}).Find(&slots)
+	o.db.Where(map[string]interface{}{"task_id": taskId, "status": paradigm.Finished}).
+		Order("schedule_id DESC").
+		Find(&slots)
 	return slots
 }
 

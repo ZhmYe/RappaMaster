@@ -3,13 +3,16 @@ package Monitor
 import (
 	"BHLayer2Node/Query"
 	"BHLayer2Node/paradigm"
+	"sync"
 )
 
 // Monitor 监视节点状态
 // 存储节点的状态信息，并维护一些统计值
 type Monitor struct {
-	channel    *paradigm.RappaChannel
-	nodeStatus []*paradigm.NodeStatus
+	channel       *paradigm.RappaChannel
+	nodeStatus    []*paradigm.NodeStatus
+	reservedLoads map[int32]int
+	mu            sync.Mutex
 }
 
 // processHeartbeatResponse 处理节点的心跳回复，其中包含节点最新的磁盘、cpu等信息用于展示
@@ -31,6 +34,7 @@ func (m *Monitor) processOracleInfo() {
 		// 传过来的内容要么是schedule，要么是taskprocessTransaction
 		case *paradigm.SynthTaskSchedule:
 			schedule := info.(*paradigm.SynthTaskSchedule)
+			m.mu.Lock()
 			for nodeID, index := range schedule.NodeIDMap {
 				slot := schedule.Slots[index]
 				// 调度时就失败的就不用更新了
@@ -38,13 +42,19 @@ func (m *Monitor) processOracleInfo() {
 					continue
 				}
 				m.nodeStatus[nodeID].UpdatePendingSlot(slot.SlotID)
+				if m.reservedLoads[int32(nodeID)] > 0 {
+					m.reservedLoads[int32(nodeID)]--
+				}
 				//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Pending Slot: %s", nodeID, slot.SlotID))
 
 			}
+			m.mu.Unlock()
 		case *paradigm.TaskProcessTransaction:
 			tx := info.(*paradigm.TaskProcessTransaction)
 			nodeID := tx.Nid
+			m.mu.Lock()
 			m.nodeStatus[int(nodeID)].UpdateFinishSlot(tx.SlotHash(), tx.Process, tx.Model)
+			m.mu.Unlock()
 			//paradigm.Log("INFO", fmt.Sprintf("Monitor Update Node %d Status, New Finish Slot: %s, process: %d", nodeID, tx.SlotHash(), tx.Process))
 
 		default:
@@ -77,6 +87,25 @@ func (m *Monitor) processQuery() {
 
 // TODO 这里调度还得改下，不能给标记为失败的Node一直发送调度
 func (m *Monitor) advice(request *paradigm.AdviceRequest) {
+	if request.Size <= request.SlotSize {
+		m.mu.Lock()
+		nodeID, load := m.selectLeastLoadedNodeAndLoadWithReservationsLocked(m.reservedLoads)
+		if nodeID >= 0 && load == 0 {
+			m.reservedLoads[nodeID]++
+		}
+		m.mu.Unlock()
+		if nodeID < 0 || load > 0 {
+			response := paradigm.NewAdviceResponse([]int32{}, []int32{})
+			request.SendResponse(*response)
+			return
+		}
+		response := paradigm.NewAdviceResponse([]int32{nodeID}, []int32{request.Size})
+		request.SendResponse(*response)
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	nodeIDs := make([]int32, len(m.nodeStatus))
 	scheduleSize := make([]int32, len(m.nodeStatus))
 	for i := 0; i < len(m.nodeStatus); i++ {
@@ -102,6 +131,9 @@ func (m *Monitor) advice(request *paradigm.AdviceRequest) {
 // SelectLeastLoadedNodeExcluding 选择负载最低的节点，并允许排除当前批次中已经预留过的节点。
 // 这样平台一次创建多个“单股票单节点”子任务时，不会因为监控状态尚未刷新而都落到同一个节点。
 func (m *Monitor) SelectLeastLoadedNodeExcluding(excluded map[int32]struct{}) int32 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if len(m.nodeStatus) == 0 {
 		return -1
 	}
@@ -136,6 +168,39 @@ func (m *Monitor) SelectLeastLoadedNodeExcluding(excluded map[int32]struct{}) in
 	return bestNodeID
 }
 
+// SelectLeastLoadedNodeWithReservations 按“当前待处理槽位 + 本批次已预留数量”选择负载最低节点。
+// 平台 ABM_V2 会一次创建多只股票子任务，Monitor 的 PendingSlots 需要等调度落链后才更新；
+// 如果创建阶段只看 PendingSlots，批量任务会在状态刷新前反复选中同一个节点。
+func (m *Monitor) SelectLeastLoadedNodeWithReservations(reserved map[int32]int) int32 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	nodeID, _ := m.selectLeastLoadedNodeAndLoadWithReservationsLocked(reserved)
+	return nodeID
+}
+
+func (m *Monitor) selectLeastLoadedNodeWithReservationsLocked(reserved map[int32]int) int32 {
+	nodeID, _ := m.selectLeastLoadedNodeAndLoadWithReservationsLocked(reserved)
+	return nodeID
+}
+
+func (m *Monitor) selectLeastLoadedNodeAndLoadWithReservationsLocked(reserved map[int32]int) (int32, int) {
+	if len(m.nodeStatus) == 0 {
+		return -1, 0
+	}
+
+	bestNodeID := int32(0)
+	minLoad := len(m.nodeStatus[0].PendingSlots) + reserved[0]
+	for i := 1; i < len(m.nodeStatus); i++ {
+		nodeID := int32(i)
+		load := len(m.nodeStatus[i].PendingSlots) + reserved[nodeID]
+		if load < minLoad {
+			minLoad = load
+			bestNodeID = nodeID
+		}
+	}
+	return bestNodeID, minLoad
+}
+
 // SelectLeastLoadedNode 保留旧接口，供现有调用方继续复用。
 func (m *Monitor) SelectLeastLoadedNode() int32 {
 	return m.SelectLeastLoadedNodeExcluding(map[int32]struct{}{})
@@ -154,8 +219,9 @@ func NewMonitor(channel *paradigm.RappaChannel) *Monitor {
 		nodeStatus[nodeID] = paradigm.NewNodeStatus(int32(nodeID), *address)
 	}
 	return &Monitor{
-		channel:    channel,
-		nodeStatus: nodeStatus,
+		channel:       channel,
+		nodeStatus:    nodeStatus,
+		reservedLoads: make(map[int32]int),
 	}
 
 }

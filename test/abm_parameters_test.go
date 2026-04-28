@@ -18,13 +18,24 @@ func TestABMParametersEndpointUsesTunedParamsAndDefaults(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("ABM_STOCK_PARAM_DIR", dir)
 
-	content := []byte(`
-N_FT = 123
-K1 = 1.9855
-MU_L = -1.6
-IGNORED = 999
-`)
-	if err := os.WriteFile(filepath.Join(dir, "config_600000.py"), content, 0o644); err != nil {
+	stockDir := filepath.Join(dir, "600000")
+	if err := os.MkdirAll(stockDir, 0o755); err != nil {
+		t.Fatalf("create tuned param dir: %v", err)
+	}
+	content := []byte(`{
+  "structural_params": {
+    "N_FT": 123,
+    "IGNORED": 999
+  },
+  "calibrated_params": {
+    "K1": 1.9855,
+    "MU_L": -1.6
+  },
+  "metadata": {
+    "source_file": "ignored"
+  }
+}`)
+	if err := os.WriteFile(filepath.Join(stockDir, "model_params.json"), content, 0o644); err != nil {
 		t.Fatalf("write tuned params: %v", err)
 	}
 

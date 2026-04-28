@@ -5,6 +5,7 @@ import (
 	"BHLayer2Node/utils"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // Scheduler 用于调度任务，产生Slot
@@ -67,14 +68,18 @@ func (s *Scheduler) process(task paradigm.UnprocessedTask) {
 			nodeIDs = []int32{nodeID}
 			scheduleSizes = []int32{1}
 		} else {
-			adviceRequest := paradigm.NewAdviceRequest(1, 1)
-			s.channel.MonitorAdviceChannel <- adviceRequest
-			resp := adviceRequest.ReceiveResponse()
-			if len(resp.NodeIDs) == 0 {
-				panic("Error in Monitor Advice(), no node available for ABM_V2")
+			for {
+				adviceRequest := paradigm.NewAdviceRequest(1, 1)
+				s.channel.MonitorAdviceChannel <- adviceRequest
+				resp := adviceRequest.ReceiveResponse()
+				if len(resp.NodeIDs) > 0 {
+					nodeIDs = []int32{resp.NodeIDs[0]}
+					scheduleSizes = []int32{1}
+					break
+				}
+				paradigm.Print("SCHEDULE", fmt.Sprintf("No idle node for ABM_V2 task %s, wait and retry", task.TaskID))
+				time.Sleep(5 * time.Second)
 			}
-			nodeIDs = []int32{resp.NodeIDs[0]}
-			scheduleSizes = []int32{1}
 		}
 	} else {
 		adviceRequest := paradigm.NewAdviceRequest(task.Size, task.SlotSize)
