@@ -100,7 +100,7 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 				Abi:          txObj.GetAbi(),
 				BlockHash:    block.Hash,
 				UpchainTime:  paradigm.TimestampConvert(block.Timestamp),
-				Invalid:      true,
+				Invalid:      false,
 				ErrorMessage: "",
 			})
 		} else {
@@ -113,7 +113,7 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 					Abi:          txMap["abi"].(string),
 					BlockHash:    block.Hash,
 					UpchainTime:  paradigm.TimestampConvert(block.Timestamp),
-					Invalid:      true,
+					Invalid:      false,
 					ErrorMessage: "",
 				})
 			}
@@ -125,7 +125,7 @@ func (c *ChainUpper) getBlockInfo(block types.Block) paradigm.BlockInfo {
 		BlockHeight:     int32(block.Number),
 		TransactionRoot: block.TxsRoot,
 		Txs:             txs,
-		Invalid:         true,
+		Invalid:         false,
 		ErrorMessage:    "",
 	}
 }
